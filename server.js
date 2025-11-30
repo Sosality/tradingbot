@@ -1,30 +1,30 @@
 const express = require('express');
 const http = require('http');
-// WebSocket больше не нужен, но оставляем его для wss.Server
-// const WebSocket = require('ws'); 
+// Используем 'ws' как клиент для Coinbase, но не как сервер для WebApp
+const WebSocketClient = require('ws'); 
 const cors = require('cors');
 const path = require('path');
-const WebSocketClient = require('ws'); // Используем его для клиента Coinbase
 
 const app = express();
 app.use(cors()); 
 app.use(express.json());
 
-// Временно отключаем раздачу статики, если фронтенд отдельно
-// app.use(express.static(path.join(__dirname, 'public'))); 
+// === Раздача статики ===
+// Сервер будет раздавать index.html и другие файлы из папки 'public'
+app.use(express.static(path.join(__dirname, 'public'))); 
+// =========================
 
 const server = http.createServer(app);
-// const wss = new WebSocket.Server({ server }); // WSS больше не нужен
+// WebSocket Server (WSS) удален, чтобы избежать конфликтов и проблем с проксированием.
 
 // === ХРАНИЛИЩЕ (В ПАМЯТИ) ===
 const users = {}; 
-let currentPrice = 0; // Эта цена будет отдаваться через API
+let currentPrice = 0; 
 
 // =======================================================
 // 🔥 COINBASE CONNECTION (Получение цены для Polling) 🔥
 // =======================================================
 function connectCoinbase() {
-    // Подключение к WebSocket Coinbase
     const coinbaseWs = new WebSocketClient('wss://ws-feed.exchange.coinbase.com');
     
     coinbaseWs.on('open', () => {
@@ -56,19 +56,23 @@ function connectCoinbase() {
     coinbaseWs.on('error', (err) => console.error('Coinbase Error:', err));
 }
 
-connectCoinbase(); // Запуск подключения для получения цены
+connectCoinbase(); 
 
 // =======================================================
-// 🔥 НОВЫЙ ЭНДПОИНТ ДЛЯ ПОЛЛИНГА ЦЕНЫ 🔥
+// 🔥 API ЭНДПОИНТ ДЛЯ ПОЛЛИНГА ЦЕНЫ 🔥
 // =======================================================
 app.get('/api/price', (req, res) => {
     // Отдаем текущую цену, которую мы получаем через WebSocket Coinbase
+    if (currentPrice === 0) {
+        return res.status(503).json({ error: 'Цена еще не получена' });
+    }
     res.json({ price: currentPrice, time: Date.now() });
 });
 
-// === API ROUTES (остаются без изменений) ===
+// === API ROUTES ===
 app.post('/api/init', (req, res) => {
     const { userId } = req.body;
+    // ВНИМАНИЕ: Здесь будут изменения для БД
     if (!users[userId]) users[userId] = { balance: 1000.00, positions: [] };
     res.json(users[userId]);
 });
@@ -110,7 +114,6 @@ app.post('/api/order/close', (req, res) => {
     user.positions.splice(idx, 1);
     res.json({ success: true, balance: user.balance, pnl });
 });
-
 
 // === ЗАПУСК ===
 const PORT = process.env.PORT || 3000;
