@@ -57,7 +57,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             
-            // Заглушка для tg, если запускается вне Telegram
+            // Заглушка для tg, если запускается вне Telegram (Fix Uncaught TypeError)
             if (typeof window.Telegram === 'undefined' || typeof window.Telegram.WebApp === 'undefined') {
                 const dummyTg = { 
                     expand: () => {}, enableClosingConfirmation: () => {}, 
@@ -77,16 +77,19 @@
             let positions = [];
             let lastCandle = null; 
 
-            // === Инициализация Графика ===
+            // === Инициализация Графика (Fix chart.addCandlestickSeries is not a function) ===
+            const { createChart } = LightweightCharts; // Явно берем функцию из объекта
+
             const chartContainer = document.getElementById('chart');
-            const chart = LightweightCharts.createChart(chartContainer, {
+            const chart = createChart(chartContainer, {
                 layout: { background: { type: 'solid', color: '#111' }, textColor: '#DDD' },
                 grid: { vertLines: { color: '#333' }, horzLines: { color: '#333' } },
                 timeScale: { timeVisible: true, secondsVisible: true }
             });
             const candleSeries = chart.addCandlestickSeries();
+            // ===================================================================================
 
-            // === 1. Инициализация баланса (Используем относительный путь!)
+            // === 1. Инициализация баланса (Используем относительный путь /api/init)
             fetch('/api/init', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -100,7 +103,7 @@
             })
             .catch(e => console.error("Ошибка инициализации:", e));
 
-            // === 2. ФУНКЦИЯ ОБНОВЛЕНИЯ ЦЕНЫ (Polling) ===
+            // === 2. ФУНКЦИЯ ОБНОВЛЕНИЯ ЦЕНЫ (Polling /api/price) ===
             function updatePriceAndChart() {
                 // Используем относительный путь!
                 fetch('/api/price') 
@@ -138,8 +141,7 @@
                         }
                     })
                     .catch(e => {
-                        // Эта ошибка будет появляться, если сервер Render спит
-                        console.error('Ошибка получения цены (Сервер Render недоступен?):', e);
+                        console.error('Ошибка получения цены:', e);
                         document.getElementById('price').innerText = 'Нет сети';
                     });
             }
@@ -148,7 +150,7 @@
             setInterval(updatePriceAndChart, 500);
 
 
-            // === Открытие ордера (Используем относительный путь!)
+            // === Открытие ордера (Используем относительный путь /api/order/open)
             function openOrder(type) {
                 const amount = parseFloat(document.getElementById('amount').value);
                 const leverage = parseInt(document.getElementById('leverage').value);
@@ -168,7 +170,7 @@
                 });
             }
 
-            // Закрытие ордера (Используем относительный путь!)
+            // Закрытие ордера (Используем относительный путь /api/order/close)
             function closeOrder(id) {
                 fetch('/api/order/close', {
                     method: 'POST',
