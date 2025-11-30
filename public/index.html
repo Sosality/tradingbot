@@ -6,35 +6,153 @@
     <title>Crypto Futures Sim</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
-    
+
+    <!-- Моноширинный для финансовых данных -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+
     <style>
-        body { background-color: #111; color: #fff; font-family: sans-serif; margin: 0; padding: 0; }
-        #chart { width: 100%; height: 50vh; }
-        .ui-panel { padding: 15px; background: #1e1e1e; height: 50vh; overflow-y: auto; }
-        .price-display { font-size: 24px; font-weight: bold; }
-        .balance { font-size: 14px; color: #aaa; margin-bottom: 15px; }
-        .controls { display: flex; gap: 10px; margin-bottom: 15px; }
-        button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .btn-long { background: #26a69a; }
-        .btn-short { background: #ef5350; }
-        input, select { width: 100%; padding: 10px; margin-bottom: 10px; border: none; border-radius: 5px; background: #333; color: #fff; }
-        .pos-card { background: #2a2a2a; padding: 10px; margin-bottom: 7px; border-radius: 6px; display: flex; justify-content: space-between; }
+        /* ========== GLOBAL ========== */
+        body {
+            background-color: #0A0A0A;
+            color: #EAEAEA;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* Верхняя панель */
+        .market-header {
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0D0D0D;
+            border-bottom: 1px solid #1e1e1e;
+        }
+        .pair {
+            color: #999;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        #price {
+            font-family: "Roboto Mono", monospace;
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        /* График */
+        #chart {
+            width: 100%;
+            height: 45vh;
+        }
+
+        /* Панель трейдинга */
+        .ui-panel {
+            background: #111;
+            height: 55vh;
+            padding: 16px;
+            overflow-y: auto;
+            border-top: 1px solid #1e1e1e;
+        }
+
+        /* Баланс */
+        .balance {
+            font-size: 15px;
+            margin-bottom: 12px;
+            font-family: "Roboto Mono", monospace;
+        }
+
+        /* Инпуты */
+        input, select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: #1e1e1e;
+            color: #fff;
+            border-radius: 8px;
+            border: 1px solid #2a2a2a;
+            font-size: 15px;
+        }
+        input:focus, select:focus {
+            border-color: #aaa;
+            outline: none;
+        }
+
+        /* Кнопки */
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        button {
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 15px;
+            transition: opacity .2s;
+        }
+        button:hover { opacity: .85; }
+
+        .btn-long { background: #0EBE83; color: #000; }
+        .btn-short { background: #FF4E4E; color: #fff; }
+
+        /* ========== ПОЗИЦИИ ========== */
         .positions { margin-top: 10px; }
+
+        .pos-card {
+            background: #161616;
+            padding: 12px 14px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #242424;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pos-info {
+            font-size: 13px;
+            opacity: .8;
+        }
+        .pos-entry {
+            font-family: "Roboto Mono", monospace;
+            font-size: 13px;
+            color: #bbb;
+        }
+
+        .pnl {
+            font-family: "Roboto Mono", monospace;
+            font-size: 20px;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .close-btn {
+            background: #2d2d2d;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 14px;
+            color: #bbb;
+        }
     </style>
 </head>
 <body>
 
-<div style="padding:10px; display:flex; justify-content:space-between;">
-    <span>BTC/USDT</span>
-    <span id="price" class="price-display">Загрузка...</span>
+<div class="market-header">
+    <span class="pair">BTC / USDT</span>
+    <span id="price">...</span>
 </div>
 
 <div id="chart"></div>
 
 <div class="ui-panel">
-    <div class="balance">Баланс: <span id="balance">0</span> VP</div>
+    <div class="balance">Balance: <span id="balance">0</span> VP</div>
 
-    <input type="number" id="amount" placeholder="Сумма (VP)" value="100">
+    <input type="number" id="amount" placeholder="Order Size (VP)" value="100">
     <select id="leverage">
         <option value="1">x1</option>
         <option value="5">x5</option>
@@ -43,8 +161,8 @@
     </select>
 
     <div class="controls">
-        <button class="btn-long" onclick="openOrder('LONG')">BUY / LONG</button>
-        <button class="btn-short" onclick="openOrder('SHORT')">SELL / SHORT</button>
+        <button class="btn-long" onclick="openOrder('LONG')">LONG</button>
+        <button class="btn-short" onclick="openOrder('SHORT')">SHORT</button>
     </div>
 
     <div class="positions" id="positionsList"></div>
