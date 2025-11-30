@@ -1,36 +1,36 @@
 const express = require('express');
 const http = require('http');
-const WebSocket = require('ws');
+// WebSocket больше не нужен, но оставляем его для wss.Server
+// const WebSocket = require('ws'); 
 const cors = require('cors');
 const path = require('path');
+const WebSocketClient = require('ws'); // Используем его для клиента Coinbase
 
 const app = express();
-app.use(cors()); // Разрешаем запросы с любых доменов
+app.use(cors()); 
 app.use(express.json());
 
-// Раздаем статику (наш фронтенд), если заходим через браузер
-// (Оставляем, даже если фронтенд отдельно, для удобства тестов)
-app.use(express.static(path.join(__dirname, 'public')));
+// Временно отключаем раздачу статики, если фронтенд отдельно
+// app.use(express.static(path.join(__dirname, 'public'))); 
 
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+// const wss = new WebSocket.Server({ server }); // WSS больше не нужен
 
 // === ХРАНИЛИЩЕ (В ПАМЯТИ) ===
-// Внимание: Данные будут сбрасываться при перезапуске Render.
 const users = {}; 
-let currentPrice = 0;
+let currentPrice = 0; // Эта цена будет отдаваться через API
 
 // =======================================================
-// 🔥 COINBASE CONNECTION (Новый источник данных) 🔥
+// 🔥 COINBASE CONNECTION (Получение цены для Polling) 🔥
 // =======================================================
 function connectCoinbase() {
     // Подключение к WebSocket Coinbase
-    const coinbaseWs = new WebSocket('wss://ws-feed.exchange.coinbase.com');
+    const coinbaseWs = new WebSocketClient('wss://ws-feed.exchange.coinbase.com');
     
     coinbaseWs.on('open', () => {
         console.log('Connected to Coinbase. Subscribing to BTC-USD...');
         
-        // Сообщение для подписки на канал 'ticker' (для получения цены)
+        // Сообщение для подписки на канал 'ticker'
         const subscribeMessage = JSON.stringify({
             "type": "subscribe",
             "product_ids": ["BTC-USD"],
@@ -42,22 +42,9 @@ function connectCoinbase() {
     coinbaseWs.on('message', (data) => {
         const trade = JSON.parse(data);
 
-        // Проверяем, что это тикер (цена) для нужной пары
+        // Обновляем текущую глобальную цену
         if (trade.type === 'ticker' && trade.product_id === 'BTC-USD' && trade.price) {
-            currentPrice = parseFloat(trade.price); // Обновляем глобальную цену
-            
-            // Рассылаем цену всем подключенным клиентам
-            const updateMsg = JSON.stringify({ 
-                type: 'PRICE_UPDATE', 
-                price: currentPrice, 
-                time: Date.now() 
-            }); 
-            
-            wss.clients.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(updateMsg);
-                }
-            });
+            currentPrice = parseFloat(trade.price);
         }
     });
 
@@ -69,9 +56,17 @@ function connectCoinbase() {
     coinbaseWs.on('error', (err) => console.error('Coinbase Error:', err));
 }
 
-connectCoinbase(); // Запуск нового подключения
+connectCoinbase(); // Запуск подключения для получения цены
 
-// === API ROUTES ===
+// =======================================================
+// 🔥 НОВЫЙ ЭНДПОИНТ ДЛЯ ПОЛЛИНГА ЦЕНЫ 🔥
+// =======================================================
+app.get('/api/price', (req, res) => {
+    // Отдаем текущую цену, которую мы получаем через WebSocket Coinbase
+    res.json({ price: currentPrice, time: Date.now() });
+});
+
+// === API ROUTES (остаются без изменений) ===
 app.post('/api/init', (req, res) => {
     const { userId } = req.body;
     if (!users[userId]) users[userId] = { balance: 1000.00, positions: [] };
@@ -82,9 +77,7 @@ app.post('/api/order/open', (req, res) => {
     const { userId, type, margin, leverage } = req.body;
     const user = users[userId];
     
-    // ВАЛИДАЦИЯ: Текущая цена должна быть известна
     if (currentPrice === 0) return res.status(503).json({ error: 'Цены еще не получены. Попробуйте через секунду.' });
-
     if (!user || user.balance < margin) return res.status(400).json({ error: 'Low balance' });
 
     const fee = margin * leverage * 0.001; 
@@ -118,15 +111,6 @@ app.post('/api/order/close', (req, res) => {
     res.json({ success: true, balance: user.balance, pnl });
 });
 
-// === WEBSOCKET CLIENT HANDLING ===
-wss.on('connection', (ws) => {
-    ws.send(JSON.stringify({ type: 'PRICE_UPDATE', price: currentPrice, time: Date.now() }));
-    // Пинг-понг для поддержания связи (Render может рвать idle соединения)
-    const interval = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) ws.ping();
-    }, 30000);
-    ws.on('close', () => clearInterval(interval));
-});
 
 // === ЗАПУСК ===
 const PORT = process.env.PORT || 3000;
