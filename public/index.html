@@ -6,227 +6,201 @@
     <title>Crypto Futures Sim</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
+    
     <style>
-        body { background-color: #111; color: #fff; font-family: sans-serif; margin: 0; padding: 0; overflow: hidden; }
+        body { background-color: #111; color: #fff; font-family: sans-serif; margin: 0; padding: 0; }
         #chart { width: 100%; height: 50vh; }
-        .ui-panel { padding: 15px; background: #1e1e1e; border-top: 1px solid #333; height: 50vh; }
-        .price-display { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .ui-panel { padding: 15px; background: #1e1e1e; height: 50vh; overflow-y: auto; }
+        .price-display { font-size: 24px; font-weight: bold; }
         .balance { font-size: 14px; color: #aaa; margin-bottom: 15px; }
         .controls { display: flex; gap: 10px; margin-bottom: 15px; }
-        button { flex: 1; padding: 15px; border: none; border-radius: 8px; font-weight: bold; color: white; cursor: pointer; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .btn-long { background: #26a69a; }
         .btn-short { background: #ef5350; }
-        input { width: 100%; padding: 10px; box-sizing: border-box; background: #333; border: none; color: white; border-radius: 5px; margin-bottom: 10px; }
-        .positions { margin-top: 20px; max-height: 150px; overflow-y: auto; }
-        .pos-card { background: #2a2a2a; padding: 10px; margin-bottom: 5px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
+        input, select { width: 100%; padding: 10px; margin-bottom: 10px; border: none; border-radius: 5px; background: #333; color: #fff; }
+        .pos-card { background: #2a2a2a; padding: 10px; margin-bottom: 7px; border-radius: 6px; display: flex; justify-content: space-between; }
+        .positions { margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div style="padding: 10px; display:flex; justify-content:space-between;">
-        <span id="symbol">BTC/USDT</span>
-        <span id="price" class="price-display">Загрузка...</span>
+<div style="padding:10px; display:flex; justify-content:space-between;">
+    <span>BTC/USDT</span>
+    <span id="price" class="price-display">Загрузка...</span>
+</div>
+
+<div id="chart"></div>
+
+<div class="ui-panel">
+    <div class="balance">Баланс: <span id="balance">0</span> VP</div>
+
+    <input type="number" id="amount" placeholder="Сумма (VP)" value="100">
+    <select id="leverage">
+        <option value="1">x1</option>
+        <option value="5">x5</option>
+        <option value="10" selected>x10</option>
+        <option value="20">x20</option>
+    </select>
+
+    <div class="controls">
+        <button class="btn-long" onclick="openOrder('LONG')">BUY / LONG</button>
+        <button class="btn-short" onclick="openOrder('SHORT')">SELL / SHORT</button>
     </div>
 
-    <div id="chart"></div>
-    
+    <div class="positions" id="positionsList"></div>
+</div>
 
-[Image of mobile crypto trading interface dark mode]
+<script>
+document.addEventListener('DOMContentLoaded', () => {
 
+    if (!window.Telegram?.WebApp) {
+        window.Telegram = { WebApp: {
+            initDataUnsafe: { user: { id: 'test_user_1' }},
+            expand: ()=>{}, enableClosingConfirmation: ()=>{},
+            showAlert: alert, HapticFeedback:{impactOccurred:()=>{},notificationOccurred:()=>{}}
+        }};
+    }
 
-    <div class="ui-panel">
-        <div class="balance">Баланс: <span id="balance">0</span> VP</div>
-        
-        <input type="number" id="amount" placeholder="Сумма (VP)" value="100">
-        <select id="leverage" style="width:100%; padding: 10px; background: #333; color:white; border:none; margin-bottom:10px;">
-            <option value="1">x1</option>
-            <option value="5">x5</option>
-            <option value="10" selected>x10</option>
-            <option value="20">x20</option>
-        </select>
+    const tg = Telegram.WebApp;
+    tg.expand();
 
-        <div class="controls">
-            <button class="btn-long" onclick="openOrder('LONG')">BUY / LONG</button>
-            <button class="btn-short" onclick="openOrder('SHORT')">SELL / SHORT</button>
-        </div>
+    const userId = tg.initDataUnsafe?.user?.id || "test_user_1";
+    let currentPrice = 0;
+    let positions = [];
+    let lastCandle = null;
 
-        <div class="positions" id="positionsList">
-            </div>
-    </div>
+    const chartContainer = document.getElementById('chart');
+    const { createChart } = LightweightCharts;
+    const chart = createChart(chartContainer, {
+        layout: { background: { color: '#111' }, textColor: '#DDD' },
+        grid: { vertLines: { color: '#333' }, horzLines: { color: '#333' } },
+        timeScale: { timeVisible: true, secondsVisible: false }
+    });
+    const candleSeries = chart.addCandlestickSeries();
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            
-            // Заглушка для tg, если запускается вне Telegram (Fix Uncaught TypeError)
-            if (typeof window.Telegram === 'undefined' || typeof window.Telegram.WebApp === 'undefined') {
-                const dummyTg = { 
-                    expand: () => {}, enableClosingConfirmation: () => {}, 
-                    initDataUnsafe: { user: { id: 'test_user_1' } }, 
-                    HapticFeedback: { impactOccurred: () => {}, notificationOccurred: () => {} }, 
-                    showAlert: alert 
-                };
-                window.Telegram = { WebApp: dummyTg };
-            }
-            
-            const tg = window.Telegram.WebApp;
-            tg.expand();
-            tg.enableClosingConfirmation();
+    new ResizeObserver(() => {
+        chart.resize(chartContainer.clientWidth, chartContainer.clientHeight);
+    }).observe(chartContainer);
 
-            const userId = tg.initDataUnsafe?.user?.id || 'test_user_1';
-            let currentPrice = 0;
-            let positions = [];
-            let lastCandle = null; 
+    fetch('/api/init', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+    })
+    .then(r=>r.json())
+    .then(user => {
+        document.getElementById('balance').innerText = user.balance.toFixed(2);
+        positions = user.positions;
+        renderPositions();
+    });
 
-            // === Инициализация Графика (Fix chart.addCandlestickSeries is not a function) ===
-            const { createChart } = LightweightCharts; // Явно берем функцию из объекта
-
-            const chartContainer = document.getElementById('chart');
-            const chart = createChart(chartContainer, {
-                layout: { background: { type: 'solid', color: '#111' }, textColor: '#DDD' },
-                grid: { vertLines: { color: '#333' }, horzLines: { color: '#333' } },
-                timeScale: { timeVisible: true, secondsVisible: true }
-            });
-            const candleSeries = chart.addCandlestickSeries();
-            // ===================================================================================
-
-            // === 1. Инициализация баланса (Используем относительный путь /api/init)
-            fetch('/api/init', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId })
-            })
+    function loadHistory() {
+        fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=200')
             .then(r => r.json())
-            .then(user => {
-                document.getElementById('balance').innerText = user.balance.toFixed(2);
-                positions = user.positions;
-                renderPositions();
-            })
-            .catch(e => console.error("Ошибка инициализации:", e));
+            .then(data => {
+                const candles = data.map(c => ({
+                    time: c[0]/1000,
+                    open: +c[1],
+                    high: +c[2],
+                    low: +c[3],
+                    close: +c[4]
+                }));
+                candleSeries.setData(candles);
+                lastCandle = candles[candles.length-1];
+                chart.timeScale().fitContent();
+            });
+    }
+    loadHistory();
 
-            // === 2. ФУНКЦИЯ ОБНОВЛЕНИЯ ЦЕНЫ (Polling /api/price) ===
-            function updatePriceAndChart() {
-                // Используем относительный путь!
-                fetch('/api/price') 
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.price) {
-                            currentPrice = data.price;
-                            document.getElementById('price').innerText = currentPrice.toFixed(2);
-                            
-                            // Обновление графика
-                            const time = Math.floor(Date.now() / 1000); 
-                            const candleTime = Math.floor(time / 60) * 60; 
+    function updatePriceAndChart() {
+        fetch('/api/price')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.price) return;
+                currentPrice = data.price;
+                document.getElementById('price').innerText = currentPrice.toFixed(2);
 
-                            const priceElement = document.getElementById('price');
-                            priceElement.style.color = currentPrice >= (lastCandle?.close || 0) ? '#26a69a' : '#ef5350';
+                const now = Math.floor(Date.now() / 1000);
+                const minute = Math.floor(now / 60) * 60;
 
-                            if (!lastCandle || lastCandle.time !== candleTime) {
-                                if (lastCandle) candleSeries.update(lastCandle);
-                                
-                                lastCandle = { 
-                                    time: candleTime, 
-                                    open: currentPrice, 
-                                    high: currentPrice, 
-                                    low: currentPrice, 
-                                    close: currentPrice 
-                                };
-                            } else {
-                                lastCandle.high = Math.max(lastCandle.high, currentPrice);
-                                lastCandle.low = Math.min(lastCandle.low, currentPrice);
-                                lastCandle.close = currentPrice;
-                            }
-
-                            candleSeries.update(lastCandle);
-                            updatePositionsPnL();
-                        }
-                    })
-                    .catch(e => {
-                        console.error('Ошибка получения цены:', e);
-                        document.getElementById('price').innerText = 'Нет сети';
-                    });
-            }
-
-            // Запуск цикла обновления цены каждые 500 мс
-            setInterval(updatePriceAndChart, 500);
-
-
-            // === Открытие ордера (Используем относительный путь /api/order/open)
-            function openOrder(type) {
-                const amount = parseFloat(document.getElementById('amount').value);
-                const leverage = parseInt(document.getElementById('leverage').value);
-
-                fetch('/api/order/open', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, type, margin: amount, leverage })
-                })
-                .then(r => r.json())
-                .then(res => {
-                    if (res.error) return tg.showAlert(res.error);
-                    document.getElementById('balance').innerText = res.balance.toFixed(2);
-                    positions.push(res.position);
-                    renderPositions();
-                    tg.HapticFeedback.impactOccurred('medium'); 
-                });
-            }
-
-            // Закрытие ордера (Используем относительный путь /api/order/close)
-            function closeOrder(id) {
-                fetch('/api/order/close', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, positionId: id })
-                })
-                .then(r => r.json())
-                .then(res => {
-                    if (res.error) return alert(res.error);
-                    document.getElementById('balance').innerText = res.balance.toFixed(2);
-                    positions = positions.filter(p => p.id !== id);
-                    renderPositions();
-                    tg.HapticFeedback.notificationOccurred('success');
-                });
-            }
-
-            // Рендер позиций
-            function renderPositions() {
-                const container = document.getElementById('positionsList');
-                container.innerHTML = '';
-                positions.forEach(p => {
-                    const div = document.createElement('div');
-                    div.className = 'pos-card';
-                    div.id = `pos-${p.id}`;
-                    div.innerHTML = `
-                        <div>
-                            <b>${p.type} x${p.leverage}</b><br>
-                            Вход: ${p.entryPrice.toFixed(2)}
-                        </div>
-                        <div style="text-align:right">
-                            <span class="pnl">0.00</span> VP<br>
-                            <button onclick="closeOrder(${p.id})" style="padding:5px; font-size:12px; background:#444;">Закрыть</button>
-                        </div>
-                    `;
-                    container.appendChild(div);
-                });
+                if (!lastCandle || lastCandle.time !== minute) {
+                    lastCandle = { time: minute, open: currentPrice, high: currentPrice, low: currentPrice, close: currentPrice };
+                    candleSeries.update(lastCandle);
+                } else {
+                    lastCandle.high = Math.max(lastCandle.high, currentPrice);
+                    lastCandle.low = Math.min(lastCandle.low, currentPrice);
+                    lastCandle.close = currentPrice;
+                    candleSeries.update(lastCandle);
+                }
                 updatePositionsPnL();
-            }
+            });
+    }
+    setInterval(updatePriceAndChart, 1000);
 
-            // Живой PnL на клиенте
-            function updatePositionsPnL() {
-                positions.forEach(p => {
-                    let pnl = 0;
-                    if (p.type === 'LONG') {
-                        pnl = ((currentPrice - p.entryPrice) / p.entryPrice) * p.size;
-                    } else {
-                        pnl = ((p.entryPrice - currentPrice) / p.entryPrice) * p.size;
-                    }
-                    const el = document.querySelector(`#pos-${p.id} .pnl`);
-                    if (el) {
-                        el.innerText = pnl.toFixed(2);
-                        el.style.color = pnl >= 0 ? '#26a69a' : '#ef5350';
-                    }
-                });
+    window.openOrder = function(type){
+        const margin = +document.getElementById('amount').value;
+        const leverage = +document.getElementById('leverage').value;
+
+        fetch('/api/order/open', {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ userId, type, margin, leverage })
+        })
+        .then(r=>r.json())
+        .then(res=>{
+            if(res.error) return tg.showAlert(res.error);
+            positions.push(res.position);
+            document.getElementById('balance').innerText = res.balance.toFixed(2);
+            renderPositions();
+        });
+    }
+
+    window.closeOrder = function(id){
+        fetch('/api/order/close', {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ userId, positionId:id })
+        })
+        .then(r=>r.json())
+        .then(res=>{
+            positions = positions.filter(p=>p.id!==id);
+            document.getElementById('balance').innerText=res.balance.toFixed(2);
+            renderPositions();
+        });
+    }
+
+    function renderPositions(){
+        const list = document.getElementById("positionsList");
+        list.innerHTML = "";
+        positions.forEach(p=>{
+            const el = document.createElement("div");
+            el.className="pos-card";
+            el.id="pos-"+p.id;
+            el.innerHTML = `
+                <div><b>${p.type} x${p.leverage}</b><br>${p.entryPrice.toFixed(2)}</div>
+                <div style="text-align:right;">
+                    <span class="pnl">0.00</span> VP<br>
+                    <button onclick="closeOrder(${p.id})" style="background:#444;padding:5px;border-radius:5px;">✖</button>
+                </div>`;
+            list.appendChild(el);
+        });
+    }
+
+    function updatePositionsPnL(){
+        positions.forEach(p => {
+            let pnl = (p.type==='LONG')
+                ? ((currentPrice - p.entryPrice) / p.entryPrice) * p.size
+                : ((p.entryPrice - currentPrice) / p.entryPrice) * p.size;
+
+            const el = document.querySelector(`#pos-${p.id} .pnl`);
+            if(el){
+                el.innerText=pnl.toFixed(2);
+                el.style.color=pnl>=0?'#26a69a':'#ef5350';
             }
-        }); 
-    </script>
+        });
+    }
+});
+</script>
+
 </body>
 </html>
