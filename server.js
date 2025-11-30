@@ -9,44 +9,67 @@ app.use(cors()); // Разрешаем запросы с любых домено
 app.use(express.json());
 
 // Раздаем статику (наш фронтенд), если заходим через браузер
+// (Оставляем, даже если фронтенд отдельно, для удобства тестов)
 app.use(express.static(path.join(__dirname, 'public')));
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 // === ХРАНИЛИЩЕ (В ПАМЯТИ) ===
-// Внимание: На Render Free Tier сервер перезагружается при простое,
-// поэтому данные в памяти будут сбрасываться.
+// Внимание: Данные будут сбрасываться при перезапуске Render.
 const users = {}; 
 let currentPrice = 0;
 
-// === BINANCE CONNECTION ===
-// Используем reconnect логику, чтобы сервер не падал при разрыве связи с Binance
-function connectBinance() {
-    const binanceWs = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
+// =======================================================
+// 🔥 COINBASE CONNECTION (Новый источник данных) 🔥
+// =======================================================
+function connectCoinbase() {
+    // Подключение к WebSocket Coinbase
+    const coinbaseWs = new WebSocket('wss://ws-feed.exchange.coinbase.com');
     
-    binanceWs.on('open', () => console.log('Connected to Binance'));
-    
-    binanceWs.on('message', (data) => {
-        const trade = JSON.parse(data);
-        currentPrice = parseFloat(trade.p);
+    coinbaseWs.on('open', () => {
+        console.log('Connected to Coinbase. Subscribing to BTC-USD...');
         
-        // Рассылка всем клиентам
-        const updateMsg = JSON.stringify({ type: 'PRICE_UPDATE', price: currentPrice, time: trade.T });
-        wss.clients.forEach(client => {
-            if (client.readyState === WebSocket.OPEN) client.send(updateMsg);
+        // Сообщение для подписки на канал 'ticker' (для получения цены)
+        const subscribeMessage = JSON.stringify({
+            "type": "subscribe",
+            "product_ids": ["BTC-USD"],
+            "channels": ["ticker"]
         });
+        coinbaseWs.send(subscribeMessage);
+    });
+    
+    coinbaseWs.on('message', (data) => {
+        const trade = JSON.parse(data);
+
+        // Проверяем, что это тикер (цена) для нужной пары
+        if (trade.type === 'ticker' && trade.product_id === 'BTC-USD' && trade.price) {
+            currentPrice = parseFloat(trade.price); // Обновляем глобальную цену
+            
+            // Рассылаем цену всем подключенным клиентам
+            const updateMsg = JSON.stringify({ 
+                type: 'PRICE_UPDATE', 
+                price: currentPrice, 
+                time: Date.now() 
+            }); 
+            
+            wss.clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(updateMsg);
+                }
+            });
+        }
     });
 
-    binanceWs.on('close', () => {
-        console.log('Binance connection closed, reconnecting...');
-        setTimeout(connectBinance, 5000);
+    coinbaseWs.on('close', () => {
+        console.log('Coinbase connection closed, reconnecting in 5 seconds...');
+        setTimeout(connectCoinbase, 5000);
     });
 
-    binanceWs.on('error', (err) => console.error('Binance Error:', err));
+    coinbaseWs.on('error', (err) => console.error('Coinbase Error:', err));
 }
 
-connectBinance();
+connectCoinbase(); // Запуск нового подключения
 
 // === API ROUTES ===
 app.post('/api/init', (req, res) => {
@@ -58,6 +81,10 @@ app.post('/api/init', (req, res) => {
 app.post('/api/order/open', (req, res) => {
     const { userId, type, margin, leverage } = req.body;
     const user = users[userId];
+    
+    // ВАЛИДАЦИЯ: Текущая цена должна быть известна
+    if (currentPrice === 0) return res.status(503).json({ error: 'Цены еще не получены. Попробуйте через секунду.' });
+
     if (!user || user.balance < margin) return res.status(400).json({ error: 'Low balance' });
 
     const fee = margin * leverage * 0.001; 
@@ -102,7 +129,6 @@ wss.on('connection', (ws) => {
 });
 
 // === ЗАПУСК ===
-// Важно: Render сам выдает порт через process.env.PORT
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
