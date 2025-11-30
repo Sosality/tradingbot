@@ -1,21 +1,20 @@
 const express = require('express');
 const http = require('http');
-// Используем 'ws' как клиент для Coinbase, но не как сервер для WebApp
+// Используем 'ws' как клиент для Coinbase
 const WebSocketClient = require('ws'); 
 const cors = require('cors');
 const path = require('path');
 
 const app = express();
+// Middleware
 app.use(cors()); 
 app.use(express.json());
 
-// === Раздача статики ===
-// Сервер будет раздавать index.html и другие файлы из папки 'public'
+// === Раздача статики: Все файлы из папки 'public' доступны по корневому пути / ===
 app.use(express.static(path.join(__dirname, 'public'))); 
-// =========================
+// ===================================================================================
 
 const server = http.createServer(app);
-// WebSocket Server (WSS) удален, чтобы избежать конфликтов и проблем с проксированием.
 
 // === ХРАНИЛИЩЕ (В ПАМЯТИ) ===
 const users = {}; 
@@ -25,12 +24,12 @@ let currentPrice = 0;
 // 🔥 COINBASE CONNECTION (Получение цены для Polling) 🔥
 // =======================================================
 function connectCoinbase() {
+    // Используем WebSocket, чтобы Render получал живую цену
     const coinbaseWs = new WebSocketClient('wss://ws-feed.exchange.coinbase.com');
     
     coinbaseWs.on('open', () => {
         console.log('Connected to Coinbase. Subscribing to BTC-USD...');
         
-        // Сообщение для подписки на канал 'ticker'
         const subscribeMessage = JSON.stringify({
             "type": "subscribe",
             "product_ids": ["BTC-USD"],
@@ -59,10 +58,10 @@ function connectCoinbase() {
 connectCoinbase(); 
 
 // =======================================================
-// 🔥 API ЭНДПОИНТ ДЛЯ ПОЛЛИНГА ЦЕНЫ 🔥
+// 🔥 API ЭНДПОИНТ ДЛЯ ПОЛЛИНГА ЦЕНЫ (/api/price) 🔥
 // =======================================================
 app.get('/api/price', (req, res) => {
-    // Отдаем текущую цену, которую мы получаем через WebSocket Coinbase
+    // Отдаем текущую цену
     if (currentPrice === 0) {
         return res.status(503).json({ error: 'Цена еще не получена' });
     }
@@ -70,9 +69,9 @@ app.get('/api/price', (req, res) => {
 });
 
 // === API ROUTES ===
+
 app.post('/api/init', (req, res) => {
     const { userId } = req.body;
-    // ВНИМАНИЕ: Здесь будут изменения для БД
     if (!users[userId]) users[userId] = { balance: 1000.00, positions: [] };
     res.json(users[userId]);
 });
