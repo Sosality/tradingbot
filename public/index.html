@@ -182,7 +182,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const tg = Telegram.WebApp;
     tg.expand();
 
-    const userId = tg.initDataUnsafe?.user?.id || "test_user_1";
+    const initData = tg.initData;
+    const userId = tg.initDataUnsafe?.user?.id;
     let currentPrice = 0;
     let positions = [];
     let lastCandle = null;
@@ -203,11 +204,11 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch('/api/init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
+        body: JSON.stringify({ initData })
     })
-    .then(r=>r.json())
+    .then(r => r.json())
     .then(user => {
-        document.getElementById('balance').innerText = user.balance.toFixed(2);
+        document.getElementById('balance').innerText = (+user.balance).toFixed(2);
         positions = user.positions;
         renderPositions();
     });
