@@ -15,26 +15,27 @@ app.use(express.static(path.join(__dirname, "public")));
 const server = http.createServer(app);
 
 // ------------------------------------------
-// 🔥 PostgreSQL CONNECTION
+// 🔥 PostgreSQL
 // ------------------------------------------
 const db = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
 
-// === Создаём таблицы при запуске ===
+// === Инициализация таблиц ===
 async function initDB() {
     await db.query(`
         CREATE TABLE IF NOT EXISTS users (
-            id BIGINT PRIMARY KEY,
-            balance NUMERIC NOT NULL DEFAULT 1000
+            user_id TEXT PRIMARY KEY,
+            balance NUMERIC NOT NULL DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT NOW()
         );
     `);
 
     await db.query(`
         CREATE TABLE IF NOT EXISTS positions (
             id BIGSERIAL PRIMARY KEY,
-            user_id BIGINT REFERENCES users(id),
+            user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
             type TEXT,
             entry_price NUMERIC,
             margin NUMERIC,
@@ -49,7 +50,7 @@ async function initDB() {
 initDB();
 
 // ------------------------------------------
-// 🔥 TELEGRAM AUTH VALIDATION
+// 🔥 Telegram Auth Validation
 // ------------------------------------------
 function checkTelegramAuth(initData) {
     const urlParams = new URLSearchParams(initData);
@@ -76,7 +77,7 @@ function checkTelegramAuth(initData) {
 }
 
 // ------------------------------------------
-// 🔥 REAL-TIME BTC PRICE (Coinbase WebSocket)
+// 🔥 Coinbase Websocket
 // ------------------------------------------
 let currentPrice = 0;
 
@@ -100,7 +101,7 @@ function connectCoinbase() {
     });
 
     ws.on("close", () => {
-        console.log("Coinbase closed, reconnecting…");
+        console.log("Coinbase disconnected – reconnecting...");
         setTimeout(connectCoinbase, 5000);
     });
 
@@ -110,7 +111,7 @@ function connectCoinbase() {
 connectCoinbase();
 
 // ------------------------------------------
-// 🔥 API: Get price
+// 🔥 GET price
 // ------------------------------------------
 app.get("/api/price", (req, res) => {
     if (!currentPrice) return res.json({ error: "NO_PRICE_YET" });
@@ -118,36 +119,37 @@ app.get("/api/price", (req, res) => {
 });
 
 // ------------------------------------------
-// 🔥 API: Init user session
+// 🔥 INIT USER SESSION
 // ------------------------------------------
 app.post("/api/init", async (req, res) => {
     const { initData } = req.body;
 
-    if (!checkTelegramAuth(initData)) {
+    if (!checkTelegramAuth(initData))
         return res.status(403).json({ error: "INVALID_TG_AUTH" });
-    }
 
     const data = new URLSearchParams(initData);
-    const userId = data.get("user.id");
+    const userId = data.get("user.id"); // приходит как TEXT
 
-    // Проверяем существование
-    const existing = await db.query("SELECT * FROM users WHERE id=$1", [userId]);
+    // Проверяем существующего
+    const existing = await db.query(
+        "SELECT * FROM users WHERE user_id=$1",
+        [userId]
+    );
 
     if (existing.rows.length === 0) {
         await db.query(
-            "INSERT INTO users(id, balance) VALUES($1, $2)",
-            [userId, 1000]
+            "INSERT INTO users(user_id, balance) VALUES($1, $2)",
+            [userId, 0]
         );
     }
 
-    // Загружаем позиции
     const positions = await db.query(
         "SELECT * FROM positions WHERE user_id=$1",
         [userId]
     );
 
     const user = await db.query(
-        "SELECT * FROM users WHERE id=$1",
+        "SELECT * FROM users WHERE user_id=$1",
         [userId]
     );
 
@@ -158,15 +160,21 @@ app.post("/api/init", async (req, res) => {
 });
 
 // ------------------------------------------
-// 🔥 API: Open order
+// 🔥 OPEN ORDER
 // ------------------------------------------
 app.post("/api/order/open", async (req, res) => {
     const { userId, type, margin, leverage } = req.body;
 
-    if (!currentPrice) return res.status(503).json({ error: "NO_PRICE_YET" });
+    if (!currentPrice)
+        return res.status(503).json({ error: "NO_PRICE_YET" });
 
-    const user = await db.query("SELECT * FROM users WHERE id=$1", [userId]);
-    if (user.rows.length === 0) return res.status(404).json({ error: "NO_USER" });
+    const user = await db.query(
+        "SELECT * FROM users WHERE user_id=$1",
+        [userId]
+    );
+
+    if (user.rows.length === 0)
+        return res.status(404).json({ error: "NO_USER" });
 
     if (user.rows[0].balance < margin)
         return res.status(400).json({ error: "LOW_BALANCE" });
@@ -174,7 +182,10 @@ app.post("/api/order/open", async (req, res) => {
     const fee = margin * leverage * 0.001;
     const newBalance = user.rows[0].balance - (margin + fee);
 
-    await db.query("UPDATE users SET balance=$1 WHERE id=$2", [newBalance, userId]);
+    await db.query(
+        "UPDATE users SET balance=$1 WHERE user_id=$2",
+        [newBalance, userId]
+    );
 
     const size = margin * leverage;
 
@@ -188,7 +199,7 @@ app.post("/api/order/open", async (req, res) => {
 });
 
 // ------------------------------------------
-// 🔥 API: Close order
+// 🔥 CLOSE ORDER
 // ------------------------------------------
 app.post("/api/order/close", async (req, res) => {
     const { userId, positionId } = req.body;
@@ -198,7 +209,8 @@ app.post("/api/order/close", async (req, res) => {
         [positionId, userId]
     );
 
-    if (pos.rows.length === 0) return res.status(404).json({ error: "NOT_FOUND" });
+    if (pos.rows.length === 0)
+        return res.status(404).json({ error: "NOT_FOUND" });
 
     const p = pos.rows[0];
 
@@ -208,14 +220,25 @@ app.post("/api/order/close", async (req, res) => {
     else
         pnl = ((p.entry_price - currentPrice) / p.entry_price) * p.size;
 
-    // Обновляем баланс
-    const user = await db.query("SELECT balance FROM users WHERE id=$1", [userId]);
-    const newBalance = parseFloat(user.rows[0].balance) + parseFloat(p.margin) + pnl;
+    const user = await db.query(
+        "SELECT balance FROM users WHERE user_id=$1",
+        [userId]
+    );
 
-    await db.query("UPDATE users SET balance=$1 WHERE id=$2", [newBalance, userId]);
+    const newBalance =
+        parseFloat(user.rows[0].balance) +
+        parseFloat(p.margin) +
+        pnl;
 
-    // Удаляем позицию
-    await db.query("DELETE FROM positions WHERE id=$1", [positionId]);
+    await db.query(
+        "UPDATE users SET balance=$1 WHERE user_id=$2",
+        [newBalance, userId]
+    );
+
+    await db.query(
+        "DELETE FROM positions WHERE id=$1",
+        [positionId]
+    );
 
     res.json({ pnl, balance: newBalance });
 });
