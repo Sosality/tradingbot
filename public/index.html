@@ -1,193 +1,61 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Crypto Futures Sim — Debug & Auth</title>
-
+  <title>Telegram Login Debug</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-  <style>
-    :root {
-      --bg: #0A0A0A;
-      --panel: #0F1113;
-      --muted: #9aa4ad;
-      --ok: #0EBE83;
-      --err: #FF6B6B;
-      --text: #E6EEF3;
-    }
-    body { margin:0; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); color:var(--text); }
-    .wrap { padding:16px; max-width:820px; margin:0 auto; }
-    header { display:flex; justify-content:space-between; align-items:center; gap:12px; }
-    h1 { font-size:18px; margin:0; }
-    .status { padding:8px 10px; background:var(--panel); border-radius:8px; margin-top:12px; }
-    pre#debug { background:#071018; border:1px solid #111; padding:12px; border-radius:8px; color:#cfeef5; white-space:pre-wrap; max-height:56vh; overflow:auto; }
-    .controls { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
-    .btn { padding:10px 14px; border-radius:8px; border:0; cursor:pointer; font-weight:700; }
-    .btn-primary { background:var(--ok); color:#001; }
-    .btn-ghost { background:#111; color:var(--text); border:1px solid #222; }
-    .hint { color:var(--muted); font-size:13px; margin-top:8px; }
-    .error { color:var(--err); font-weight:700; }
-    .success { color:var(--ok); font-weight:700; }
-  </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>Crypto Futures Sim — Debug / Telegram Auth</h1>
-        <div class="hint">Открой приложение из Telegram (кнопка web_app). Этот экран детально покажет, что недостаёт.</div>
-      </div>
-      <div id="topStatus" class="status">Инициализация...</div>
-    </header>
+  <h2>Загрузка...</h2>
+  <pre id="log"></pre>
 
-    <div class="controls" style="margin-top:12px;">
-      <button id="tryOpenTG" class="btn btn-primary">Открыть Telegram (tg://)</button>
-      <button id="clearDebug" class="btn btn-ghost">Очистить лог</button>
-    </div>
-
-    <div id="result" style="margin-top:12px;"></div>
-
-    <h3 style="margin-top:16px">🛠 Debug output</h3>
-    <pre id="debug">Запуск отладки...</pre>
-  </div>
-
-<script>
-(async function(){
-  const dbgEl = document.getElementById('debug');
-  const topStatus = document.getElementById('topStatus');
-  const resultEl = document.getElementById('result');
-  const tryOpenBtn = document.getElementById('tryOpenTG');
-  const clearBtn = document.getElementById('clearDebug');
-
-  function log(...args){
-    console.log(...args);
-    const text = args.map(a => {
-      try { return (typeof a === 'object') ? JSON.stringify(a, null, 2) : String(a); }
-      catch(e){ return String(a); }
-    }).join(' ');
-    dbgEl.textContent += text + '\n';
-    dbgEl.scrollTop = dbgEl.scrollHeight;
-  }
-
-  clearBtn.onclick = ()=> dbgEl.textContent = '';
-
-  // tryOpen: attempts to open Telegram App via deep link; set BOT_USERNAME manually if you want
-  tryOpenBtn.onclick = () => {
-    const BOT_USERNAME = ""; // если хочешь — укажи сюда username бота без @, например "my_bot"
-    if (!BOT_USERNAME) {
-      alert("Укажите BOT_USERNAME в этом файле (в переменную BOT_USERNAME в коде) или откройте бота вручную.");
-      return;
+  <script>
+    function log(a) {
+      const box = document.getElementById("log");
+      box.textContent += "\n" + a;
+      console.log(a);
     }
-    const deep = `tg://resolve?domain=${BOT_USERNAME}`;
-    const web = `https://t.me/${BOT_USERNAME}`;
-    // try deep link then fallback to web
-    window.location.href = deep;
-    setTimeout(()=> window.location.href = web, 700);
-  };
 
-  log("=== DEBUG START ===");
-  log("window.Telegram =", window.Telegram);
-  log("Telegram =", typeof Telegram !== 'undefined' ? Telegram : "undefined");
-  log("Telegram.WebApp =", Telegram?.WebApp ?? "undefined");
-  topStatus.textContent = "Проверяем Telegram.WebApp...";
+    // === Telegram WebApp доступен ===
+    const tg = window.Telegram.WebApp;
 
-  if (!window.Telegram || !Telegram?.WebApp) {
-    topStatus.innerHTML = "<span class='error'>❌ Telegram WebApp НЕ найден</span>";
-    resultEl.innerHTML = "<div class='hint'>Откройте мини-приложение через кнопку web_app в боте (не по прямой ссылке в браузере).</div>";
-    log("Telegram.WebApp отсутствует — страница, скорее всего, открыта вне Telegram WebView.");
-    return;
-  }
+    log("=== DEBUG START ===");
 
-  // We have Telegram.WebApp
-  topStatus.innerHTML = "<span class='success'>✔ Telegram WebApp найден</span>";
-  try { Telegram.WebApp.expand?.(); } catch(e){}
+    log("initData = " + tg.initData);
+    log("initDataUnsafe = " + JSON.stringify(tg.initDataUnsafe, null, 2));
 
-  const rawInitData = Telegram.WebApp.initData;
-  const unsafe = Telegram.WebApp.initDataUnsafe;
-  log("initData (raw) =", rawInitData);
-  log("initDataUnsafe =", unsafe);
+    if (!tg.initDataUnsafe || !tg.initDataUnsafe.user) {
+      log("❌ Telegram WebApp не дал user — MINI APP НЕ ЗАПУЩЕН ЧЕРЕЗ TELEGRAM");
+      document.body.innerHTML = "<h3>Открой через Telegram</h3>";
+      throw new Error("NO TG DATA");
+    }
 
-  const userId = unsafe?.user?.id ?? null;
-  log("userId =", userId);
+    const initData = tg.initData;
+    const userId = tg.initDataUnsafe.user.id;
+    log("userId = " + userId);
 
-  if (!rawInitData) {
-    // Very unlikely because we see initDataUnsafe exists, but handle
-    topStatus.innerHTML = "<span class='error'>❌ initData отсутствует</span>";
-    resultEl.innerHTML = "<div class='hint'>Telegram не передал подписанные initData. Попробуйте открыть мини-приложение ещё раз.</div>";
-    log("initData пустое — нельзя пройти проверку подписи.");
-    return;
-  }
+    async function initSession() {
+      log("📤 Отправляем запрос /api/init ...");
 
-  // Prepare payload: include both initData and userId for compatibility
-  const payload = { initData: rawInitData, userId };
-
-  log("Отправляем initData на сервер (попытка 1: /auth/init) ...");
-  topStatus.textContent = "Отправка initData на сервер...";
-
-  async function postJSON(url, body){
-    try {
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body)
+      const res = await fetch("/api/init", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData }) // <-- ВОТ ПРАВИЛЬНО
       });
-      const json = await resp.json().catch(()=>({ error: "invalid_json" }));
-      return { ok: resp.ok, status: resp.status, json };
-    } catch (err) {
-      return { ok:false, status:0, error: err.message || String(err) };
+
+      const data = await res.json();
+      log("📥 Ответ от /api/init = " + JSON.stringify(data, null, 2));
+
+      if (data.error) {
+        log("❌ Ошибка: " + data.error);
+      } else {
+        document.body.innerHTML =
+          "<h2>Добро пожаловать, пользователь " + userId + "</h2>" +
+          "<pre>" + JSON.stringify(data, null, 2) + "</pre>";
+      }
     }
-  }
 
-  // try /auth/init (new server), then fallback to /api/init (older server)
-  let attemptOrder = ['/auth/init', '/api/init'];
-  let finalResp = null;
-
-  for (const endpoint of attemptOrder){
-    log("POST ->", endpoint);
-    const r = await postJSON(endpoint, payload);
-    log("->", endpoint, "status:", r.status, "ok:", r.ok, "body:", r.json ?? r.error);
-    // If server returned 200 and a success-like response, accept it
-    if (r.ok && r.json && (r.json.success || r.json.user || r.json.balance !== undefined || r.json.ok)) {
-      finalResp = { endpoint, r };
-      break;
-    }
-    // If server responded with meaningful error other than NO_INIT_DATA, stop and show it
-    if (r.json && r.json.error && r.json.error !== 'NO_INIT_DATA' && r.json.error !== 'INVALID_TG_AUTH' && r.json.error !== 'NO_INIT_DATA') {
-      finalResp = { endpoint, r };
-      break;
-    }
-    // If server explicitly returned NO_INIT_DATA or INVALID_TG_AUTH, we continue to next endpoint
-    // If request failed (network), also continue to next endpoint
-  }
-
-  if (!finalResp) {
-    topStatus.innerHTML = "<span class='error'>❌ Не удалось сохранить/проверить initData</span>";
-    resultEl.innerHTML = "<div class='error'>Ошибка: сервер не принял initData (попробованы /auth/init и /api/init). Посмотри логи сервера.</div>";
-    log("Финал — ни один эндпоинт не принял initData корректно.");
-    return;
-  }
-
-  // Process finalResp
-  const { endpoint, r } = finalResp;
-  log("Итоговый ответ от", endpoint, r);
-
-  if (!r.ok) {
-    // non-200
-    const errText = r.json?.error ?? r.error ?? "Unknown error";
-    topStatus.innerHTML = "<span class='error'>❌ Сервер ответил ошибкой</span>";
-    resultEl.innerHTML = `<div class="error">Ошибка (${endpoint}): ${errText}</div><div class="hint">Проверь BOT_TOKEN на сервере и соответствие формата initData.</div>`;
-    return;
-  }
-
-  // OK case
-  topStatus.innerHTML = "<span class='success'>✔ Авторизация прошла</span>";
-  let infoHtml = `<div class="success">Успех: ответ от ${endpoint}</div><pre>${JSON.stringify(r.json, null, 2)}</pre>`;
-  resultEl.innerHTML = infoHtml;
-  log("Успешно: сервер вернул:", r.json);
-
-})();
-</script>
+    initSession();
+  </script>
 </body>
 </html>
