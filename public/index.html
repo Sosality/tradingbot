@@ -1,57 +1,113 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <meta charset="UTF-8" />
-    <title>Telegram Auth Debug</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Futures Sim — Debug</title>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        body {
+            background: #0a0a0a;
+            color: white;
+            font-family: sans-serif;
+            padding: 10px;
+        }
+        pre {
+            background: #111;
+            padding: 10px;
+            white-space: pre-wrap;
+            border-radius: 8px;
+        }
+        #debug {
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        #status {
+            margin-top: 10px;
+            padding: 10px;
+            background: #222;
+            border-radius: 6px;
+        }
+    </style>
 </head>
 <body>
 
-<h2 id="status">Проверка сессии...</h2>
+<h2>🚀 Crypto Futures Sim</h2>
+<div id="status">Статус: <b>Загрузка...</b></div>
+
+<h3>🛠 Debug Info</h3>
+<pre id="debug">Загрузка...</pre>
 
 <script>
-console.log("🔵 WebApp стартовал");
+(function debugInit() {
+    const dbg = (...args) => {
+        console.log(...args);
+        document.getElementById("debug").textContent +=
+            args.map(a => typeof a === "object" ? JSON.stringify(a, null, 2) : a).join(" ") + "\n";
+    };
 
-if (window.Telegram && Telegram.WebApp) {
-    Telegram.WebApp.ready();
-    console.log("🟢 Telegram WebApp готов");
-} else {
-    console.log("🔴 Telegram.WebApp НЕ найден");
-    document.getElementById("status").innerText = "❌ Telegram WebApp не найден";
-}
+    dbg("=== DEBUG START ===");
 
-async function init() {
-    const initData = Telegram.WebApp.initData;
-    const unsafe = Telegram.WebApp.initDataUnsafe;
+    dbg("window.Telegram =", window.Telegram);
+    dbg("Telegram =", Telegram);
+    dbg("Telegram.WebApp =", Telegram?.WebApp);
+    dbg("initData =", Telegram?.WebApp?.initData);
+    dbg("initDataUnsafe =", Telegram?.WebApp?.initDataUnsafe);
 
-    console.log("📌 initData =", initData);
-    console.log("📌 initDataUnsafe =", unsafe);
+    const statusBox = document.getElementById("status");
 
-    if (!unsafe || !unsafe.user) {
-        document.getElementById("status").innerText = "❌ Нет Telegram авторизации";
+    // ---- Проверка Telegram WebApp ----
+    if (!window.Telegram || !Telegram.WebApp) {
+        statusBox.innerHTML = "<b style='color:red'>❌ Telegram WebApp НЕ найден!</b><br>" +
+            "Вы запустили страницу НЕ через Telegram WebApp.<br>" +
+            "Нужно открыть через кнопку <b>web_app</b> в Telegram.";
         return;
     }
 
-    console.log("🟢 Telegram userId:", unsafe.user.id);
+    Telegram.WebApp.expand();
+    statusBox.innerHTML = "<b style='color:lime'>✔ Telegram WebApp найден</b>";
 
-    const response = await fetch("/api/init", {
+    // ---- Получаем userId ----
+    const userId = Telegram.WebApp.initDataUnsafe?.user?.id;
+
+    dbg("userId =", userId);
+
+    if (!userId) {
+        statusBox.innerHTML +=
+            "<br><b style='color:red'>❌ USER ID не получен из Telegram!</b>" +
+            "<br>Скорее всего кнопка создана НЕ как web_app.";
+        return;
+    }
+
+    // ---- Отправляем запрос /api/init ----
+    dbg("Отправляем запрос /api/init ...");
+
+    fetch("/api/init", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData })
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ userId })
+    })
+    .then(r => r.json())
+    .then(res => {
+        dbg("Ответ от /api/init =", res);
+
+        if (res.error) {
+            statusBox.innerHTML += "<br><b style='color:red'>Ошибка: " + res.error + "</b>";
+            return;
+        }
+
+        statusBox.innerHTML +=
+            "<br><b style='color:cyan'>✔ Пользователь авторизован</b>" +
+            "<br>Баланс: " + res.balance;
+    })
+    .catch(err => {
+        dbg("Ошибка при отправке /api/init:", err);
+        statusBox.innerHTML += "<br><b style='color:red'>Ошибка сети</b>";
     });
 
-    const data = await response.json();
-    console.log("Ответ от сервера:", data);
-
-    if (data.ok) {
-        document.getElementById("status").innerText =
-            "✅ Авторизован. Ваш ID: " + unsafe.user.id;
-    } else {
-        document.getElementById("status").innerText =
-            "❌ Ошибка: " + JSON.stringify(data);
-    }
-}
-
-init();
+})();
 </script>
 
 </body>
