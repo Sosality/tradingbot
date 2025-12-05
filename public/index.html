@@ -1,325 +1,238 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Crypto Futures Sim</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Crypto Futures Sim</title>
 
-    <!-- Моноширинный для финансовых данных -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet"/>
-
-    <style>
-        /* ========== GLOBAL ========== */
-        body {
-            background-color: #0A0A0A;
-            color: #EAEAEA;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            margin: 0;
-            overflow: hidden;
-        }
-
-        /* Верхняя панель */
-        .market-header {
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #0D0D0D;
-            border-bottom: 1px solid #1e1e1e;
-        }
-        .pair {
-            color: #999;
-            font-size: 14px;
-            font-weight: 600;
-        }
-        #price {
-            font-family: "Roboto Mono", monospace;
-            font-size: 32px;
-            font-weight: 700;
-        }
-
-        /* График */
-        #chart {
-            width: 100%;
-            height: 45vh;
-        }
-
-        /* Панель трейдинга */
-        .ui-panel {
-            background: #111;
-            height: 55vh;
-            padding: 16px;
-            overflow-y: auto;
-            border-top: 1px solid #1e1e1e;
-        }
-
-        /* Баланс */
-        .balance {
-            font-size: 15px;
-            margin-bottom: 12px;
-            font-family: "Roboto Mono", monospace;
-        }
-
-        /* Инпуты */
-        input, select {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 12px;
-            background: #1e1e1e;
-            color: #fff;
-            border-radius: 8px;
-            border: 1px solid #2a2a2a;
-            font-size: 15px;
-        }
-        input:focus, select:focus {
-            border-color: #aaa;
-            outline: none;
-        }
-
-        /* Кнопки */
-        .controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 18px;
-        }
-        button {
-            padding: 14px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 15px;
-            transition: opacity .2s;
-        }
-        button:hover { opacity: .85; }
-
-        .btn-long { background: #0EBE83; color: #000; }
-        .btn-short { background: #FF4E4E; color: #fff; }
-
-        /* ========== ПОЗИЦИИ ========== */
-        .positions { margin-top: 10px; }
-
-        .pos-card {
-            background: #161616;
-            padding: 12px 14px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #242424;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .pos-info {
-            font-size: 13px;
-            opacity: .8;
-        }
-        .pos-entry {
-            font-family: "Roboto Mono", monospace;
-            font-size: 13px;
-            color: #bbb;
-        }
-
-        .pnl {
-            font-family: "Roboto Mono", monospace;
-            font-size: 20px;
-            font-weight: 700;
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        .close-btn {
-            background: #2d2d2d;
-            border-radius: 6px;
-            padding: 6px 10px;
-            font-size: 14px;
-            color: #bbb;
-        }
-    </style>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    /* simplified style - dark theme */
+    body { margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#0A0A0A; color:#EAEAEA; }
+    .top { display:flex; justify-content:space-between; padding:12px; align-items:center; background:#0D0D0D; border-bottom:1px solid #151515; }
+    #price { font-family: 'Roboto Mono', monospace; font-weight:700; font-size:28px; }
+    .main { padding:12px; }
+    .status { margin-bottom:10px; }
+    .btn { padding:10px 14px; border-radius:8px; cursor:pointer; border:none; font-weight:700; }
+    .login { background:#0EBE83; color:#001; }
+    .logout { background:#FF6B6B; color:#fff; }
+    .tiny { font-size:13px; color:#999; }
+    .balance { font-family:'Roboto Mono', monospace; font-size:16px; margin-bottom:8px; }
+    .controls { margin-top:12px; }
+    .positions { margin-top:12px; }
+    .pos-card { background:#111; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; border:1px solid #222; }
+    .pos-type { font-weight:700; }
+  </style>
 </head>
 <body>
+  <div class="top">
+    <div>BTC / USDT</div>
+    <div id="price">...</div>
+  </div>
 
-<div class="market-header">
-    <span class="pair">BTC / USDT</span>
-    <span id="price">...</span>
-</div>
+  <div class="main">
+    <div id="status" class="status"><span class="tiny">Проверка сессии...</span></div>
 
-<div id="chart"></div>
-
-<div class="ui-panel">
-    <div class="balance">Balance: <span id="balance">0</span> VP</div>
-
-    <input type="number" id="amount" placeholder="Order Size (VP)" value="100">
-    <select id="leverage">
-        <option value="1">x1</option>
-        <option value="5">x5</option>
-        <option value="10" selected>x10</option>
-        <option value="20">x20</option>
-    </select>
-
-    <div class="controls">
-        <button class="btn-long" onclick="openOrder('LONG')">LONG</button>
-        <button class="btn-short" onclick="openOrder('SHORT')">SHORT</button>
+    <div id="authControls" style="display:none;">
+      <button id="loginBtn" class="btn login">Войти через Telegram</button>
+      <button id="logoutBtn" class="btn logout" style="display:none;margin-left:10px;">Выйти</button>
+      <div style="margin-top:8px" class="tiny">Если вы в Telegram — откройте мини-приложение из бота, или нажмите "Войти через Telegram" (откроется Telegram).</div>
     </div>
 
-    <div class="positions" id="positionsList"></div>
-</div>
+    <div id="app" style="display:none;">
+      <div class="balance">Баланс: <span id="balance">0.00</span> VP</div>
+
+      <input id="amount" type="number" value="100" style="width:100%; padding:10px; margin-bottom:8px; border-radius:8px; border:none; background:#111; color:#fff;" />
+      <select id="leverage" style="width:100%; padding:10px; margin-bottom:8px; border-radius:8px; background:#111; color:#fff;">
+        <option value="1">x1</option><option value="5">x5</option><option value="10" selected>x10</option><option value="20">x20</option>
+      </select>
+
+      <div style="display:flex; gap:8px;">
+        <button id="btnLong" class="btn login" style="flex:1;">LONG</button>
+        <button id="btnShort" class="btn logout" style="flex:1;">SHORT</button>
+      </div>
+
+      <div class="positions" id="positionsList"></div>
+    </div>
+  </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-
-    if (!window.Telegram?.WebApp) {
-        window.Telegram = { WebApp: {
-            initDataUnsafe: { user: { id: 'test_user_1' }},
-            expand: ()=>{}, enableClosingConfirmation: ()=>{},
-            showAlert: alert, HapticFeedback:{impactOccurred:()=>{},notificationOccurred:()=>{}}
-        }};
+(async function(){
+  const BOT_USERNAME = (window.__env && window.__env.BOT_USERNAME) || (typeof BOT_USERNAME !== 'undefined' ? BOT_USERNAME : (window.location.hostname.includes("localhost") ? "" : "")) ;
+  // helper to open Telegram deep link (opens Telegram app if present)
+  function openTelegramDeepLink() {
+    const username = (typeof BOT_USERNAME !== 'undefined' && BOT_USERNAME) ? BOT_USERNAME : "";
+    // try tg://resolve first, fallback to https
+    if (!username) {
+      alert("BOT_USERNAME not configured on server. Please set BOT_USERNAME env var.");
+      return;
     }
+    const deep = `tg://resolve?domain=${username}&start=login`;
+    const web = `https://t.me/${username}?start=login`;
+    // try open tg:// link
+    window.location.href = deep;
+    // also open web fallback after short delay
+    setTimeout(()=>{ window.location.href = web; }, 800);
+  }
 
-    const tg = Telegram.WebApp;
-    tg.expand();
+  // DOM references
+  const statusEl = document.getElementById("status");
+  const authControls = document.getElementById("authControls");
+  const loginBtn = document.getElementById("loginBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const appEl = document.getElementById("app");
+  const balanceEl = document.getElementById("balance");
+  const positionsList = document.getElementById("positionsList");
+  const priceEl = document.getElementById("price");
 
-    const initData = tg.initData;
-    const userId = tg.initDataUnsafe?.user?.id;
-    let currentPrice = 0;
-    let positions = [];
-    let lastCandle = null;
+  // show login controls
+  authControls.style.display = "block";
 
-    const chartContainer = document.getElementById('chart');
-    const { createChart } = LightweightCharts;
-    const chart = createChart(chartContainer, {
-        layout: { background: { color: '#111' }, textColor: '#DDD' },
-        grid: { vertLines: { color: '#333' }, horzLines: { color: '#333' } },
-        timeScale: { timeVisible: true, secondsVisible: false }
+  loginBtn.onclick = () => {
+    // If we're inside Telegram WebApp, attempt to send initData automatically (handled below)
+    // Otherwise try to open Telegram app/site
+    openTelegramDeepLink();
+  };
+
+  logoutBtn.onclick = async () => {
+    await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
+    window.location.reload();
+  };
+
+  // helper to render positions
+  function renderPositions(positions) {
+    positionsList.innerHTML = "";
+    if (!positions || positions.length === 0) {
+      positionsList.innerHTML = "<div class='tiny'>Нет открытых позиций</div>";
+      return;
+    }
+    positions.forEach(p => {
+      const div = document.createElement("div");
+      div.className = "pos-card";
+      div.innerHTML = `
+        <div>
+          <div class="pos-type">${p.type} x${p.leverage}</div>
+          <div class="tiny">entry ${Number(p.entry_price).toFixed(2)}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Roboto Mono', monospace; font-weight:700">${(0).toFixed(2)} VP</div>
+          <div style="margin-top:6px"><button onclick="closePos(${p.id})" class="btn logout" style="padding:6px 8px;font-size:13px">✖</button></div>
+        </div>
+      `;
+      positionsList.appendChild(div);
     });
-    const candleSeries = chart.addCandlestickSeries();
+  }
 
-    new ResizeObserver(() => {
-        chart.resize(chartContainer.clientWidth, chartContainer.clientHeight);
-    }).observe(chartContainer);
+  // expose closePos for inline onclick (simple)
+  window.closePos = async function(id){
+    const r = await fetch('/api/order/close', { method: 'POST', headers: {'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ positionId: id }) });
+    const data = await r.json();
+    if (data.error) return alert(data.error);
+    await checkSession(); // refresh
+  };
 
-    fetch('/api/init', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData })
-    })
-    .then(r => r.json())
-    .then(user => {
-        document.getElementById('balance').innerText = (+user.balance).toFixed(2);
-        positions = user.positions;
-        renderPositions();
+  // if inside Telegram WebApp — try auto auth using initData
+  try {
+    if (window.Telegram?.WebApp) {
+      const tg = window.Telegram.WebApp;
+      tg.expand?.();
+      const initData = tg.initData;
+      // if initData exists and not yet authenticated, send it to server
+      if (initData) {
+        // send initData to /auth/init (this will set session cookie)
+        const resp = await fetch('/auth/init', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          credentials: 'include',
+          body: JSON.stringify({ initData })
+        });
+        const j = await resp.json();
+        if (j && j.success) {
+          // session cookie set, reload status
+          await checkSession();
+          return;
+        } else {
+          console.warn("auth/init returned", j);
+        }
+      } else {
+        console.warn("Telegram WebApp opened but initData missing");
+      }
+    }
+  } catch (e) {
+    console.warn("Auto telegram auth failed", e);
+  }
+
+  // function to check session status
+  async function checkSession() {
+    try {
+      statusEl.innerHTML = "<span class='tiny'>Проверка сессии...</span>";
+      const r = await fetch('/auth/status', { credentials: 'include' });
+      const j = await r.json();
+      if (j.loggedIn) {
+        statusEl.innerHTML = `<div>Вошёл: <b>${j.userId}</b></div>`;
+        authControls.style.display = "block";
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+        appEl.style.display = "block";
+        balanceEl.innerText = Number(j.balance).toFixed(2);
+        renderPositions(j.positions);
+      } else {
+        statusEl.innerHTML = `<div class="tiny">Не в системе</div>`;
+        loginBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+        appEl.style.display = "none";
+      }
+    } catch (err) {
+      console.error("checkSession error", err);
+      statusEl.innerHTML = "<div class='tiny'>Ошибка проверки сессии</div>";
+    }
+  }
+
+  // initial check
+  await checkSession();
+
+  // price polling
+  async function updatePrice() {
+    try {
+      const r = await fetch('/api/price');
+      const j = await r.json();
+      if (j.price) priceEl.innerText = Number(j.price).toFixed(2);
+    } catch (e) {}
+  }
+  setInterval(updatePrice, 1500);
+  updatePrice();
+
+  // open order handlers
+  document.getElementById("btnLong").onclick = async () => {
+    const margin = +document.getElementById("amount").value || 0;
+    const leverage = +document.getElementById("leverage").value || 1;
+    const r = await fetch('/api/order/open', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ type: "LONG", margin, leverage })
     });
+    const j = await r.json();
+    if (j.error) return alert(j.error);
+    await checkSession();
+  };
+  document.getElementById("btnShort").onclick = async () => {
+    const margin = +document.getElementById("amount").value || 0;
+    const leverage = +document.getElementById("leverage").value || 1;
+    const r = await fetch('/api/order/open', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ type: "SHORT", margin, leverage })
+    });
+    const j = await r.json();
+    if (j.error) return alert(j.error);
+    await checkSession();
+  };
 
-    function loadHistory() {
-        fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=200')
-            .then(r => r.json())
-            .then(data => {
-                const candles = data.map(c => ({
-                    time: c[0]/1000,
-                    open: +c[1],
-                    high: +c[2],
-                    low: +c[3],
-                    close: +c[4]
-                }));
-                candleSeries.setData(candles);
-                lastCandle = candles[candles.length-1];
-                chart.timeScale().fitContent();
-            });
-    }
-    loadHistory();
-
-    function updatePriceAndChart() {
-        fetch('/api/price')
-            .then(r => r.json())
-            .then(data => {
-                if (!data.price) return;
-                currentPrice = data.price;
-                document.getElementById('price').innerText = currentPrice.toFixed(2);
-
-                const now = Math.floor(Date.now() / 1000);
-                const minute = Math.floor(now / 60) * 60;
-
-                if (!lastCandle || lastCandle.time !== minute) {
-                    lastCandle = { time: minute, open: currentPrice, high: currentPrice, low: currentPrice, close: currentPrice };
-                    candleSeries.update(lastCandle);
-                } else {
-                    lastCandle.high = Math.max(lastCandle.high, currentPrice);
-                    lastCandle.low = Math.min(lastCandle.low, currentPrice);
-                    lastCandle.close = currentPrice;
-                    candleSeries.update(lastCandle);
-                }
-                updatePositionsPnL();
-            });
-    }
-    setInterval(updatePriceAndChart, 1000);
-
-    window.openOrder = function(type){
-        const margin = +document.getElementById('amount').value;
-        const leverage = +document.getElementById('leverage').value;
-
-        fetch('/api/order/open', {
-            method: "POST",
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ userId, type, margin, leverage })
-        })
-        .then(r=>r.json())
-        .then(res=>{
-            if(res.error) return tg.showAlert(res.error);
-            positions.push(res.position);
-            document.getElementById('balance').innerText = res.balance.toFixed(2);
-            renderPositions();
-        });
-    }
-
-    window.closeOrder = function(id){
-        fetch('/api/order/close', {
-            method: "POST",
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ userId, positionId:id })
-        })
-        .then(r=>r.json())
-        .then(res=>{
-            positions = positions.filter(p=>p.id!==id);
-            document.getElementById('balance').innerText=res.balance.toFixed(2);
-            renderPositions();
-        });
-    }
-
-    function renderPositions(){
-        const list = document.getElementById("positionsList");
-        list.innerHTML = "";
-        positions.forEach(p=>{
-            const el = document.createElement("div");
-            el.className="pos-card";
-            el.id="pos-"+p.id;
-            el.innerHTML = `
-                <div><b>${p.type} x${p.leverage}</b><br>${p.entryPrice.toFixed(2)}</div>
-                <div style="text-align:right;">
-                    <span class="pnl">0.00</span> VP<br>
-                    <button onclick="closeOrder(${p.id})" style="background:#444;padding:5px;border-radius:5px;">✖</button>
-                </div>`;
-            list.appendChild(el);
-        });
-    }
-
-    function updatePositionsPnL(){
-        positions.forEach(p => {
-            let pnl = (p.type==='LONG')
-                ? ((currentPrice - p.entryPrice) / p.entryPrice) * p.size
-                : ((p.entryPrice - currentPrice) / p.entryPrice) * p.size;
-
-            const el = document.querySelector(`#pos-${p.id} .pnl`);
-            if(el){
-                el.innerText=pnl.toFixed(2);
-                el.style.color=pnl>=0?'#26a69a':'#ef5350';
-            }
-        });
-    }
-});
+})();
 </script>
-
 </body>
 </html>
