@@ -1,100 +1,87 @@
-import express from "express";
-import pg from "pg";
 import dotenv from "dotenv";
-import crypto from "crypto";
-
 dotenv.config();
 
+import express from "express";
+import crypto from "crypto";
+import cors from "cors";
+import { Pool } from "pg";
+
 const app = express();
+app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 
-// =========================
-// 🔥 PostgreSQL
-// =========================
-const pool = new pg.Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
 });
 
-// =========================
-// 🔥 Проверка подписи Telegram
-// =========================
-function validateTelegramData(initData, botToken) {
-    const params = new URLSearchParams(initData);
+// === Telegram подпись ===
+function checkTelegramAuth(initData) {
+  const url = new URLSearchParams(initData);
+  const hash = url.get("hash");
+  url.delete("hash");
 
-    const hash = params.get("hash");
-    params.delete("hash");
+  const dataCheckString = [...url.entries()]
+    .sort()
+    .map(([k, v]) => `${k}=${v}`)
+    .join("\n");
 
-    const dataCheckString = [...params.entries()]
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(e => `${e[0]}=${e[1]}`)
-        .join("\n");
+  const secretKey = crypto
+    .createHmac("sha256", "WebAppData")
+    .update(process.env.BOT_TOKEN)
+    .digest();
 
-    const secretKey = crypto
-        .createHmac("sha256", "WebAppData")
-        .update(botToken)
-        .digest();
+  const computed = crypto
+    .createHmac("sha256", secretKey)
+    .update(dataCheckString)
+    .digest("hex");
 
-    const calculatedHash = crypto
-        .createHmac("sha256", secretKey)
-        .update(dataCheckString)
-        .digest("hex");
-
-    if (calculatedHash !== hash) {
-        throw new Error("Invalid Telegram hash");
-    }
-
-    const userObj = params.get("user");
-    return JSON.parse(userObj);
+  return computed === hash;
 }
 
-// =========================
-// 🔥 API INIT
-// =========================
+// === Инициализация DB ===
+await db.query(`
+  CREATE TABLE IF NOT EXISTS users (
+    user_id TEXT PRIMARY KEY,
+    balance NUMERIC DEFAULT 0,
+    updated_at TIMESTAMP DEFAULT NOW()
+  );
+`);
+
+// === API: INIT SESSION ===
 app.post("/api/init", async (req, res) => {
-    console.log("🔵 /api/init вызван, тело запроса:", req.body);
+  console.log("🔵 /api/init вызван, тело запроса:", req.body);
 
-    const { initData } = req.body;
+  const { initData } = req.body;
 
-    if (!initData) {
-        return res.status(400).json({ error: "NO_INIT_DATA" });
-    }
+  if (!initData) return res.json({ error: "NO_INIT_DATA" });
 
-    let tgUser;
-    try {
-        tgUser = validateTelegramData(initData, process.env.BOT_TOKEN);
-        console.log("🟢 Telegram авторизация валидна:", tgUser);
-    } catch (err) {
-        console.log("🔴 Ошибка подписи:", err.message);
-        return res.status(401).json({ error: "INVALID_SIGNATURE", details: err.message });
-    }
+  if (!checkTelegramAuth(initData))
+    return res.json({ error: "INVALID_SIGNATURE" });
 
-    const userId = tgUser.id.toString();
-    console.log("🟣 userId:", userId);
+  const parsed = new URLSearchParams(initData);
+  const rawUser = parsed.get("user");
+  const user = JSON.parse(rawUser);
+  const userId = user.id.toString();
 
-    try {
-        const result = await pool.query(`
-            INSERT INTO users (user_id, balance)
-            VALUES ($1, 0)
-            ON CONFLICT (user_id) DO UPDATE SET updated_at = NOW()
-            RETURNING *
-        `, [userId]);
+  // Создаём пользователя, если нет
+  await db.query(
+    "INSERT INTO users(user_id) VALUES($1) ON CONFLICT (user_id) DO NOTHING",
+    [userId]
+  );
 
-        console.log("🟢 Пользователь:", result.rows[0]);
+  const userRow = await db.query(
+    "SELECT * FROM users WHERE user_id=$1",
+    [userId]
+  );
 
-        res.json({
-            ok: true,
-            user: result.rows[0]
-        });
-    } catch (err) {
-        console.log("🔴 DB ERROR:", err.message);
-        res.status(500).json({ error: "DB_ERROR", details: err.message });
-    }
+  res.json({
+    ok: true,
+    user: userRow.rows[0]
+  });
 });
 
-// =========================
-// 🔥 Запуск сервера
-// =========================
+// === RUN ===
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 SERVER STARTED ON ${PORT}`));
+app.listen(PORT, () => console.log("Server started on", PORT));
