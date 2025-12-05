@@ -1,238 +1,58 @@
-<!doctype html>
-<html lang="ru">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Crypto Futures Sim</title>
-
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet"/>
-  <style>
-    /* simplified style - dark theme */
-    body { margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#0A0A0A; color:#EAEAEA; }
-    .top { display:flex; justify-content:space-between; padding:12px; align-items:center; background:#0D0D0D; border-bottom:1px solid #151515; }
-    #price { font-family: 'Roboto Mono', monospace; font-weight:700; font-size:28px; }
-    .main { padding:12px; }
-    .status { margin-bottom:10px; }
-    .btn { padding:10px 14px; border-radius:8px; cursor:pointer; border:none; font-weight:700; }
-    .login { background:#0EBE83; color:#001; }
-    .logout { background:#FF6B6B; color:#fff; }
-    .tiny { font-size:13px; color:#999; }
-    .balance { font-family:'Roboto Mono', monospace; font-size:16px; margin-bottom:8px; }
-    .controls { margin-top:12px; }
-    .positions { margin-top:12px; }
-    .pos-card { background:#111; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; border:1px solid #222; }
-    .pos-type { font-weight:700; }
-  </style>
+    <meta charset="UTF-8" />
+    <title>Telegram Auth Debug</title>
 </head>
 <body>
-  <div class="top">
-    <div>BTC / USDT</div>
-    <div id="price">...</div>
-  </div>
 
-  <div class="main">
-    <div id="status" class="status"><span class="tiny">Проверка сессии...</span></div>
-
-    <div id="authControls" style="display:none;">
-      <button id="loginBtn" class="btn login">Войти через Telegram</button>
-      <button id="logoutBtn" class="btn logout" style="display:none;margin-left:10px;">Выйти</button>
-      <div style="margin-top:8px" class="tiny">Если вы в Telegram — откройте мини-приложение из бота, или нажмите "Войти через Telegram" (откроется Telegram).</div>
-    </div>
-
-    <div id="app" style="display:none;">
-      <div class="balance">Баланс: <span id="balance">0.00</span> VP</div>
-
-      <input id="amount" type="number" value="100" style="width:100%; padding:10px; margin-bottom:8px; border-radius:8px; border:none; background:#111; color:#fff;" />
-      <select id="leverage" style="width:100%; padding:10px; margin-bottom:8px; border-radius:8px; background:#111; color:#fff;">
-        <option value="1">x1</option><option value="5">x5</option><option value="10" selected>x10</option><option value="20">x20</option>
-      </select>
-
-      <div style="display:flex; gap:8px;">
-        <button id="btnLong" class="btn login" style="flex:1;">LONG</button>
-        <button id="btnShort" class="btn logout" style="flex:1;">SHORT</button>
-      </div>
-
-      <div class="positions" id="positionsList"></div>
-    </div>
-  </div>
+<h2 id="status">Проверка сессии...</h2>
 
 <script>
-(async function(){
-  const BOT_USERNAME = (window.__env && window.__env.BOT_USERNAME) || (typeof BOT_USERNAME !== 'undefined' ? BOT_USERNAME : (window.location.hostname.includes("localhost") ? "" : "")) ;
-  // helper to open Telegram deep link (opens Telegram app if present)
-  function openTelegramDeepLink() {
-    const username = (typeof BOT_USERNAME !== 'undefined' && BOT_USERNAME) ? BOT_USERNAME : "";
-    // try tg://resolve first, fallback to https
-    if (!username) {
-      alert("BOT_USERNAME not configured on server. Please set BOT_USERNAME env var.");
-      return;
+console.log("🔵 WebApp стартовал");
+
+if (window.Telegram && Telegram.WebApp) {
+    Telegram.WebApp.ready();
+    console.log("🟢 Telegram WebApp готов");
+} else {
+    console.log("🔴 Telegram.WebApp НЕ найден");
+    document.getElementById("status").innerText = "❌ Telegram WebApp не найден";
+}
+
+async function init() {
+    const initData = Telegram.WebApp.initData;
+    const unsafe = Telegram.WebApp.initDataUnsafe;
+
+    console.log("📌 initData =", initData);
+    console.log("📌 initDataUnsafe =", unsafe);
+
+    if (!unsafe || !unsafe.user) {
+        document.getElementById("status").innerText = "❌ Нет Telegram авторизации";
+        return;
     }
-    const deep = `tg://resolve?domain=${username}&start=login`;
-    const web = `https://t.me/${username}?start=login`;
-    // try open tg:// link
-    window.location.href = deep;
-    // also open web fallback after short delay
-    setTimeout(()=>{ window.location.href = web; }, 800);
-  }
 
-  // DOM references
-  const statusEl = document.getElementById("status");
-  const authControls = document.getElementById("authControls");
-  const loginBtn = document.getElementById("loginBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const appEl = document.getElementById("app");
-  const balanceEl = document.getElementById("balance");
-  const positionsList = document.getElementById("positionsList");
-  const priceEl = document.getElementById("price");
+    console.log("🟢 Telegram userId:", unsafe.user.id);
 
-  // show login controls
-  authControls.style.display = "block";
-
-  loginBtn.onclick = () => {
-    // If we're inside Telegram WebApp, attempt to send initData automatically (handled below)
-    // Otherwise try to open Telegram app/site
-    openTelegramDeepLink();
-  };
-
-  logoutBtn.onclick = async () => {
-    await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
-    window.location.reload();
-  };
-
-  // helper to render positions
-  function renderPositions(positions) {
-    positionsList.innerHTML = "";
-    if (!positions || positions.length === 0) {
-      positionsList.innerHTML = "<div class='tiny'>Нет открытых позиций</div>";
-      return;
-    }
-    positions.forEach(p => {
-      const div = document.createElement("div");
-      div.className = "pos-card";
-      div.innerHTML = `
-        <div>
-          <div class="pos-type">${p.type} x${p.leverage}</div>
-          <div class="tiny">entry ${Number(p.entry_price).toFixed(2)}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-family:'Roboto Mono', monospace; font-weight:700">${(0).toFixed(2)} VP</div>
-          <div style="margin-top:6px"><button onclick="closePos(${p.id})" class="btn logout" style="padding:6px 8px;font-size:13px">✖</button></div>
-        </div>
-      `;
-      positionsList.appendChild(div);
+    const response = await fetch("/api/init", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData })
     });
-  }
 
-  // expose closePos for inline onclick (simple)
-  window.closePos = async function(id){
-    const r = await fetch('/api/order/close', { method: 'POST', headers: {'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ positionId: id }) });
-    const data = await r.json();
-    if (data.error) return alert(data.error);
-    await checkSession(); // refresh
-  };
+    const data = await response.json();
+    console.log("Ответ от сервера:", data);
 
-  // if inside Telegram WebApp — try auto auth using initData
-  try {
-    if (window.Telegram?.WebApp) {
-      const tg = window.Telegram.WebApp;
-      tg.expand?.();
-      const initData = tg.initData;
-      // if initData exists and not yet authenticated, send it to server
-      if (initData) {
-        // send initData to /auth/init (this will set session cookie)
-        const resp = await fetch('/auth/init', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          credentials: 'include',
-          body: JSON.stringify({ initData })
-        });
-        const j = await resp.json();
-        if (j && j.success) {
-          // session cookie set, reload status
-          await checkSession();
-          return;
-        } else {
-          console.warn("auth/init returned", j);
-        }
-      } else {
-        console.warn("Telegram WebApp opened but initData missing");
-      }
+    if (data.ok) {
+        document.getElementById("status").innerText =
+            "✅ Авторизован. Ваш ID: " + unsafe.user.id;
+    } else {
+        document.getElementById("status").innerText =
+            "❌ Ошибка: " + JSON.stringify(data);
     }
-  } catch (e) {
-    console.warn("Auto telegram auth failed", e);
-  }
+}
 
-  // function to check session status
-  async function checkSession() {
-    try {
-      statusEl.innerHTML = "<span class='tiny'>Проверка сессии...</span>";
-      const r = await fetch('/auth/status', { credentials: 'include' });
-      const j = await r.json();
-      if (j.loggedIn) {
-        statusEl.innerHTML = `<div>Вошёл: <b>${j.userId}</b></div>`;
-        authControls.style.display = "block";
-        loginBtn.style.display = "none";
-        logoutBtn.style.display = "inline-block";
-        appEl.style.display = "block";
-        balanceEl.innerText = Number(j.balance).toFixed(2);
-        renderPositions(j.positions);
-      } else {
-        statusEl.innerHTML = `<div class="tiny">Не в системе</div>`;
-        loginBtn.style.display = "inline-block";
-        logoutBtn.style.display = "none";
-        appEl.style.display = "none";
-      }
-    } catch (err) {
-      console.error("checkSession error", err);
-      statusEl.innerHTML = "<div class='tiny'>Ошибка проверки сессии</div>";
-    }
-  }
-
-  // initial check
-  await checkSession();
-
-  // price polling
-  async function updatePrice() {
-    try {
-      const r = await fetch('/api/price');
-      const j = await r.json();
-      if (j.price) priceEl.innerText = Number(j.price).toFixed(2);
-    } catch (e) {}
-  }
-  setInterval(updatePrice, 1500);
-  updatePrice();
-
-  // open order handlers
-  document.getElementById("btnLong").onclick = async () => {
-    const margin = +document.getElementById("amount").value || 0;
-    const leverage = +document.getElementById("leverage").value || 1;
-    const r = await fetch('/api/order/open', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ type: "LONG", margin, leverage })
-    });
-    const j = await r.json();
-    if (j.error) return alert(j.error);
-    await checkSession();
-  };
-  document.getElementById("btnShort").onclick = async () => {
-    const margin = +document.getElementById("amount").value || 0;
-    const leverage = +document.getElementById("leverage").value || 1;
-    const r = await fetch('/api/order/open', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ type: "SHORT", margin, leverage })
-    });
-    const j = await r.json();
-    if (j.error) return alert(j.error);
-    await checkSession();
-  };
-
-})();
+init();
 </script>
+
 </body>
 </html>
