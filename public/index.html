@@ -1,61 +1,500 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <title>Telegram Login Debug</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TradeSim — BTC Futures (Telegram auth)</title>
+
+<!-- Telegram WebApp -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- Lightweight-charts -->
+<script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#0B0E11;
+  --panel:#1E2329;
+  --muted:#98A0A6;
+  --accent-green:#0ECB81;
+  --accent-red:#F6465D;
+  --glass: rgba(255,255,255,0.02);
+  --white:#E6EEF3;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;}
+.app{display:flex;flex-direction:column;height:100vh;}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-bottom:1px solid rgba(255,255,255,0.03)}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{font-weight:700;font-size:18px}
+.profile{display:flex;align-items:center;gap:12px}
+.avatar{width:44px;height:44px;border-radius:50%;background:#222;overflow:hidden;flex-shrink:0}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.profile-info{display:flex;flex-direction:column;font-size:13px}
+.profile-name{font-weight:600}
+.profile-username{color:var(--muted);font-size:12px}
+.profile-balance{font-family:"Roboto Mono",monospace;color:#cfd8dc;font-weight:700;margin-top:4px;font-size:13px}
+
+/* Main layout */
+.container{display:grid;grid-template-columns:1fr 360px;gap:12px;padding:12px;height:calc(100vh - 72px);}
+/* Left column: chart + controls */
+.left-col{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--panel);border-radius:12px;padding:12px;box-shadow:0 4px 18px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.02)}
+.chart-wrap{height:56vh;border-radius:10px;overflow:hidden;}
+.top-stats{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.price{font-family:"Roboto Mono",monospace;font-size:28px;font-weight:700}
+.price-change{font-weight:700;padding:6px 8px;border-radius:8px;font-size:13px}
+.price-change.up{background:rgba(14,190,131,0.12);color:var(--accent-green)}
+.price-change.down{background:rgba(246,70,93,0.10);color:var(--accent-red)}
+
+/* Controls */
+.controls{display:flex;gap:10px;margin-top:8px}
+.controls input, .controls select{background:#111;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);color:var(--white);font-size:14px}
+.segment{display:flex;gap:8px}
+.chip{padding:8px 10px;border-radius:8px;background:#15181b;cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
+.chip.active{border-color:rgba(255,255,255,0.06);box-shadow:0 4px 10px rgba(0,0,0,0.6)}
+
+/* Right column: orderbook, trades */
+.right-col{display:flex;flex-direction:column;gap:12px}
+.side-section{display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.orderbook-list{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);max-height:220px;overflow:auto;padding:8px;border-radius:8px;background:linear-gradient(180deg, transparent, rgba(255,255,255,0.01))}
+.orderbook-row{display:flex;justify-content:space-between;gap:8px;padding:6px 8px;border-radius:6px}
+.orderbook-row .price{width:100px}
+.orderbook-row.buy .price{color:var(--accent-green)}
+.orderbook-row.sell .price{color:var(--accent-red)}
+.trade-history{max-height:160px;overflow:auto;padding:8px}
+.trade-row{display:flex;justify-content:space-between;padding:6px 8px;border-radius:6px;font-size:13px}
+
+/* Positions */
+.pos-card{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.01)}
+
+/* Bottom nav */
+.bottom-nav{display:flex;gap:8px;padding:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);border-top:1px solid rgba(255,255,255,0.02)}
+.btn{padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
+.btn-primary{background:var(--accent-green);color:#001}
+.btn-danger{background:var(--accent-red);color:#001}
+.btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--white)}
+
+/* Debug log */
+.debug{position:fixed;left:12px;bottom:80px;width:360px;max-height:300px;overflow:auto;background:rgba(0,0,0,0.5);border-radius:8px;padding:8px;font-size:12px;color:#ddd;border:1px solid rgba(255,255,255,0.03)}
+@media(max-width:900px){
+  .container{grid-template-columns:1fr; height:calc(100vh - 140px); overflow:auto}
+  .right-col{order:2}
+  .left-col{order:1}
+}
+</style>
 </head>
 <body>
-  <h2>Загрузка...</h2>
-  <pre id="log"></pre>
+<div class="app">
+  <header class="header">
+    <div class="brand">
+      <div class="logo">⧉ TradeSim</div>
+      <div style="color:var(--muted);font-size:13px">BTC Futures demo</div>
+    </div>
 
-  <script>
-    function log(a) {
-      const box = document.getElementById("log");
-      box.textContent += "\n" + a;
-      console.log(a);
+    <div class="profile" id="profileArea">
+      <div class="avatar" id="avatarWrap"><img id="avatarImg" src="" alt="avatar"></div>
+      <div class="profile-info">
+        <div class="profile-name" id="profileName">—</div>
+        <div class="profile-username" id="profileUsername">@—</div>
+        <div class="profile-balance" id="profileBalance">Баланс: 0 VP</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- LEFT -->
+    <section class="left-col">
+      <div class="card">
+        <div class="top-stats">
+          <div>
+            <div style="color:var(--muted);font-size:12px">Пара</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+              <div style="font-weight:700">BTC / USD</div>
+              <div id="marketTag" style="background:var(--glass);padding:4px 8px;border-radius:8px;color:var(--muted);font-size:12px">Perpetual (sim)</div>
+            </div>
+          </div>
+
+          <div style="text-align:right">
+            <div class="price" id="priceDisplay">—</div>
+            <div id="priceChange" class="price-change">—</div>
+          </div>
+        </div>
+
+        <div class="chart-wrap card" id="chartCard">
+          <div id="chart" style="width:100%;height:100%;"></div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+          <div class="controls" style="flex:1">
+            <input id="sizeInput" type="number" placeholder="Сумма (VP)" value="100" />
+            <div class="segment" id="leverageSegment" style="align-items:center">
+              <div class="chip" data-value="1">x1</div>
+              <div class="chip" data-value="5">x5</div>
+              <div class="chip active" data-value="10">x10</div>
+              <div class="chip" data-value="20">x20</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-left:12px">
+            <button id="openLong" class="btn btn-primary">BUY / LONG</button>
+            <button id="openShort" class="btn btn-danger">SELL / SHORT</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700">Positions</div>
+          <div style="color:var(--muted);font-size:13px">live</div>
+        </div>
+        <div id="positionsList" style="margin-top:10px"></div>
+      </div>
+    </section>
+
+    <!-- RIGHT -->
+    <aside class="right-col">
+      <div class="card side-section">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700">Order Book</div>
+          <div style="color:var(--muted);font-size:13px">Top</div>
+        </div>
+        <div class="orderbook-list" id="orderBook"></div>
+      </div>
+
+      <div class="card side-section">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700">Trade History</div>
+          <div style="color:var(--muted);font-size:13px">Latest</div>
+        </div>
+        <div class="trade-history" id="tradeHistory"></div>
+      </div>
+    </aside>
+  </main>
+
+  <div class="bottom-nav">
+    <button id="btnProfile" class="btn btn-ghost">Профиль</button>
+    <button id="btnFutures" class="btn btn-primary">Перейти в Фьючерсы</button>
+    <div style="flex:1"></div>
+    <div style="color:var(--muted);font-size:13px;padding:6px 8px">WS: <span id="wsStatus">—</span></div>
+  </div>
+</div>
+
+<!-- debug log -->
+<pre id="debug" class="debug">Загрузка... (лог)</pre>
+
+<script>
+(async function(){
+  const DBG = document.getElementById('debug');
+  function log(...args){ console.log(...args); DBG.textContent += '\\n' + args.map(a=> (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' '); DBG.scrollTop = DBG.scrollHeight; }
+
+  // == Настройки ==
+  // Укажи сюда WSS адрес price-server'а (wss://... если в проде)
+  const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com"; // <- ЗАМЕНИ, если нужно
+  // Главный HTTP API (тот же origin если file лежит в public/, иначе укажи полный адрес)
+  const API_BASE = "";
+
+  log('Инициализация UI...');
+
+  // Telegram init
+  let tgInit = null;
+  try {
+    if (window.Telegram && Telegram.WebApp) {
+      tgInit = Telegram.WebApp.initData ?? null;
+      log('Telegram WebApp найден');
+      log('initData =', Telegram.WebApp.initData);
+      log('initDataUnsafe =', JSON.stringify(Telegram.WebApp.initDataUnsafe, null, 2));
+    } else {
+      log('Telegram WebApp НЕ найден — запущено вне Telegram (режим отладки).');
     }
+  } catch(e){ log('tg error', e) }
 
-    // === Telegram WebApp доступен ===
-    const tg = window.Telegram.WebApp;
-
-    log("=== DEBUG START ===");
-
-    log("initData = " + tg.initData);
-    log("initDataUnsafe = " + JSON.stringify(tg.initDataUnsafe, null, 2));
-
-    if (!tg.initDataUnsafe || !tg.initDataUnsafe.user) {
-      log("❌ Telegram WebApp не дал user — MINI APP НЕ ЗАПУЩЕН ЧЕРЕЗ TELEGRAM");
-      document.body.innerHTML = "<h3>Открой через Telegram</h3>";
-      throw new Error("NO TG DATA");
+  // отправка initData на backend /api/init
+  let serverUser = null;
+  if (tgInit){
+    try {
+      log('Отправка /api/init ...');
+      const res = await fetch(API_BASE + '/api/init', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tgInit })
+      });
+      const j = await res.json();
+      log('/api/init ответ:', j);
+      if (j.ok && j.user) serverUser = j.user;
+      else log('/api/init error', j);
+    } catch(err){
+      log('Ошибка /api/init', err);
     }
+  } else {
+    log('Нет initData — пользователь не авторизован через Telegram.');
+  }
 
-    const initData = tg.initData;
-    const userId = tg.initDataUnsafe.user.id;
-    log("userId = " + userId);
+  // profile data (merge unsafe + server)
+  const unsafe = (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe) ? Telegram.WebApp.initDataUnsafe : null;
+  const unsafeUser = unsafe?.user ?? null;
+  const profile = {
+    id: unsafeUser?.id?.toString?.() ?? (serverUser && serverUser.user_id) ?? null,
+    first_name: unsafeUser?.first_name ?? (serverUser && (serverUser.first_name ?? 'User')) ?? 'Guest',
+    username: unsafeUser?.username ?? (serverUser && serverUser.username) ?? '',
+    avatar: unsafeUser?.photo_url ?? '',
+    balance: serverUser?.balance ? Number(serverUser.balance) : 0
+  };
 
-    async function initSession() {
-      log("📤 Отправляем запрос /api/init ...");
+  // update header UI
+  const avatarImg = document.getElementById('avatarImg');
+  const profileName = document.getElementById('profileName');
+  const profileUsername = document.getElementById('profileUsername');
+  const profileBalance = document.getElementById('profileBalance');
 
-      const res = await fetch("/api/init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData }) // <-- ВОТ ПРАВИЛЬНО
+  avatarImg.src = profile.avatar || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="100%" height="100%" fill="%23111"/><text x="50%" y="50%" fill="%23aaa" font-size="18" font-family="Arial" dominant-baseline="middle" text-anchor="middle">U</text></svg>';
+  profileName.textContent = profile.first_name || '—';
+  profileUsername.textContent = profile.username ? '@' + profile.username : '';
+  profileBalance.textContent = 'Баланс: ' + Number(profile.balance).toFixed(2) + ' VP';
+
+  // leverage chips
+  let selectedLeverage = 10;
+  document.querySelectorAll('#leverageSegment .chip').forEach(chip=>{
+    chip.addEventListener('click', ()=> {
+      document.querySelectorAll('#leverageSegment .chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      selectedLeverage = Number(chip.dataset.value);
+    });
+  });
+
+  // positions array (will sync with server responses)
+  const positions = [];
+  const positionsList = document.getElementById('positionsList');
+
+  function renderPositions(){
+    positionsList.innerHTML = '';
+    positions.slice().reverse().forEach(p=>{
+      // server position might have either entry_price or entryPrice
+      const entry = p.entry_price ?? p.entryPrice ?? 0;
+      const id = p.id ?? p.position_id ?? p.positionId ?? Date.now();
+      const pnl = p.pnl ?? 0;
+      const el = document.createElement('div');
+      el.className = 'pos-card';
+      el.innerHTML = `
+        <div>
+          <div style="font-weight:700">${p.type} • x${p.leverage}</div>
+          <div style="font-family:Roboto Mono,monospace;color:#cfd8dc">${Number(entry).toFixed(2)}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:Roboto Mono,monospace;font-weight:700">${Number(pnl).toFixed(2)} VP</div>
+          <div style="margin-top:6px"><button data-id="${id}" class="closeBtn" style="background:#2a2a2a;border:0;padding:6px;border-radius:6px;color:#fff;cursor:pointer">✖</button></div>
+        </div>
+      `;
+      positionsList.appendChild(el);
+    });
+
+    // close handlers
+    document.querySelectorAll('.closeBtn').forEach(btn=>{
+      btn.onclick = async () => {
+        const id = Number(btn.dataset.id);
+        try {
+          const res = await fetch(API_BASE + '/api/order/close', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ userId: profile.id, positionId: id })
+          });
+          const j = await res.json();
+          log('/api/order/close ->', j);
+          if (!j.error) {
+            // remove locally
+            const idx = positions.findIndex(x => (x.id == id || x.position_id == id || x.positionId == id));
+            if (idx !== -1) positions.splice(idx,1);
+            if (j.balance !== undefined) { profile.balance = j.balance; profileBalance.textContent = 'Баланс: ' + Number(profile.balance).toFixed(2) + ' VP'; }
+            renderPositions();
+          } else {
+            alert('Close error: ' + j.error);
+          }
+        } catch(err){ log('Close error', err); }
+      };
+    });
+  }
+
+  // open order
+  document.getElementById('openLong').addEventListener('click', ()=>openOrder('LONG'));
+  document.getElementById('openShort').addEventListener('click', ()=>openOrder('SHORT'));
+
+  async function openOrder(type){
+    const margin = Number(document.getElementById('sizeInput').value) || 0;
+    const leverage = selectedLeverage || 10;
+    if (!profile.id) { alert('Не авторизован'); return; }
+    if (margin <= 0) return alert('Укажи сумму');
+
+    try {
+      const res = await fetch(API_BASE + '/api/order/open', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ userId: profile.id, type, margin, leverage })
+      });
+      const j = await res.json();
+      log('/api/order/open ->', j);
+      if (j.error) { alert('Ошибка: ' + j.error); return; }
+      const pos = j.position ?? { id: Date.now(), type, entryPrice: currentPrice, margin, leverage, size: margin*leverage };
+      positions.push(pos);
+      if (j.balance !== undefined) { profile.balance = j.balance; profileBalance.textContent = 'Баланс: ' + Number(profile.balance).toFixed(2) + ' VP'; }
+      renderPositions();
+    } catch(e){
+      // fallback simulate
+      const pos = { id: Date.now(), type, entryPrice: currentPrice, margin, leverage, size: margin*leverage, pnl:0 };
+      positions.push(pos);
+      renderPositions();
+    }
+  }
+
+  // == Price WS client ==
+  const wsStatusEl = document.getElementById('wsStatus');
+  let socket = null;
+  let currentPrice = 0;
+  let chart = null, candleSeries = null;
+  let lastCandle = null;
+
+  function initChart(){
+    const chartDiv = document.getElementById('chart');
+    chart = LightweightCharts.createChart(chartDiv, {
+      width: chartDiv.clientWidth,
+      height: chartDiv.clientHeight,
+      layout: { background: { color: getComputedStyle(document.body).getPropertyValue('--bg') }, textColor: '#D1D8DE' },
+      grid: { horzLines: { color: 'rgba(255,255,255,0.03)' }, vertLines: { color: 'rgba(255,255,255,0.03)' } },
+      priceScale: { borderVisible: false },
+      timeScale: { borderVisible: false }
+    });
+    candleSeries = chart.addCandlestickSeries({
+      upColor: 'rgba(14,190,131,1)', borderUpColor: 'rgba(14,190,131,1)', wickUpColor: 'rgba(14,190,131,1)',
+      downColor: 'rgba(246,70,93,1)', borderDownColor: 'rgba(246,70,93,1)', wickDownColor: 'rgba(246,70,93,1)',
+    });
+    window.addEventListener('resize', ()=> {
+      chart.applyOptions({ width: chartDiv.clientWidth, height: chartDiv.clientHeight });
+    });
+  }
+
+  function connectPriceWS(){
+    try {
+      log('Попытка подключения к WS:', WSS_PRICE_URL);
+      socket = new WebSocket(WSS_PRICE_URL);
+
+      socket.addEventListener('open', ()=> {
+        log('WS connected');
+        wsStatusEl.textContent = 'connected';
+        // subscribe to pair
+        socket.send(JSON.stringify({ type:'subscribe', pair: 'BTC-USD' }));
       });
 
-      const data = await res.json();
-      log("📥 Ответ от /api/init = " + JSON.stringify(data, null, 2));
+      socket.addEventListener('message', (evt)=> {
+        try {
+          const msg = JSON.parse(evt.data);
+          handleWS(msg);
+        } catch(e){ log('WS parse error', e, evt.data); }
+      });
 
-      if (data.error) {
-        log("❌ Ошибка: " + data.error);
-      } else {
-        document.body.innerHTML =
-          "<h2>Добро пожаловать, пользователь " + userId + "</h2>" +
-          "<pre>" + JSON.stringify(data, null, 2) + "</pre>";
+      socket.addEventListener('close', ()=> {
+        wsStatusEl.textContent = 'disconnected';
+        log('WS closed - reconnect in 2s');
+        setTimeout(connectPriceWS, 2000);
+      });
+
+      socket.addEventListener('error', (e)=> {
+        log('WS error', e);
+      });
+    } catch(e){ log('connectPriceWS error', e); }
+  }
+
+  function handleWS(msg){
+    if (!msg || !msg.type) return;
+    if (msg.type === 'history') {
+      // array of {time, open, high, low, close}
+      log('history len=', msg.data?.length);
+      candleSeries.setData(msg.data);
+      lastCandle = msg.data[msg.data.length-1];
+      currentPrice = lastCandle?.close ?? currentPrice;
+      updatePriceDisplay(currentPrice, 0);
+    } else if (msg.type === 'price' || msg.type === 'candle_update') {
+      const p = Number(msg.data?.price ?? msg.data?.close ?? msg.data);
+      if (isFinite(p) && p>0) {
+        currentPrice = p;
+        updatePriceDisplay(currentPrice, msg.data?.change24h ?? 0);
       }
+      // update candle if candle_update or price -> update lastCandle
+      if (msg.type === 'candle_update' && msg.data) {
+        lastCandle = msg.data;
+        candleSeries.update(msg.data);
+      }
+    } else if (msg.type === 'orderBook') {
+      renderOrderBook(msg.data);
+    } else if (msg.type === 'trades') {
+      appendTrades(msg.data);
+    } else if (msg.type === 'info') {
+      log('info:', msg.data);
+    } else {
+      // debug
+      // log('WS msg', msg);
     }
+  }
 
-    initSession();
-  </script>
+  function updatePriceDisplay(price, change24){
+    document.getElementById('priceDisplay').textContent = Number(price).toFixed(2);
+    const changeEl = document.getElementById('priceChange');
+    const ch = Number(change24 || 0);
+    changeEl.textContent = (ch>=0?'+':'') + ch.toFixed(2) + '%';
+    if (ch >= 0) { changeEl.classList.remove('down'); changeEl.classList.add('up'); }
+    else { changeEl.classList.remove('up'); changeEl.classList.add('down'); }
+  }
+
+  function renderOrderBook(data){
+    const ob = document.getElementById('orderBook');
+    ob.innerHTML = '';
+    if (!data) { ob.textContent = 'no orderbook'; return; }
+    // sells (descending)
+    (data.sell || []).slice(0,10).forEach(s=>{
+      const row = document.createElement('div');
+      row.className = 'orderbook-row sell';
+      row.innerHTML = `<div class="price">${Number(s.price).toFixed(2)}</div><div class="amount">${Number(s.size).toFixed(4)}</div>`;
+      ob.appendChild(row);
+    });
+    // separator
+    const sep = document.createElement('div'); sep.style.height='6px'; ob.appendChild(sep);
+    (data.buy || []).slice(0,10).forEach(b=>{
+      const row = document.createElement('div');
+      row.className = 'orderbook-row buy';
+      row.innerHTML = `<div class="price">${Number(b.price).toFixed(2)}</div><div class="amount">${Number(b.size).toFixed(4)}</div>`;
+      ob.appendChild(row);
+    });
+  }
+
+  function appendTrades(trades){
+    const th = document.getElementById('tradeHistory');
+    th.innerHTML = '';
+    (trades || []).slice().reverse().slice(0,50).forEach(t=>{
+      const el = document.createElement('div');
+      el.className = 'trade-row';
+      const priceColor = t.side === 'buy' ? 'var(--accent-green)' : 'var(--accent-red)';
+      el.innerHTML = `<div style="color:${priceColor};font-family:Roboto Mono,monospace">${Number(t.price).toFixed(2)}</div><div style="color:var(--muted)">${Number(t.size).toFixed(4)}</div><div style="color:var(--muted);font-size:12px">${new Date(t.time).toLocaleTimeString()}</div>`;
+      th.appendChild(el);
+    });
+  }
+
+  // start chart + WS immediately
+  initChart();
+  connectPriceWS();
+
+  // profile button shows modal
+  document.getElementById('btnProfile').addEventListener('click', ()=>{
+    alert(`Профиль:\\n${profile.first_name}\\n@${profile.username}\\nБаланс: ${Number(profile.balance).toFixed(2)} VP`);
+  });
+
+  // mini UI: go to futures (already visible, but simulate)
+  document.getElementById('btnFutures').addEventListener('click', ()=>{
+    // could scroll or open modal — here we just flash
+    log('Futures tab selected (already visible)');
+  });
+
+  log('UI ready');
+})();
+</script>
 </body>
 </html>
