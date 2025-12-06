@@ -1,196 +1,283 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8" />
-<title>Crypto Futures</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TradeSim — BTC Futures (Telegram auth)</title>
 
+<!-- Telegram WebApp -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+<!-- Lightweight-charts -->
+<script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
-    body {
-        margin: 0;
-        background: #0d0d0d;
-        color: #ffffff;
-        font-family: Arial, sans-serif;
-    }
+:root{
+  --bg:#0B0E11;
+  --panel:#1E2329;
+  --muted:#98A0A6;
+  --accent-green:#0ECB81;
+  --accent-red:#F6465D;
+  --glass: rgba(255,255,255,0.02);
+  --white:#E6EEF3;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;}
+.app{display:flex;flex-direction:column;height:100vh;}
 
-    header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 14px;
-        background: #111;
-        border-bottom: 1px solid #222;
-    }
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-bottom:1px solid rgba(255,255,255,0.03)}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{font-weight:700;font-size:18px}
+.profile{display:flex;align-items:center;gap:12px}
+.avatar{width:44px;height:44px;border-radius:50%;background:#222;overflow:hidden;flex-shrink:0}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.profile-info{display:flex;flex-direction:column;font-size:13px}
+.profile-name{font-weight:600}
+.profile-username{color:var(--muted);font-size:12px}
+.profile-balance{font-family:"Roboto Mono",monospace;color:#cfd8dc;font-weight:700;margin-top:4px;font-size:13px}
 
-    #profile {
-        display: flex;
-        gap: 14px;
-        align-items: center;
-    }
+/* Main layout */
+.container{display:grid;grid-template-columns:1fr 360px;gap:12px;padding:12px;height:calc(100vh - 72px);}
+.left-col{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--panel);border-radius:12px;padding:12px;box-shadow:0 4px 18px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.02)}
+.chart-wrap{height:56vh;border-radius:10px;overflow:hidden;}
+.top-stats{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.price{font-family:"Roboto Mono",monospace;font-size:28px;font-weight:700}
+.price-change{font-weight:700;padding:6px 8px;border-radius:8px;font-size:13px}
+.price-change.up{background:rgba(14,190,131,0.12);color:var(--accent-green)}
+.price-change.down{background:rgba(246,70,93,0.10);color:var(--accent-red)}
 
-    #profile img {
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-    }
+/* Controls */
+.controls{display:flex;gap:10px;margin-top:8px}
+.controls input, .controls select{background:#111;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);color:var(--white);font-size:14px}
+.segment{display:flex;gap:8px}
+.chip{padding:8px 10px;border-radius:8px;background:#15181b;cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
+.chip.active{border-color:rgba(255,255,255,0.06);box-shadow:0 4px 10px rgba(0,0,0,0.6)}
 
-    #chart {
-        width: 100%;
-        height: 380px;
-    }
+/* Right column: orderbook, trades */
+.right-col{display:flex;flex-direction:column;gap:12px}
+.side-section{display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.orderbook-list{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);max-height:220px;overflow:auto;padding:8px;border-radius:8px;background:linear-gradient(180deg, transparent, rgba(255,255,255,0.01))}
+.orderbook-row{display:flex;justify-content:space-between;gap:8px;padding:6px 8px;border-radius:6px}
+.orderbook-row .price{width:100px}
+.orderbook-row.buy .price{color:var(--accent-green)}
+.orderbook-row.sell .price{color:var(--accent-red)}
+.trade-history{max-height:160px;overflow:auto;padding:8px}
+.trade-row{display:flex;justify-content:space-between;padding:6px 8px;border-radius:6px;font-size:13px}
 
-    .trade-box {
-        padding: 14px;
-        background: #111;
-        border-top: 1px solid #222;
-    }
+/* Positions */
+.pos-card{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.01)}
 
-    input {
-        width: 100%;
-        padding: 10px;
-        margin-top: 10px;
-        background: #222;
-        border: none;
-        color: white;
-        border-radius: 6px;
-    }
+/* Bottom nav */
+.bottom-nav{display:flex;gap:8px;padding:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);border-top:1px solid rgba(255,255,255,0.02)}
+.btn{padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
+.btn-primary{background:var(--accent-green);color:#001}
+.btn-danger{background:var(--accent-red);color:#001}
+.btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--white)}
 
-    button.buy {
-        width: 100%;
-        margin-top: 14px;
-        background: #0f8f4d;
-        border: none;
-        padding: 12px;
-        border-radius: 8px;
-        font-size: 17px;
-        color: white;
-    }
-
-    button.sell {
-        width: 100%;
-        margin-top: 8px;
-        background: #b3252a;
-        border: none;
-        padding: 12px;
-        border-radius: 8px;
-        font-size: 17px;
-        color: white;
-    }
+@media(max-width:900px){
+  .container{grid-template-columns:1fr; height:calc(100vh - 140px); overflow:auto}
+  .right-col{order:2}
+  .left-col{order:1}
+}
 </style>
 </head>
-
 <body>
-
-<header>
-    <div style="font-size: 20px;">Crypto Futures</div>
-    <div id="profile">
-        <img id="p_photo">
-        <div>
-            <div id="p_name"></div>
-            <div id="p_balance" style="color:#0f8f4d;font-size:14px;"></div>
-        </div>
+<div class="app">
+  <header class="header">
+    <div class="brand">
+      <div class="logo">⧉ TradeSim</div>
+      <div style="color:var(--muted);font-size:13px">BTC Futures demo</div>
     </div>
-</header>
 
-<div id="chart"></div>
+    <div class="profile" id="profileArea">
+      <div class="avatar" id="avatarWrap"><img id="avatarImg" src="" alt="avatar"></div>
+      <div class="profile-info">
+        <div class="profile-name" id="profileName">—</div>
+        <div class="profile-username" id="profileUsername">@—</div>
+        <div class="profile-balance" id="profileBalance">Баланс: 0 VP</div>
+      </div>
+    </div>
+  </header>
 
-<div class="trade-box">
-    <input id="amount" type="number" placeholder="Количество (min 0.001)">
-    <button class="buy" onclick="makeTrade('buy')">Купить</button>
-    <button class="sell" onclick="makeTrade('sell')">Продать</button>
+  <main class="container">
+    <section class="left-col">
+      <div class="card">
+        <div class="top-stats">
+          <div>
+            <div style="color:var(--muted);font-size:12px">Пара</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+              <div style="font-weight:700">BTC / USD</div>
+              <div id="marketTag" style="background:var(--glass);padding:4px 8px;border-radius:8px;color:var(--muted);font-size:12px">Perpetual (sim)</div>
+            </div>
+          </div>
+
+          <div style="text-align:right">
+            <div class="price" id="priceDisplay">—</div>
+            <div id="priceChange" class="price-change">—</div>
+          </div>
+        </div>
+
+        <div class="chart-wrap card" id="chartCard">
+          <div id="chart" style="width:100%;height:100%;"></div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+          <div class="controls" style="flex:1">
+            <input id="sizeInput" type="number" placeholder="Сумма (VP)" value="100" />
+            <div class="segment" id="leverageSegment" style="align-items:center">
+              <div class="chip" data-value="1">x1</div>
+              <div class="chip" data-value="5">x5</div>
+              <div class="chip active" data-value="10">x10</div>
+              <div class="chip" data-value="20">x20</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-left:12px">
+            <button id="openLong" class="btn btn-primary">BUY / LONG</button>
+            <button id="openShort" class="btn btn-danger">SELL / SHORT</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700">Positions</div>
+          <div style="color:var(--muted);font-size:13px">live</div>
+        </div>
+        <div id="positionsList" style="margin-top:10px"></div>
+      </div>
+    </section>
+
+    <aside class="right-col">
+      <div class="card side-section">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700">Order Book</div>
+          <div style="color:var(--muted);font-size:13px">Top</div>
+        </div>
+        <div class="orderbook-list" id="orderBook"></div>
+      </div>
+
+      <div class="card side-section">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700">Trade History</div>
+          <div style="color:var(--muted);font-size:13px">Latest</div>
+        </div>
+        <div class="trade-history" id="tradeHistory"></div>
+      </div>
+    </aside>
+  </main>
+
+  <div class="bottom-nav">
+    <button id="btnProfile" class="btn btn-ghost">Профиль</button>
+    <button id="btnFutures" class="btn btn-primary">Перейти в Фьючерсы</button>
+    <div style="flex:1"></div>
+    <div style="color:var(--muted);font-size:13px;padding:6px 8px">WS: <span id="wsStatus">—</span></div>
+  </div>
 </div>
 
 <script>
-const tg = window.Telegram.WebApp;
+(async function(){
+  const API_BASE = "";
+  const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com"; // Твой WS сервер B
 
-// === Прячем логи ===
-console.log = function(){};
+  // ========== Telegram Init ==========
+  const tg = window.Telegram?.WebApp ?? null;
+  let profile = { id:null, first_name:'Guest', username:'', avatar:'', balance:0 };
 
-tg.expand();
+  if (tg && tg.initDataUnsafe?.user){
+    const u = tg.initDataUnsafe.user;
+    profile = { 
+      id: u.id.toString(),
+      first_name: u.first_name,
+      username: u.username,
+      avatar: u.photo_url,
+      balance: 0
+    };
+    // Отправка на backend
+    try {
+      const res = await fetch(API_BASE + '/api/init', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({initData:tg.initData})});
+      const j = await res.json();
+      if (j.ok && j.user) profile.balance = Number(j.user.balance || 0);
+    } catch(e){}
+  }
 
-// === 1. Проверяем сидят ли мы в Telegram ===
-if (!tg.initDataUnsafe || !tg.initDataUnsafe.user) {
-    document.body.innerHTML = "<h2>Открой Mini App через Telegram</h2>";
-    throw new Error("NO_TELEGRAM");
-}
+  // Header UI
+  document.getElementById('avatarImg').src = profile.avatar || '';
+  document.getElementById('profileName').textContent = profile.first_name;
+  document.getElementById('profileUsername').textContent = profile.username ? '@'+profile.username : '';
+  document.getElementById('profileBalance').textContent = 'Баланс: '+profile.balance.toFixed(2)+' VP';
 
-const initData = tg.initData;
+  // ========== Chart Init ==========
+  const chartDiv = document.getElementById('chart');
+  const chart = LightweightCharts.createChart(chartDiv, {
+    width: chartDiv.clientWidth,
+    height: chartDiv.clientHeight,
+    layout: { background:{color: getComputedStyle(document.body).getPropertyValue('--bg')}, textColor:'#D1D8DE' },
+    grid: { horzLines:{color:'rgba(255,255,255,0.03)'}, vertLines:{color:'rgba(255,255,255,0.03)'} },
+    priceScale:{borderVisible:false}, timeScale:{borderVisible:false}
+  });
+  const candleSeries = chart.addCandlestickSeries({
+    upColor:'rgba(14,190,131,1)', borderUpColor:'rgba(14,190,131,1)', wickUpColor:'rgba(14,190,131,1)',
+    downColor:'rgba(246,70,93,1)', borderDownColor:'rgba(246,70,93,1)', wickDownColor:'rgba(246,70,93,1)',
+  });
+  window.addEventListener('resize', ()=>chart.applyOptions({width:chartDiv.clientWidth,height:chartDiv.clientHeight}));
 
-// === 2. Авторизация ===
-async function initSession() {
-    const req = await fetch("/api/init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData })
+  // ========== WebSocket ==========
+  const wsStatus = document.getElementById('wsStatus');
+  let currentPrice = 0;
+  let socket = new WebSocket(WSS_PRICE_URL);
+
+  socket.addEventListener('open', ()=>wsStatus.textContent='connected');
+  socket.addEventListener('close', ()=>{ wsStatus.textContent='disconnected'; setTimeout(()=>{ socket = new WebSocket(WSS_PRICE_URL); },2000); });
+  socket.addEventListener('message', (evt)=>{
+    const msg = JSON.parse(evt.data);
+    if(msg.type==='history' && msg.data){ candleSeries.setData(msg.data); currentPrice = msg.data[msg.data.length-1]?.close ?? currentPrice; updatePrice(); }
+    if(msg.type==='price' && msg.price){ currentPrice=msg.price; updatePrice(); }
+  });
+
+  function updatePrice(){
+    document.getElementById('priceDisplay').textContent=currentPrice.toFixed(2);
+  }
+
+  // ========== Leverage chips ==========
+  let selectedLeverage = 10;
+  document.querySelectorAll('#leverageSegment .chip').forEach(chip=>{
+    chip.addEventListener('click',()=>{
+      document.querySelectorAll('#leverageSegment .chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      selectedLeverage = Number(chip.dataset.value);
     });
+  });
 
-    const res = await req.json();
-    if (!res.ok) {
-        document.body.innerHTML = "<h3>Ошибка инициализации</h3>";
-        return;
-    }
+  // ========== Open Orders ==========
+  const positions = [];
+  const positionsList = document.getElementById('positionsList');
 
-    const user = tg.initDataUnsafe.user;
+  function renderPositions(){
+    positionsList.innerHTML='';
+    positions.slice().reverse().forEach(p=>{
+      const el = document.createElement('div');
+      el.className='pos-card';
+      el.innerHTML=`<div><div style="font-weight:700">${p.type} • x${p.leverage}</div><div style="font-family:Roboto Mono,monospace;color:#cfd8dc">${p.entryPrice.toFixed(2)}</div></div>
+        <div style="text-align:right"><div style="font-family:Roboto Mono,monospace;font-weight:700">${p.pnl?.toFixed(2)||0} VP</div></div>`;
+      positionsList.appendChild(el);
+    });
+  }
 
-    // Профиль
-    document.getElementById("p_name").innerText =
-        user.first_name + " " + (user.last_name || "");
-    document.getElementById("p_photo").src = user.photo_url;
-    document.getElementById("p_balance").innerText =
-        "Баланс: " + res.user.balance + " USDT";
-}
+  async function openOrder(type){
+    const margin = Number(document.getElementById('sizeInput').value) || 0;
+    if(margin<=0){ alert('Укажи сумму больше 0'); return; }
+    const pos = { id:Date.now(), type, leverage:selectedLeverage, entryPrice:currentPrice, pnl:0 };
+    positions.push(pos);
+    renderPositions();
+  }
 
-initSession();
+  document.getElementById('openLong').addEventListener('click',()=>openOrder('LONG'));
+  document.getElementById('openShort').addEventListener('click',()=>openOrder('SHORT'));
 
-// === 3. Загружаем историю ===
-async function loadHistory() {
-    const r = await fetch("https://tradingbot-backend-2yws.onrender.com/history");
-    const data = await r.json();
-    return data.candles;
-}
-
-// === 4. Отрисовка графика ===
-const chart = LightweightCharts.createChart(document.getElementById("chart"), {
-    layout: { background: { color: "#0d0d0d" }, textColor: "white" },
-    grid: {vertLines: {color:"#222"}, horzLines:{color:"#222"}},
-    candleStyle: { upColor:"#0f8f4d", downColor:"#b3252a" },
-});
-const series = chart.addCandlestickSeries();
-
-loadHistory().then(candles => {
-    series.setData(candles);
-});
-
-// === 5. Real-time WebSocket ===
-const ws = new WebSocket("wss://tradingbot-backend-2yws.onrender.com");
-
-ws.onmessage = msg => {
-    const data = JSON.parse(msg.data);
-    if (data.type === "price") {
-        series.update({
-            time: Math.floor(data.time / 1000),
-            open: data.price,
-            high: data.price,
-            low: data.price,
-            close: data.price
-        });
-    }
-};
-
-// === 6. Сделки ===
-function makeTrade(type) {
-    const amount = Number(document.getElementById("amount").value);
-
-    if (amount <= 0) {
-        alert("Количество должно быть больше 0");
-        return;
-    }
-
-    alert(type.toUpperCase() + " " + amount);
-}
+})();
 </script>
-
 </body>
 </html>
