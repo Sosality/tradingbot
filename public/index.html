@@ -195,15 +195,17 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
       avatar: u.photo_url,
       balance: 0
     };
-    // Отправка на backend
     try {
-      const res = await fetch(API_BASE + '/api/init', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({initData:tg.initData})});
+      const res = await fetch(API_BASE + '/api/init', { 
+        method:'POST', 
+        headers:{'Content-Type':'application/json'}, 
+        body:JSON.stringify({initData:tg.initData})
+      });
       const j = await res.json();
       if (j.ok && j.user) profile.balance = Number(j.user.balance || 0);
     } catch(e){}
   }
 
-  // Header UI
   document.getElementById('avatarImg').src = profile.avatar || '';
   document.getElementById('profileName').textContent = profile.first_name;
   document.getElementById('profileUsername').textContent = profile.username ? '@'+profile.username : '';
@@ -218,40 +220,72 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
     grid: { horzLines:{color:'rgba(255,255,255,0.03)'}, vertLines:{color:'rgba(255,255,255,0.03)'} },
     priceScale:{borderVisible:false}, timeScale:{borderVisible:false}
   });
+
   const candleSeries = chart.addCandlestickSeries({
     upColor:'rgba(14,190,131,1)', borderUpColor:'rgba(14,190,131,1)', wickUpColor:'rgba(14,190,131,1)',
     downColor:'rgba(246,70,93,1)', borderDownColor:'rgba(246,70,93,1)', wickDownColor:'rgba(246,70,93,1)',
   });
-  window.addEventListener('resize', ()=>chart.applyOptions({width:chartDiv.clientWidth,height:chartDiv.clientHeight}));
+
+  window.addEventListener('resize', () => 
+    chart.applyOptions({ width: chartDiv.clientWidth, height: chartDiv.clientHeight })
+  );
 
   // ========== WebSocket ==========
   const wsStatus = document.getElementById('wsStatus');
   let currentPrice = 0;
   let socket = new WebSocket(WSS_PRICE_URL);
 
-  socket.addEventListener('open', ()=>wsStatus.textContent='connected');
-  socket.addEventListener('close', ()=>{ wsStatus.textContent='disconnected'; setTimeout(()=>{ socket = new WebSocket(WSS_PRICE_URL); },2000); });
-  socket.addEventListener('message', (evt)=>{
+  socket.addEventListener('open', () => wsStatus.textContent = 'connected');
+
+  socket.addEventListener('close', () => {
+    wsStatus.textContent = 'disconnected'; 
+    setTimeout(() => { socket = new WebSocket(WSS_PRICE_URL); }, 2000);
+  });
+
+  socket.addEventListener('message', (evt) => {
     const msg = JSON.parse(evt.data);
-    if(msg.type==='history' && msg.data){ candleSeries.setData(msg.data); currentPrice = msg.data[msg.data.length-1]?.close ?? currentPrice; updatePrice(); }
-    if(msg.type==='price' && msg.price){ currentPrice=msg.price; updatePrice(); }
+
+    // ------ ИСТОРИЯ СВЕЧЕЙ ------
+    if (msg.type === 'history' && Array.isArray(msg.data)) {
+      candleSeries.setData(msg.data);
+    }
+
+    // ------ ТЕКУЩАЯ ЦЕНА ------
+    if (msg.type === 'price' && msg.price) {
+      currentPrice = msg.price;
+      updatePrice();
+
+      const data = candleSeries.getData();
+      const last = data[data.length - 1];
+
+      if (last) {
+        const updated = {
+          ...last,
+          close: currentPrice,
+          high: Math.max(last.high, currentPrice),
+          low: Math.min(last.low, currentPrice),
+        };
+        candleSeries.update(updated);
+      }
+    }
   });
 
   function updatePrice(){
-    document.getElementById('priceDisplay').textContent=currentPrice.toFixed(2);
+    document.getElementById('priceDisplay').textContent = currentPrice.toFixed(2);
   }
 
-  // ========== Leverage chips ==========
+  // ========== Leverage ==========
   let selectedLeverage = 10;
-  document.querySelectorAll('#leverageSegment .chip').forEach(chip=>{
-    chip.addEventListener('click',()=>{
-      document.querySelectorAll('#leverageSegment .chip').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('#leverageSegment .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#leverageSegment .chip')
+        .forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       selectedLeverage = Number(chip.dataset.value);
     });
   });
 
-  // ========== Open Orders ==========
+  // ========== Positions ==========
   const positions = [];
   const positionsList = document.getElementById('positionsList');
 
@@ -260,22 +294,35 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
     positions.slice().reverse().forEach(p=>{
       const el = document.createElement('div');
       el.className='pos-card';
-      el.innerHTML=`<div><div style="font-weight:700">${p.type} • x${p.leverage}</div><div style="font-family:Roboto Mono,monospace;color:#cfd8dc">${p.entryPrice.toFixed(2)}</div></div>
-        <div style="text-align:right"><div style="font-family:Roboto Mono,monospace;font-weight:700">${p.pnl?.toFixed(2)||0} VP</div></div>`;
+      el.innerHTML = `
+        <div>
+          <div style="font-weight:700">${p.type} • x${p.leverage}</div>
+          <div style="font-family:Roboto Mono,monospace;color:#cfd8dc">${p.entryPrice.toFixed(2)}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:Roboto Mono,monospace;font-weight:700">${p.pnl?.toFixed(2)||0} VP</div>
+        </div>`;
       positionsList.appendChild(el);
     });
   }
 
+  // ========== Trade Validation FIXED ==========
   async function openOrder(type){
-    const margin = Number(document.getElementById('sizeInput').value) || 0;
-    if(margin<=0){ alert('Укажи сумму больше 0'); return; }
+    const sizeInput = document.getElementById('sizeInput');
+    const margin = parseFloat(sizeInput.value);
+
+    if (isNaN(margin) || margin <= 0) {
+      alert('Укажи сумму больше 0');
+      return;
+    }
+
     const pos = { id:Date.now(), type, leverage:selectedLeverage, entryPrice:currentPrice, pnl:0 };
     positions.push(pos);
     renderPositions();
   }
 
-  document.getElementById('openLong').addEventListener('click',()=>openOrder('LONG'));
-  document.getElementById('openShort').addEventListener('click',()=>openOrder('SHORT'));
+  document.getElementById('openLong').addEventListener('click', () => openOrder('LONG'));
+  document.getElementById('openShort').addEventListener('click', () => openOrder('SHORT'));
 
 })();
 </script>
