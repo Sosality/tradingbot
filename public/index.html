@@ -38,8 +38,8 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
 .profile-balance{font-family:"Roboto Mono",monospace;color:#cfd8dc;font-weight:700;margin-top:4px;font-size:13px}
 
 /* Main layout */
-.container{display:grid;grid-template-columns:1fr 360px;gap:12px;padding:12px;height:calc(100vh - 72px);}
-.left-col{display:flex;flex-direction:column;gap:12px}
+.container{display:grid;grid-template-columns:1fr 360px;gap:12px;padding:12px;height:calc(100vh - 72px);overflow:hidden;}
+.left-col{display:flex;flex-direction:column;gap:12px;min-width:0}
 .card{background:var(--panel);border-radius:12px;padding:12px;box-shadow:0 4px 18px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.02)}
 .chart-wrap{height:56vh;border-radius:10px;overflow:hidden;}
 .top-stats{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
@@ -56,7 +56,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
 .chip.active{border-color:rgba(255,255,255,0.06);box-shadow:0 4px 10px rgba(0,0,0,0.6)}
 
 /* Right column: orderbook, trades */
-.right-col{display:flex;flex-direction:column;gap:12px}
+.right-col{display:flex;flex-direction:column;gap:12px;min-width:0}
 .side-section{display:flex;flex-direction:column;gap:8px;overflow:hidden}
 .orderbook-list{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);max-height:220px;overflow:auto;padding:8px;border-radius:8px;background:linear-gradient(180deg, transparent, rgba(255,255,255,0.01))}
 .orderbook-row{display:flex;justify-content:space-between;gap:8px;padding:6px 8px;border-radius:6px}
@@ -179,150 +179,232 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
 
 <script>
 (async function(){
-  const API_BASE = "";
-  const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com"; // Твой WS сервер B
+  // API / WS settings
+  const API_BASE = ""; // same origin if served by your express; otherwise set base
+  // Price server WS URL (use your backend domain)
+  const PRICE_WSS = "wss://tradingbot-backend-2yws.onrender.com";
 
-  // ========== Telegram Init ==========
+  // Telegram init
   const tg = window.Telegram?.WebApp ?? null;
   let profile = { id:null, first_name:'Guest', username:'', avatar:'', balance:0 };
 
   if (tg && tg.initDataUnsafe?.user){
     const u = tg.initDataUnsafe.user;
-    profile = { 
+    profile = {
       id: u.id.toString(),
       first_name: u.first_name,
       username: u.username,
       avatar: u.photo_url,
       balance: 0
     };
+    // send initData to your main server for session creation (optional)
     try {
-      const res = await fetch(API_BASE + '/api/init', { 
-        method:'POST', 
-        headers:{'Content-Type':'application/json'}, 
-        body:JSON.stringify({initData:tg.initData})
+      const res = await fetch(API_BASE + '/api/init', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData: tg.initData })
       });
       const j = await res.json();
       if (j.ok && j.user) profile.balance = Number(j.user.balance || 0);
-    } catch(e){}
+    } catch (e) { /* ignore */ }
   }
 
+  // Header UI
   document.getElementById('avatarImg').src = profile.avatar || '';
-  document.getElementById('profileName').textContent = profile.first_name;
-  document.getElementById('profileUsername').textContent = profile.username ? '@'+profile.username : '';
-  document.getElementById('profileBalance').textContent = 'Баланс: '+profile.balance.toFixed(2)+' VP';
+  document.getElementById('profileName').textContent = profile.first_name || '—';
+  document.getElementById('profileUsername').textContent = profile.username ? '@' + profile.username : '';
+  document.getElementById('profileBalance').textContent = 'Баланс: ' + Number(profile.balance || 0).toFixed(2) + ' VP';
 
-  // ========== Chart Init ==========
+  // Chart init
   const chartDiv = document.getElementById('chart');
   const chart = LightweightCharts.createChart(chartDiv, {
     width: chartDiv.clientWidth,
     height: chartDiv.clientHeight,
-    layout: { background:{color: getComputedStyle(document.body).getPropertyValue('--bg')}, textColor:'#D1D8DE' },
-    grid: { horzLines:{color:'rgba(255,255,255,0.03)'}, vertLines:{color:'rgba(255,255,255,0.03)'} },
-    priceScale:{borderVisible:false}, timeScale:{borderVisible:false}
+    layout: { background: { color: getComputedStyle(document.body).getPropertyValue('--bg') }, textColor: '#D1D8DE' },
+    grid: { horzLines: { color: 'rgba(255,255,255,0.03)' }, vertLines: { color: 'rgba(255,255,255,0.03)' } },
+    priceScale: { borderVisible: false },
+    timeScale: { borderVisible: false, timeVisible: true }
   });
-
   const candleSeries = chart.addCandlestickSeries({
     upColor:'rgba(14,190,131,1)', borderUpColor:'rgba(14,190,131,1)', wickUpColor:'rgba(14,190,131,1)',
     downColor:'rgba(246,70,93,1)', borderDownColor:'rgba(246,70,93,1)', wickDownColor:'rgba(246,70,93,1)',
   });
 
-  window.addEventListener('resize', () => 
-    chart.applyOptions({ width: chartDiv.clientWidth, height: chartDiv.clientHeight })
-  );
-
-  // ========== WebSocket ==========
-  const wsStatus = document.getElementById('wsStatus');
-  let currentPrice = 0;
-  let socket = new WebSocket(WSS_PRICE_URL);
-
-  socket.addEventListener('open', () => wsStatus.textContent = 'connected');
-
-  socket.addEventListener('close', () => {
-    wsStatus.textContent = 'disconnected'; 
-    setTimeout(() => { socket = new WebSocket(WSS_PRICE_URL); }, 2000);
+  window.addEventListener('resize', ()=> {
+    chart.applyOptions({ width: chartDiv.clientWidth, height: chartDiv.clientHeight });
   });
 
-  socket.addEventListener('message', (evt) => {
-    const msg = JSON.parse(evt.data);
+  // WS connection to price-server
+  const wsStatusEl = document.getElementById('wsStatus');
+  let socket;
+  function connectWS() {
+    socket = new WebSocket(PRICE_WSS);
+    socket.addEventListener('open', ()=> { wsStatusEl.textContent = 'connected'; });
+    socket.addEventListener('close', ()=> { wsStatusEl.textContent = 'disconnected'; setTimeout(connectWS, 2000); });
+    socket.addEventListener('error', ()=> { wsStatusEl.textContent = 'error'; });
 
-    // ------ ИСТОРИЯ СВЕЧЕЙ ------
-    if (msg.type === 'history' && Array.isArray(msg.data)) {
-      candleSeries.setData(msg.data);
-    }
-
-    // ------ ТЕКУЩАЯ ЦЕНА ------
-    if (msg.type === 'price' && msg.price) {
-      currentPrice = msg.price;
-      updatePrice();
-
-      const data = candleSeries.getData();
-      const last = data[data.length - 1];
-
-      if (last) {
-        const updated = {
-          ...last,
-          close: currentPrice,
-          high: Math.max(last.high, currentPrice),
-          low: Math.min(last.low, currentPrice),
-        };
-        candleSeries.update(updated);
-      }
-    }
-  });
-
-  function updatePrice(){
-    document.getElementById('priceDisplay').textContent = currentPrice.toFixed(2);
+    socket.addEventListener('message', (evt) => {
+      let msg;
+      try { msg = JSON.parse(evt.data); } catch(e){ return; }
+      handleWS(msg);
+    });
   }
 
-  // ========== Leverage ==========
+  // handle incoming ws messages
+  let lastCandle = null;
+  let currentPrice = 0;
+  const orderBookEl = document.getElementById('orderBook');
+  const tradeHistoryEl = document.getElementById('tradeHistory');
+
+  function handleWS(msg) {
+    if (!msg || !msg.type) return;
+    if (msg.type === 'history' && Array.isArray(msg.data)) {
+      // set candles
+      // msg.data expected: [{time: unix sec, open, high, low, close}, ...]
+      candleSeries.setData(msg.data.map(c => ({
+        time: c.time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close
+      })));
+      lastCandle = msg.data[msg.data.length-1];
+      currentPrice = lastCandle?.close ?? currentPrice;
+      updatePriceDisplay();
+    } else if (msg.type === 'price') {
+      if (typeof msg.price === 'number' && msg.price > 0) {
+        currentPrice = msg.price;
+        updatePriceDisplay();
+      }
+    } else if (msg.type === 'candle_update' && msg.data) {
+      // update or add last candle
+      const c = msg.data;
+      lastCandle = c;
+      try {
+        candleSeries.update({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close });
+      } catch(e){
+        // fallback to setData if update fails
+        console.warn('candle update error', e);
+      }
+      currentPrice = c.close;
+      updatePriceDisplay();
+    } else if (msg.type === 'orderbook') {
+      renderOrderBook(msg);
+    } else if (msg.type === 'trade') {
+      appendTrade(msg.data);
+    } else if (msg.type === 'trades' && Array.isArray(msg.data)) {
+      msg.data.slice().reverse().forEach(t => appendTrade(t));
+    }
+  }
+
+  function updatePriceDisplay() {
+    if (!isFinite(currentPrice)) return;
+    document.getElementById('priceDisplay').textContent = Number(currentPrice).toFixed(2);
+    // priceChange placeholder (we don't have 24h in price-server); keep as dash
+    const changeEl = document.getElementById('priceChange');
+    changeEl.textContent = '—';
+    // subtle glow
+    changeEl.classList.remove('up','down');
+  }
+
+  // Orderbook rendering
+  function renderOrderBook(msg) {
+    orderBookEl.innerHTML = '';
+    const sells = (msg.sell || []).slice(0, 20);
+    // show top sells first
+    sells.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'orderbook-row sell';
+      row.innerHTML = `<div class="price">${Number(s.price).toFixed(2)}</div><div class="amount">${Number(s.size).toFixed(4)}</div>`;
+      orderBookEl.appendChild(row);
+    });
+    const sep = document.createElement('div'); sep.style.height='8px'; orderBookEl.appendChild(sep);
+    const buys = (msg.buy || []).slice(0, 20);
+    buys.forEach(b => {
+      const row = document.createElement('div');
+      row.className = 'orderbook-row buy';
+      row.innerHTML = `<div class="price">${Number(b.price).toFixed(2)}</div><div class="amount">${Number(b.size).toFixed(4)}</div>`;
+      orderBookEl.appendChild(row);
+    });
+  }
+
+  // Trades rendering
+  function appendTrade(t) {
+    if (!t) return;
+    const el = document.createElement('div');
+    el.className = 'trade-row';
+    const color = t.side === 'buy' ? 'var(--accent-green)' : 'var(--accent-red)';
+    el.innerHTML = `<div style="color:${color};font-family:Roboto Mono,monospace">${Number(t.price).toFixed(2)}</div>
+      <div style="color:var(--muted)">${Number(t.size).toFixed(4)}</div>
+      <div style="color:var(--muted);font-size:12px">${new Date(t.time).toLocaleTimeString()}</div>`;
+    tradeHistoryEl.prepend(el);
+    // keep cap
+    while (tradeHistoryEl.children.length > 100) tradeHistoryEl.removeChild(tradeHistoryEl.lastChild);
+  }
+
+  // Start WS
+  connectWS();
+
+  // Leverage chips
   let selectedLeverage = 10;
-  document.querySelectorAll('#leverageSegment .chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      document.querySelectorAll('#leverageSegment .chip')
-        .forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('#leverageSegment .chip').forEach(chip=>{
+    chip.addEventListener('click',()=> {
+      document.querySelectorAll('#leverageSegment .chip').forEach(c=>c.classList.remove('active'));
       chip.classList.add('active');
       selectedLeverage = Number(chip.dataset.value);
     });
   });
 
-  // ========== Positions ==========
+  // Positions (client-side)
   const positions = [];
   const positionsList = document.getElementById('positionsList');
 
   function renderPositions(){
-    positionsList.innerHTML='';
+    positionsList.innerHTML = '';
     positions.slice().reverse().forEach(p=>{
       const el = document.createElement('div');
-      el.className='pos-card';
-      el.innerHTML = `
-        <div>
-          <div style="font-weight:700">${p.type} • x${p.leverage}</div>
-          <div style="font-family:Roboto Mono,monospace;color:#cfd8dc">${p.entryPrice.toFixed(2)}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-family:Roboto Mono,monospace;font-weight:700">${p.pnl?.toFixed(2)||0} VP</div>
-        </div>`;
+      el.className = 'pos-card';
+      el.innerHTML = `<div><div style="font-weight:700">${p.type} • x${p.leverage}</div><div style="font-family:Roboto Mono,monospace;color:#cfd8dc">${Number(p.entryPrice).toFixed(2)}</div></div>
+        <div style="text-align:right"><div style="font-family:Roboto Mono,monospace;font-weight:700">${Number(p.pnl || 0).toFixed(2)} VP</div></div>`;
       positionsList.appendChild(el);
     });
   }
 
-  // ========== Trade Validation FIXED ==========
-  async function openOrder(type){
-    const sizeInput = document.getElementById('sizeInput');
-    const margin = parseFloat(sizeInput.value);
+  // Open order (client -> server)
+  async function openOrder(type) {
+    const margin = Number(document.getElementById('sizeInput').value) || 0;
+    if (margin <= 0) { alert('Укажи сумму больше 0'); return; }
+    if (!currentPrice || currentPrice <= 0) { alert('Цена недоступна'); return; }
 
-    if (isNaN(margin) || margin <= 0) {
-      alert('Укажи сумму больше 0');
-      return;
+    // Call backend open order endpoint if available; otherwise client-only simulate
+    try {
+      const res = await fetch(API_BASE + '/api/order/open', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ userId: profile.id, type, margin, leverage: selectedLeverage })
+      });
+      const j = await res.json();
+      if (j.error) { alert('Ошибка: ' + j.error); return; }
+      const pos = j.position ?? { id: Date.now(), type, entryPrice: currentPrice, leverage: selectedLeverage, pnl:0 };
+      positions.push(pos);
+      if (j.balance !== undefined) { profile.balance = j.balance; document.getElementById('profileBalance').textContent = 'Баланс: ' + Number(profile.balance).toFixed(2) + ' VP'; }
+      renderPositions();
+    } catch (e) {
+      // fallback simulation
+      const pos = { id: Date.now(), type, entryPrice: currentPrice, leverage: selectedLeverage, pnl:0 };
+      positions.push(pos);
+      renderPositions();
     }
-
-    const pos = { id:Date.now(), type, leverage:selectedLeverage, entryPrice:currentPrice, pnl:0 };
-    positions.push(pos);
-    renderPositions();
   }
 
-  document.getElementById('openLong').addEventListener('click', () => openOrder('LONG'));
-  document.getElementById('openShort').addEventListener('click', () => openOrder('SHORT'));
+  document.getElementById('openLong').addEventListener('click', ()=>openOrder('LONG'));
+  document.getElementById('openShort').addEventListener('click', ()=>openOrder('SHORT'));
+
+  // Profile / Futures buttons
+  document.getElementById('btnProfile').addEventListener('click', ()=>{
+    alert(`Профиль:\n${profile.first_name}\n@${profile.username}\nБаланс: ${Number(profile.balance).toFixed(2)} VP`);
+  });
+  document.getElementById('btnFutures').addEventListener('click', ()=> {
+    // scroll to futures area (stub)
+    document.getElementById('chart').scrollIntoView({ behavior: 'smooth' });
+  });
 
 })();
 </script>
