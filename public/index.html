@@ -287,7 +287,12 @@ function unsubscribePair(pair){
 function handleWS(msg){
   if (!msg.type) return;
 
-  if (msg.type === "history" && msg.pair === selectedPair){
+  if (msg.type === "history"){
+    if (msg.pair !== selectedPair) return;
+
+    // полная чистка графика перед установкой новой истории
+    candleSeries.setData([]);
+
     const arr = msg.data.map(c=>({
       time:c.time,
       open:c.open,
@@ -295,9 +300,12 @@ function handleWS(msg){
       low:c.low,
       close:c.close
     }));
+
     candleSeries.setData(arr);
+
     lastCandle = arr[arr.length-1] || null;
-    if (lastCandle) currentPrice = lastCandle.close;
+    currentPrice = lastCandle ? lastCandle.close : 0;
+
     updatePriceUI();
   }
 
