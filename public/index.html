@@ -428,9 +428,16 @@ document.querySelectorAll(".pair-btn").forEach(btn=>{
     document.getElementById("bookPairLabel").textContent = newPair;
     document.getElementById("tradesPairLabel").textContent = newPair;
 
-    // 4) WS subscribe new
-    subscribePair(selectedPair);
+    // мгновенно показать локальную историю, если есть
+    if (pairHistory[selectedPair]?.length > 0) {
+        candleSeries.setData(pairHistory[selectedPair]);
+        lastCandle = pairHistory[selectedPair][pairHistory[selectedPair].length - 1];
+        currentPrice = lastCandle?.close || 0;
+        updatePriceUI();
+    }
 
+    // 4) WS subscribe new (придёт свежая history)
+    subscribePair(selectedPair);
   });
 });
 
