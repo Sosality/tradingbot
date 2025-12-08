@@ -293,32 +293,27 @@ function unsubscribePair(pair){
 function handleWS(msg){
   if (!msg.type) return;
 
-  // ======== HISTORY PER PAIR ========
+  // ======== HISTORY PER PAIR (storage + chart reset) ========
   if (msg.type === "history") {
+      if (!msg.pair) return;
+      if (!pairHistory[msg.pair]) pairHistory[msg.pair] = [];
 
-      const pair = msg.pair;
-      if (!pair) return;
-
-      // гарантируем хранилище пары
-      if (!pairHistory[pair]) pairHistory[pair] = [];
-
-      // Coinbase time иногда приходит строкой, приводим к числу!
-      pairHistory[pair] = msg.data.map(c => ({
-          time: Number(c.time),
-          open: Number(c.open),
-          high: Number(c.high),
-          low: Number(c.low),
-          close: Number(c.close)
+      // сохраняем историю строго для этой пары
+      pairHistory[msg.pair] = msg.data.map(c => ({
+          time: c.time,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close
       }));
 
-      // если история пришла НЕ для активной пары — просто сохраняем
-      if (pair !== selectedPair) return;
+      // если история пришла НЕ для активной пары — просто храним и не трогаем график
+      if (msg.pair !== selectedPair) return;
 
-      // отображаем на графике
-      candleSeries.setData(pairHistory[pair]);
+      // если история для текущей пары — обновляем график
+      candleSeries.setData(pairHistory[msg.pair]);
 
-      // обновляем lastCandle
-      lastCandle = pairHistory[pair][pairHistory[pair].length - 1] || null;
+      lastCandle = pairHistory[msg.pair][pairHistory[msg.pair].length - 1] || null;
       currentPrice = lastCandle ? lastCandle.close : 0;
 
       updatePriceUI();
