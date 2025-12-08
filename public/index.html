@@ -236,6 +236,12 @@ window.addEventListener("resize",()=>{
 let selectedPair = "BTC-USD";
 let currentPrice = 0;
 let lastCandle = null;
+// локальный стор истории
+const pairHistory = {
+  "BTC-USD": [],
+  "ETH-USD": []
+};
+
 
 document.getElementById("pairLabel").textContent = "BTC / USD";
 document.getElementById("bookPairLabel").textContent = selectedPair;
