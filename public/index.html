@@ -287,26 +287,30 @@ function unsubscribePair(pair){
 function handleWS(msg){
   if (!msg.type) return;
 
-  if (msg.type === "history"){
-    if (msg.pair !== selectedPair) return;
+  // ======== HISTORY PER PAIR (storage + chart reset) ========
+  if (msg.type === "history") {
+      if (!msg.pair) return;
+      if (!pairHistory[msg.pair]) pairHistory[msg.pair] = [];
 
-    // полная чистка графика перед установкой новой истории
-    candleSeries.setData([]);
+      // сохраняем историю строго для этой пары
+      pairHistory[msg.pair] = msg.data.map(c => ({
+          time: c.time,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close
+      }));
 
-    const arr = msg.data.map(c=>({
-      time:c.time,
-      open:c.open,
-      high:c.high,
-      low:c.low,
-      close:c.close
-    }));
+      // если история пришла НЕ для активной пары — просто храним и не трогаем график
+      if (msg.pair !== selectedPair) return;
 
-    candleSeries.setData(arr);
+      // если история для текущей пары — обновляем график
+      candleSeries.setData(pairHistory[msg.pair]);
 
-    lastCandle = arr[arr.length-1] || null;
-    currentPrice = lastCandle ? lastCandle.close : 0;
+      lastCandle = pairHistory[msg.pair][pairHistory[msg.pair].length - 1] || null;
+      currentPrice = lastCandle ? lastCandle.close : 0;
 
-    updatePriceUI();
+      updatePriceUI();
   }
 
   if (msg.type === "price" && msg.pair === selectedPair){
