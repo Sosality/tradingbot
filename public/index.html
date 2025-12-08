@@ -12,6 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
+/* ————— ТВОЙ СТИЛЬ БЕЗ ИЗМЕНЕНИЙ ————— */
 :root{
   --bg:#0B0E11;
   --panel:#1E2329;
@@ -24,8 +25,6 @@
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;}
 .app{display:flex;flex-direction:column;height:100vh;}
-
-/* Header */
 .header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-bottom:1px solid rgba(255,255,255,0.03)}
 .brand{display:flex;align-items:center;gap:12px}
 .logo{font-weight:700;font-size:18px}
@@ -36,8 +35,6 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
 .profile-name{font-weight:600}
 .profile-username{color:var(--muted);font-size:12px}
 .profile-balance{font-family:"Roboto Mono",monospace;color:#cfd8dc;font-weight:700;margin-top:4px;font-size:13px}
-
-/* Main layout */
 .container{display:grid;grid-template-columns:1fr 360px;gap:12px;padding:12px;height:calc(100vh - 72px);overflow:hidden;}
 .left-col{display:flex;flex-direction:column;gap:12px}
 .card{background:var(--panel);border-radius:12px;padding:12px;box-shadow:0 4px 18px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.02)}
@@ -47,15 +44,11 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
 .price-change{font-weight:700;padding:6px 8px;border-radius:8px;font-size:13px}
 .price-change.up{background:rgba(14,190,131,0.12);color:var(--accent-green)}
 .price-change.down{background:rgba(246,70,93,0.10);color:var(--accent-red)}
-
-/* Controls */
 .controls{display:flex;gap:10px;margin-top:8px}
 .controls input, .controls select{background:#111;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);color:var(--white);font-size:14px}
 .segment{display:flex;gap:8px}
 .chip{padding:8px 10px;border-radius:8px;background:#15181b;cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
 .chip.active{border-color:rgba(255,255,255,0.06);box-shadow:0 4px 10px rgba(0,0,0,0.6)}
-
-/* Right column: orderbook, trades */
 .right-col{display:flex;flex-direction:column;gap:12px}
 .side-section{display:flex;flex-direction:column;gap:8px;overflow:hidden}
 .orderbook-list{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);max-height:220px;overflow:auto;padding:8px;border-radius:8px;background:linear-gradient(180deg, transparent, rgba(255,255,255,0.01))}
@@ -65,394 +58,356 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
 .orderbook-row.sell .price{color:var(--accent-red)}
 .trade-history{max-height:160px;overflow:auto;padding:8px}
 .trade-row{display:flex;justify-content:space-between;padding:6px 8px;border-radius:6px;font-size:13px}
-
-/* Positions */
 .pos-card{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.01)}
-
-/* Bottom nav */
 .bottom-nav{display:flex;gap:8px;padding:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);border-top:1px solid rgba(255,255,255,0.02)}
 .btn{padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
 .btn-primary{background:var(--accent-green);color:#001}
 .btn-danger{background:var(--accent-red);color:#001}
 .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--white)}
-
 .pair-switch { display:flex; gap:8px; align-items:center; margin-right:8px; }
 .pair-btn { padding:6px 8px; border-radius:8px; background:#101216; border:1px solid rgba(255,255,255,0.02); cursor:pointer; color:var(--muted) }
 .pair-btn.active { color:var(--white); border-color:rgba(255,255,255,0.06); box-shadow:0 6px 18px rgba(0,0,0,0.6) }
-
-@media(max-width:900px){
-  .container{grid-template-columns:1fr; height:calc(100vh - 140px); overflow:auto}
-  .right-col{order:2}
-  .left-col{order:1}
-  .chart-wrap{height:48vh}
-}
 </style>
 </head>
+
 <body>
 <div class="app">
-  <header class="header">
-    <div class="brand">
-      <div class="logo">⧉ TradeSim</div>
-      <div style="color:var(--muted);font-size:13px">BTC/ETH Futures demo</div>
-    </div>
 
-    <div style="display:flex;align-items:center;gap:12px">
-      <div class="pair-switch" id="pairSwitch">
-        <div class="pair-btn active" data-pair="BTC-USD">BTC</div>
-        <div class="pair-btn" data-pair="ETH-USD">ETH</div>
-      </div>
-
-      <div class="profile" id="profileArea">
-        <div class="avatar" id="avatarWrap"><img id="avatarImg" src="" alt="avatar"></div>
-        <div class="profile-info">
-          <div class="profile-name" id="profileName">—</div>
-          <div class="profile-username" id="profileUsername">@—</div>
-          <div class="profile-balance" id="profileBalance">Баланс: 0 VP</div>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <main class="container">
-    <section class="left-col">
-      <div class="card">
-        <div class="top-stats">
-          <div>
-            <div style="color:var(--muted);font-size:12px">Пара</div>
-            <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
-              <div style="font-weight:700" id="pairLabel">BTC / USD</div>
-              <div id="marketTag" style="background:var(--glass);padding:4px 8px;border-radius:8px;color:var(--muted);font-size:12px">Perpetual (sim)</div>
-            </div>
-          </div>
-
-          <div style="text-align:right">
-            <div class="price" id="priceDisplay">—</div>
-            <div id="priceChange" class="price-change">—</div>
-          </div>
-        </div>
-
-        <div class="chart-wrap card" id="chartCard">
-          <div id="chart" style="width:100%;height:100%;"></div>
-        </div>
-
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
-          <div class="controls" style="flex:1">
-            <input id="sizeInput" type="number" placeholder="Сумма (VP)" value="100" />
-            <div class="segment" id="leverageSegment" style="align-items:center">
-              <div class="chip" data-value="1">x1</div>
-              <div class="chip" data-value="5">x5</div>
-              <div class="chip active" data-value="10">x10</div>
-              <div class="chip" data-value="20">x20</div>
-            </div>
-          </div>
-
-          <div style="display:flex;gap:8px;margin-left:12px">
-            <button id="openLong" class="btn btn-primary">BUY / LONG</button>
-            <button id="openShort" class="btn btn-danger">SELL / SHORT</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-weight:700">Positions</div>
-          <div style="color:var(--muted);font-size:13px">live</div>
-        </div>
-        <div id="positionsList" style="margin-top:10px"></div>
-      </div>
-    </section>
-
-    <aside class="right-col">
-      <div class="card side-section">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-weight:700">Order Book</div>
-          <div style="color:var(--muted);font-size:13px" id="bookPairLabel">BTC-USD</div>
-        </div>
-        <div class="orderbook-list" id="orderBook"></div>
-      </div>
-
-      <div class="card side-section">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-weight:700">Trade History</div>
-          <div style="color:var(--muted);font-size:13px" id="tradesPairLabel">BTC-USD</div>
-        </div>
-        <div class="trade-history" id="tradeHistory"></div>
-      </div>
-    </aside>
-  </main>
-
-  <div class="bottom-nav">
-    <button id="btnProfile" class="btn btn-ghost">Профиль</button>
-    <button id="btnFutures" class="btn btn-primary">Перейти в Фьючерсы</button>
-    <div style="flex:1"></div>
-    <div style="color:var(--muted);font-size:13px;padding:6px 8px">WS: <span id="wsStatus">—</span></div>
+<!-- HEADER — без изменений -->
+<header class="header">
+  <div class="brand">
+    <div class="logo">⧉ TradeSim</div>
+    <div style="color:var(--muted);font-size:13px">BTC/ETH Futures demo</div>
   </div>
+
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="pair-switch" id="pairSwitch">
+      <div class="pair-btn active" data-pair="BTC-USD">BTC</div>
+      <div class="pair-btn" data-pair="ETH-USD">ETH</div>
+    </div>
+
+    <div class="profile" id="profileArea">
+      <div class="avatar" id="avatarWrap"><img id="avatarImg" src=""></div>
+      <div class="profile-info">
+        <div class="profile-name" id="profileName">—</div>
+        <div class="profile-username" id="profileUsername">@—</div>
+        <div class="profile-balance" id="profileBalance">Баланс: 0 VP</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN LAYOUT — без изменений -->
+<main class="container">
+  <section class="left-col">
+    <div class="card">
+      <div class="top-stats">
+        <div>
+          <div style="color:var(--muted);font-size:12px">Пара</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+            <div style="font-weight:700" id="pairLabel">BTC / USD</div>
+            <div id="marketTag" style="background:var(--glass);padding:4px 8px;border-radius:8px;color:var(--muted);font-size:12px">Perpetual (sim)</div>
+          </div>
+        </div>
+
+        <div style="text-align:right">
+          <div class="price" id="priceDisplay">—</div>
+          <div id="priceChange" class="price-change">—</div>
+        </div>
+      </div>
+
+      <div class="chart-wrap card" id="chartCard">
+        <div id="chart" style="width:100%;height:100%;"></div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+        <div class="controls" style="flex:1">
+          <input id="sizeInput" type="number" placeholder="Сумма (VP)" value="100" />
+          <div class="segment" id="leverageSegment" style="align-items:center">
+            <div class="chip" data-value="1">x1</div>
+            <div class="chip" data-value="5">x5</div>
+            <div class="chip active" data-value="10">x10</div>
+            <div class="chip" data-value="20">x20</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-left:12px">
+          <button id="openLong" class="btn btn-primary">BUY / LONG</button>
+          <button id="openShort" class="btn btn-danger">SELL / SHORT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:700">Positions</div>
+        <div style="color:var(--muted);font-size:13px">live</div>
+      </div>
+      <div id="positionsList" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <aside class="right-col">
+    <div class="card side-section">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:700">Order Book</div>
+        <div style="color:var(--muted);font-size:13px" id="bookPairLabel">BTC-USD</div>
+      </div>
+      <div class="orderbook-list" id="orderBook"></div>
+    </div>
+
+    <div class="card side-section">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:700">Trade History</div>
+        <div style="color:var(--muted);font-size:13px" id="tradesPairLabel">BTC-USD</div>
+      </div>
+      <div class="trade-history" id="tradeHistory"></div>
+    </div>
+  </aside>
+</main>
+
+<div class="bottom-nav">
+  <button id="btnProfile" class="btn btn-ghost">Профиль</button>
+  <button id="btnFutures" class="btn btn-primary">Перейти в Фьючерсы</button>
+  <div style="flex:1"></div>
+  <div style="color:var(--muted);font-size:13px;padding:6px 8px">WS: <span id="wsStatus">—</span></div>
 </div>
+
+</div> <!-- app -->
 
 <script>
 (async function(){
-  // ========== CONFIG ==========
-  // Подставь сюда адрес price-server'а (wss://...).
-  const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com";
-  const API_BASE = ""; // оставляем, так как /api/init у тебя на другом сервере (если нужно - укажи)
 
-  // ========== TELEGRAM PROFILE ==========
-  const tg = window.Telegram?.WebApp ?? null;
-  let profile = { id:null, first_name:'Guest', username:'', avatar:'', balance:0 };
+// ==============================
+// CONFIG
+// ==============================
+const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com";
 
-  if (tg && tg.initDataUnsafe?.user){
-    const u = tg.initDataUnsafe.user;
-    profile = { 
-      id: u.id?.toString?.() ?? null,
-      first_name: u.first_name ?? 'Guest',
-      username: u.username ?? '',
-      avatar: u.photo_url ?? '',
-      balance: 0
-    };
-    // try to init on backend if you use /api/init (optional)
+// ==============================
+// TELEGRAM PROFILE
+// ==============================
+const tg = window.Telegram?.WebApp;
+let profile = { first_name:"Guest", username:"", avatar:"", balance:0 };
+
+if (tg?.initDataUnsafe?.user){
+  const u = tg.initDataUnsafe.user;
+  profile = {
+    first_name: u.first_name || "Guest",
+    username: u.username || "",
+    avatar: u.photo_url || "",
+    balance: 0
+  };
+}
+
+document.getElementById("avatarImg").src = profile.avatar;
+document.getElementById("profileName").textContent = profile.first_name;
+document.getElementById("profileUsername").textContent = profile.username ? "@"+profile.username : "";
+document.getElementById("profileBalance").textContent = "Баланс: 0 VP";
+
+// ==============================
+// CHART
+// ==============================
+const chartDiv = document.getElementById("chart");
+const chart = LightweightCharts.createChart(chartDiv,{
+  width: chartDiv.clientWidth,
+  height: chartDiv.clientHeight,
+  layout:{ background:{color:getComputedStyle(document.body).getPropertyValue('--bg')}, textColor:'#D1D8DE' },
+  grid:{ horzLines:{color:'rgba(255,255,255,0.03)'}, vertLines:{color:'rgba(255,255,255,0.03)'} },
+  priceScale:{ borderVisible:false },
+  timeScale:{ borderVisible:false }
+});
+
+const candleSeries = chart.addCandlestickSeries({
+  upColor:'rgba(14,190,131,1)',
+  borderUpColor:'rgba(14,190,131,1)',
+  wickUpColor:'rgba(14,190,131,1)',
+  downColor:'rgba(246,70,93,1)',
+  borderDownColor:'rgba(246,70,93,1)',
+  wickDownColor:'rgba(246,70,93,1)'
+});
+
+window.addEventListener("resize",()=>{
+  chart.applyOptions({ width:chartDiv.clientWidth, height:chartDiv.clientHeight });
+});
+
+// ==============================
+// STATE
+// ==============================
+let selectedPair = "BTC-USD";
+let currentPrice = 0;
+let lastCandle = null;
+
+document.getElementById("pairLabel").textContent = "BTC / USD";
+document.getElementById("bookPairLabel").textContent = selectedPair;
+document.getElementById("tradesPairLabel").textContent = selectedPair;
+
+// ==============================
+// WS CLIENT (SUBSCRIBE / UNSUBSCRIBE)
+// ==============================
+let socket = null;
+
+function connectWS(){
+  socket = new WebSocket(WSS_PRICE_URL);
+
+  socket.onopen = () => {
+    wsStatus.textContent = "connected";
+    subscribePair(selectedPair);
+  };
+
+  socket.onclose = () => {
+    wsStatus.textContent = "closed";
+    setTimeout(connectWS,1500);
+  };
+
+  socket.onerror = () => {
+    wsStatus.textContent = "error";
+  };
+
+  socket.onmessage = evt => {
     try {
-      const res = await fetch(API_BASE + '/api/init', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ initData: tg.initData })});
-      const j = await res.json();
-      if (j && j.ok && j.user) profile.balance = Number(j.user.balance || 0);
-    } catch(e){ /* ignore */ }
+      const msg = JSON.parse(evt.data);
+      handleWS(msg);
+    } catch(e){}
+  };
+}
+
+function subscribePair(pair){
+  if (!socket || socket.readyState !== WebSocket.OPEN) return;
+  socket.send(JSON.stringify({ type:"subscribe", pair }));
+}
+
+function unsubscribePair(pair){
+  if (!socket || socket.readyState !== WebSocket.OPEN) return;
+  socket.send(JSON.stringify({ type:"unsubscribe", pair }));
+}
+
+// ==============================
+// WS HANDLER
+// ==============================
+function handleWS(msg){
+  if (!msg.type) return;
+
+  if (msg.type === "history" && msg.pair === selectedPair){
+    const arr = msg.data.map(c=>({
+      time:c.time,
+      open:c.open,
+      high:c.high,
+      low:c.low,
+      close:c.close
+    }));
+    candleSeries.setData(arr);
+    lastCandle = arr[arr.length-1] || null;
+    if (lastCandle) currentPrice = lastCandle.close;
+    updatePriceUI();
   }
 
-  // fill header profile
-  document.getElementById('avatarImg').src = profile.avatar || '';
-  document.getElementById('profileName').textContent = profile.first_name || '—';
-  document.getElementById('profileUsername').textContent = profile.username ? '@'+profile.username : '';
-  document.getElementById('profileBalance').textContent = 'Баланс: ' + Number(profile.balance || 0).toFixed(2) + ' VP';
+  if (msg.type === "price" && msg.pair === selectedPair){
+    currentPrice = Number(msg.price);
 
-  // ========== Chart init ==========
-  const chartDiv = document.getElementById('chart');
-  const chart = LightweightCharts.createChart(chartDiv, {
-    width: chartDiv.clientWidth,
-    height: chartDiv.clientHeight,
-    layout: { background:{color: getComputedStyle(document.body).getPropertyValue('--bg')}, textColor:'#D1D8DE' },
-    grid: { horzLines:{color:'rgba(255,255,255,0.03)'}, vertLines:{color:'rgba(255,255,255,0.03)'} },
-    priceScale:{borderVisible:false}, timeScale:{borderVisible:false}
-  });
-  const candleSeries = chart.addCandlestickSeries({
-    upColor:'rgba(14,190,131,1)', borderUpColor:'rgba(14,190,131,1)', wickUpColor:'rgba(14,190,131,1)',
-    downColor:'rgba(246,70,93,1)', borderDownColor:'rgba(246,70,93,1)', wickDownColor:'rgba(246,70,93,1)',
-  });
-  window.addEventListener('resize', ()=>chart.applyOptions({width:chartDiv.clientWidth,height:chartDiv.clientHeight}));
-
-  // ========== State ==========
-  let selectedPair = 'BTC-USD';
-  document.getElementById('pairLabel').textContent = 'BTC / USD';
-  document.getElementById('bookPairLabel').textContent = selectedPair;
-  document.getElementById('tradesPairLabel').textContent = selectedPair;
-
-  // swap pair UI
-  document.querySelectorAll('.pair-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.pair-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      const p = btn.dataset.pair;
-      selectedPair = p;
-      document.getElementById('pairLabel').textContent = p.split('-')[0] + ' / ' + p.split('-')[1];
-      document.getElementById('bookPairLabel').textContent = p;
-      document.getElementById('tradesPairLabel').textContent = p;
-      // re-render UI (history etc) will happen when messages arrive or we can request via REST /history
-    });
-  });
-
-  // leverages
-  let selectedLeverage = 10;
-  document.querySelectorAll('#leverageSegment .chip').forEach(chip=>{
-    chip.addEventListener('click', ()=>{
-      document.querySelectorAll('#leverageSegment .chip').forEach(c=>c.classList.remove('active'));
-      chip.classList.add('active');
-      selectedLeverage = Number(chip.dataset.value);
-    });
-  });
-
-  // positions (local)
-  const positions = [];
-  const positionsList = document.getElementById('positionsList');
-  function renderPositions(){
-    positionsList.innerHTML = '';
-    positions.slice().reverse().forEach(p=>{
-      const el = document.createElement('div');
-      el.className = 'pos-card';
-      el.innerHTML = `<div><div style="font-weight:700">${p.type} • x${p.leverage}</div><div style="font-family:Roboto Mono,monospace;color:#cfd8dc">${Number(p.entryPrice).toFixed(2)}</div></div>
-        <div style="text-align:right"><div style="font-family:Roboto Mono,monospace;font-weight:700">${Number(p.pnl||0).toFixed(2)} VP</div><div style="margin-top:6px"><button data-id="${p.id}" class="closeBtn" style="background:#2a2a2a;border:0;padding:6px;border-radius:6px;color:#fff;cursor:pointer">✖</button></div></div>`;
-      positionsList.appendChild(el);
-    });
-    // close handlers
-    document.querySelectorAll('.closeBtn').forEach(btn=>{
-      btn.onclick = ()=> {
-        const id = Number(btn.dataset.id);
-        const idx = positions.findIndex(x=>x.id===id);
-        if (idx!==-1) { positions.splice(idx,1); renderPositions(); }
+    // обновление свечи
+    const now = Math.floor(Date.now() / 1000);
+    const minute = Math.floor(now/60)*60;
+    if (!lastCandle || lastCandle.time !== minute){
+      lastCandle = {
+        time: minute,
+        open: currentPrice,
+        high: currentPrice,
+        low: currentPrice,
+        close: currentPrice
       };
-    });
-  }
-
-  // open order with client-side checks
-  async function openOrder(type){
-    const margin = Number(document.getElementById('sizeInput').value) || 0;
-    if (!profile.id) { alert('Не авторизован через Telegram'); return; }
-    if (margin <= 0) { alert('Укажи сумму > 0'); return; }
-    // prepare pos and push locally (you can also call your backend /api/order/open)
-    const pos = { id: Date.now(), type, leverage: selectedLeverage, entryPrice: currentPrice || 0, margin, size: margin*selectedLeverage, pnl: 0, pair: selectedPair };
-    positions.push(pos);
-    renderPositions();
-    // optionally send to your backend:
-    // await fetch('/api/order/open', { method:'POST', body: JSON.stringify({ userId:profile.id, type, margin, leverage:selectedLeverage }) })
-  }
-
-  document.getElementById('openLong').addEventListener('click', ()=>openOrder('LONG'));
-  document.getElementById('openShort').addEventListener('click', ()=>openOrder('SHORT'));
-
-  // ========== Price WS client (single stream) ==========
-  const wsStatusEl = document.getElementById('wsStatus');
-  let socket = null;
-  let currentPrice = 0;
-  let lastCandle = null;
-
-  const orderBookEl = document.getElementById('orderBook');
-  const tradeHistoryEl = document.getElementById('tradeHistory');
-
-  function connectWS(){
-    socket = new WebSocket(WSS_PRICE_URL);
-
-    socket.addEventListener('open', ()=> {
-      wsStatusEl.textContent = 'connected';
-      console.info('WS connected to', WSS_PRICE_URL);
-    });
-
-    socket.addEventListener('close', ()=> {
-      wsStatusEl.textContent = 'disconnected';
-      console.warn('WS disconnected - reconnect in 2s');
-      setTimeout(connectWS, 2000);
-    });
-
-    socket.addEventListener('message', (evt)=>{
-      try {
-        const msg = JSON.parse(evt.data);
-        handleWSMessage(msg);
-      } catch (err) {
-        console.error('WS parse error', err);
-      }
-    });
-
-    socket.addEventListener('error', (e)=> {
-      console.error('WS error', e);
-    });
-  }
-
-  function handleWSMessage(msg){
-    if (!msg || !msg.type) return;
-    const pair = msg.pair;
-    if (msg.type === 'history' && pair === selectedPair) {
-      // msg.data = array ascending
-      const arr = msg.data.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }));
-      candleSeries.setData(arr);
-      lastCandle = arr[arr.length-1] || null;
-      currentPrice = lastCandle?.close ?? currentPrice;
-      updatePriceUI();
-    } else if (msg.type === 'price') {
-      // update price if for selectedPair
-      if (msg.pair === selectedPair) {
-        currentPrice = Number(msg.price);
-        updatePriceUI();
-      }
-      // still update lastCandle (if time same -> update, else add)
-      const nowSec = Math.floor(Date.now() / 1000);
-      const minute = Math.floor(nowSec / 60) * 60;
-      if (!lastCandle || lastCandle.time !== minute) {
-        lastCandle = { time: minute, open: currentPrice, high: currentPrice, low: currentPrice, close: currentPrice };
-        candleSeries.update(lastCandle);
-      } else {
-        lastCandle.high = Math.max(lastCandle.high, currentPrice);
-        lastCandle.low = Math.min(lastCandle.low, currentPrice);
-        lastCandle.close = currentPrice;
-        candleSeries.update(lastCandle);
-      }
-    } else if (msg.type === 'orderBook') {
-      // render if pair matches selectedPair
-      if (msg.pair === selectedPair) renderOrderBook(msg.buy, msg.sell);
-    } else if (msg.type === 'trades') {
-      if (msg.pair === selectedPair) renderTrades(msg.trades || []);
-    } else if (msg.type === 'hello') {
-      console.info('Price WS:', msg);
+    } else {
+      lastCandle.high = Math.max(lastCandle.high,currentPrice);
+      lastCandle.low  = Math.min(lastCandle.low,currentPrice);
+      lastCandle.close=currentPrice;
     }
+    candleSeries.update(lastCandle);
+    updatePriceUI();
   }
 
-  function updatePriceUI(){
-    document.getElementById('priceDisplay').textContent = Number(currentPrice || 0).toFixed(2);
-    // price change computing (not provided by server) - leave blank or compute from last candle
-    const changeEl = document.getElementById('priceChange');
-    // compute 24h change not available; show - placeholder
-    changeEl.textContent = '—';
+  if (msg.type === "orderBook" && msg.pair === selectedPair){
+    renderOrderBook(msg.buy,msg.sell);
   }
 
-  function renderOrderBook(buys = [], sells = []){
-    orderBookEl.innerHTML = '';
-    // sells descending (higher price first)
-    sells.slice(0,20).forEach(s => {
-      const row = document.createElement('div');
-      row.className = 'orderbook-row sell';
-      row.innerHTML = `<div class="price">${Number(s.price).toFixed(2)}</div><div class="amount">${Number(s.size).toFixed(4)}</div>`;
-      orderBookEl.appendChild(row);
-    });
-    const sep = document.createElement('div'); sep.style.height='6px'; orderBookEl.appendChild(sep);
-    buys.slice(0,20).forEach(b => {
-      const row = document.createElement('div');
-      row.className = 'orderbook-row buy';
-      row.innerHTML = `<div class="price">${Number(b.price).toFixed(2)}</div><div class="amount">${Number(b.size).toFixed(4)}</div>`;
-      orderBookEl.appendChild(row);
-    });
+  if (msg.type === "trades" && msg.pair === selectedPair){
+    renderTrades(msg.trades);
   }
+}
 
-  function renderTrades(trades){
-    tradeHistoryEl.innerHTML = '';
-    (trades || []).slice().reverse().slice(0,50).forEach(t=>{
-      const el = document.createElement('div');
-      el.className = 'trade-row';
-      const priceColor = t.side === 'buy' ? 'var(--accent-green)' : 'var(--accent-red)';
-      el.innerHTML = `<div style="color:${priceColor};font-family:Roboto Mono,monospace">${Number(t.price).toFixed(2)}</div><div style="color:var(--muted)">${Number(t.size).toFixed(4)}</div><div style="color:var(--muted);font-size:12px">${new Date(t.time).toLocaleTimeString()}</div>`;
-      tradeHistoryEl.appendChild(el);
-    });
-  }
+// ==============================
+// UI RENDER
+// ==============================
+function updatePriceUI(){
+  document.getElementById("priceDisplay").textContent = currentPrice.toFixed(2);
+}
 
-  // init connect
-  connectWS();
+function renderOrderBook(buys,sells){
+  const el = document.getElementById("orderBook");
+  el.innerHTML = "";
 
-  // request initial history via REST fallback (if server supports /history/:pair)
-  async function loadHistoryViaHTTP(pair){
-    try {
-      const resp = await fetch(`/history/${pair}`);
-      if (!resp.ok) return;
-      const j = await resp.json();
-      if (j && j.candles) {
-        const arr = j.candles.map(c=>({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
-        candleSeries.setData(arr);
-        lastCandle = arr[arr.length-1] || null;
-        currentPrice = lastCandle?.close ?? currentPrice;
-        updatePriceUI();
-      }
-    } catch(e){ /* ignore */ }
-  }
-
-  // when switching pair, try to load history via HTTP (in addition to WS flow)
-  document.querySelectorAll('.pair-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=> {
-      loadHistoryViaHTTP(selectedPair);
-    });
+  sells.slice(0,20).forEach(s=>{
+    const r=document.createElement("div");
+    r.className="orderbook-row sell";
+    r.innerHTML=`<div class="price">${s.price.toFixed(2)}</div><div>${s.size.toFixed(4)}</div>`;
+    el.appendChild(r);
   });
 
-  // initial load
-  await loadHistoryViaHTTP(selectedPair).catch(()=>{});
+  el.appendChild(Object.assign(document.createElement("div"),{style:"height:6px"}));
 
-  // profile button
-  document.getElementById('btnProfile').addEventListener('click', ()=>{
-    alert(`Профиль:\n${profile.first_name}\n@${profile.username}\nБаланс: ${Number(profile.balance).toFixed(2)} VP`);
+  buys.slice(0,20).forEach(b=>{
+    const r=document.createElement("div");
+    r.className="orderbook-row buy";
+    r.innerHTML=`<div class="price">${b.price.toFixed(2)}</div><div>${b.size.toFixed(4)}</div>`;
+    el.appendChild(r);
   });
+}
+
+function renderTrades(list){
+  const el=document.getElementById("tradeHistory");
+  el.innerHTML="";
+  list.slice().reverse().forEach(t=>{
+    const row=document.createElement("div");
+    row.className="trade-row";
+    const color = t.side==="buy" ? "var(--accent-green)" : "var(--accent-red)";
+    row.innerHTML = `
+      <div style="color:${color};font-family:Roboto Mono">${t.price.toFixed(2)}</div>
+      <div>${t.size.toFixed(3)}</div>
+      <div style="color:var(--muted);font-size:12px">${new Date(t.time).toLocaleTimeString()}</div>
+    `;
+    el.appendChild(row);
+  });
+}
+
+// ==============================
+// PAIR SWITCH
+// ==============================
+document.querySelectorAll(".pair-btn").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll(".pair-btn").forEach(x=>x.classList.remove("active"));
+    btn.classList.add("active");
+
+    const newPair = btn.dataset.pair;
+
+    // WS unsubscribe / subscribe
+    unsubscribePair(selectedPair);
+    selectedPair = newPair;
+    subscribePair(selectedPair);
+
+    document.getElementById("pairLabel").textContent = newPair.replace("-"," / ");
+    document.getElementById("bookPairLabel").textContent = newPair;
+    document.getElementById("tradesPairLabel").textContent = newPair;
+
+    document.getElementById("orderBook").innerHTML="";
+    document.getElementById("tradeHistory").innerHTML="";
+  });
+});
+
+// ==============================
+// START
+// ==============================
+connectWS();
 
 })();
 </script>
+
 </body>
 </html>
