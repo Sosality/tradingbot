@@ -378,26 +378,41 @@ function renderTrades(list){
 }
 
 // ==============================
-// PAIR SWITCH
+// PAIR SWITCH (FIX: reset & reload history)
 // ==============================
 document.querySelectorAll(".pair-btn").forEach(btn=>{
   btn.addEventListener("click",()=>{
+
+    // UI
     document.querySelectorAll(".pair-btn").forEach(x=>x.classList.remove("active"));
     btn.classList.add("active");
 
+    // new pair
     const newPair = btn.dataset.pair;
 
-    // WS unsubscribe / subscribe
+    // 1) WS unsubscribe old
     unsubscribePair(selectedPair);
+
+    // 2) reset chart completely
+    candleSeries.setData([]);
+    lastCandle = null;
+    currentPrice = 0;
+    document.getElementById("priceDisplay").textContent = "—";
+
+    // clean UI blocks
+    document.getElementById("orderBook").innerHTML="";
+    document.getElementById("tradeHistory").innerHTML="";
+
+    // 3) switch
     selectedPair = newPair;
-    subscribePair(selectedPair);
 
     document.getElementById("pairLabel").textContent = newPair.replace("-"," / ");
     document.getElementById("bookPairLabel").textContent = newPair;
     document.getElementById("tradesPairLabel").textContent = newPair;
 
-    document.getElementById("orderBook").innerHTML="";
-    document.getElementById("tradeHistory").innerHTML="";
+    // 4) WS subscribe new
+    subscribePair(selectedPair);
+
   });
 });
 
