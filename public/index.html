@@ -181,10 +181,10 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
 // ==============================
 // CONFIG
 // ==============================
-const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com";
+const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com"; // твой WSS
 
 // ==============================
-// TELEGRAM PROFILE
+// TELEGRAM PROFILE (без изменений)
 // ==============================
 const tg = window.Telegram?.WebApp;
 let profile = { first_name:"Guest", username:"", avatar:"", balance:0 };
@@ -205,7 +205,7 @@ document.getElementById("profileUsername").textContent = profile.username ? "@"+
 document.getElementById("profileBalance").textContent = "Баланс: 0 VP";
 
 // ==============================
-// CHART
+// CHART (без изменений, только доступ к chart/timeScale)
 // ==============================
 const chartDiv = document.getElementById("chart");
 const chart = LightweightCharts.createChart(chartDiv,{
@@ -236,27 +236,29 @@ window.addEventListener("resize",()=>{
 let selectedPair = "BTC-USD";
 let currentPrice = 0;
 let lastCandle = null;
-// локальный стор истории
+
+// локальный стор истории (кэш)
 const pairHistory = {
   "BTC-USD": [],
   "ETH-USD": []
 };
-
 
 document.getElementById("pairLabel").textContent = "BTC / USD";
 document.getElementById("bookPairLabel").textContent = selectedPair;
 document.getElementById("tradesPairLabel").textContent = selectedPair;
 
 // ==============================
-// WS CLIENT (SUBSCRIBE / UNSUBSCRIBE)
+// WS CLIENT
 // ==============================
 let socket = null;
+const wsStatus = document.getElementById("wsStatus");
 
 function connectWS(){
   socket = new WebSocket(WSS_PRICE_URL);
 
   socket.onopen = () => {
     wsStatus.textContent = "connected";
+    // сразу подпишемся на выбранную пару
     subscribePair(selectedPair);
   };
 
@@ -273,18 +275,20 @@ function connectWS(){
     try {
       const msg = JSON.parse(evt.data);
       handleWS(msg);
-    } catch(e){}
+    } catch(e){ console.error("WS parse error", e); }
   };
 }
 
 function subscribePair(pair){
-  if (!socket || socket.readyState !== WebSocket.OPEN) return;
-  socket.send(JSON.stringify({ type:"subscribe", pair }));
+  if (socket && socket.readyState === WebSocket.OPEN){
+    socket.send(JSON.stringify({ type:"subscribe", pair }));
+  }
 }
 
 function unsubscribePair(pair){
-  if (!socket || socket.readyState !== WebSocket.OPEN) return;
-  socket.send(JSON.stringify({ type:"unsubscribe", pair }));
+  if (socket && socket.readyState === WebSocket.OPEN){
+    socket.send(JSON.stringify({ type:"unsubscribe", pair }));
+  }
 }
 
 // ==============================
@@ -293,11 +297,12 @@ function unsubscribePair(pair){
 function handleWS(msg){
   if (!msg.type) return;
 
-  // ======== HISTORY PER PAIR ========
+  // ======== LONGER HISTORY HANDLING ========
   if (msg.type === "history") {
       if (!msg.pair) return;
       if (!pairHistory[msg.pair]) pairHistory[msg.pair] = [];
 
+      // Сохраняем массив свечей (ожидаем уже в формате time/open/..)
       pairHistory[msg.pair] = msg.data.map(c => ({
           time: c.time,
           open: c.open,
@@ -306,23 +311,43 @@ function handleWS(msg){
           close: c.close
       }));
 
-      // Если данные пришли для текущей пары — рисуем
+      // Если это текущая выбранная пара — рисуем и СБРАСЫВАЕМ зум
       if (msg.pair === selectedPair) {
-          candleSeries.setData(pairHistory[msg.pair]);
-          
-          // ВАЖНО: Центрируем график на данных
-          chart.timeScale().fitContent(); 
+          const candles = pairHistory[msg.pair];
+          if (candles.length > 0) {
+              candleSeries.setData(candles);
 
-          lastCandle = pairHistory[msg.pair][pairHistory[msg.pair].length - 1] || null;
-          currentPrice = lastCandle ? lastCandle.close : 0;
-          updatePriceUI();
+              // Сбрасываем зум: явно задаём видимый диапазон по всей истории
+              const firstTime = candles[0].time;
+              const lastTime = candles[candles.length - 1].time;
+              // Устанавливаем видимую область ровно под данные — это надёжнее, чем только fitContent()
+              try {
+                chart.timeScale().setVisibleRange({ from: firstTime, to: lastTime });
+              } catch(e){
+                // fallback
+                chart.timeScale().fitContent();
+              }
+
+              lastCandle = candles[candles.length - 1];
+              currentPrice = lastCandle ? lastCandle.close : 0;
+              updatePriceUI();
+          } else {
+              // если пришла пустая история — очищаем график
+              candleSeries.setData([]);
+              chart.timeScale().fitContent();
+              lastCandle = null;
+              currentPrice = 0;
+              updatePriceUI();
+          }
       }
+      return;
   }
 
+  // ======== PRICE UPDATES ========
   if (msg.type === "price" && msg.pair === selectedPair){
     currentPrice = Number(msg.price);
 
-    // обновление свечи
+    // обновление свечи (1m)
     const now = Math.floor(Date.now() / 1000);
     const minute = Math.floor(now/60)*60;
     if (!lastCandle || lastCandle.time !== minute){
@@ -342,6 +367,7 @@ function handleWS(msg){
     updatePriceUI();
   }
 
+  // ======== ORDERBOOK / TRADES ========
   if (msg.type === "orderBook" && msg.pair === selectedPair){
     renderOrderBook(msg.buy,msg.sell);
   }
@@ -352,10 +378,10 @@ function handleWS(msg){
 }
 
 // ==============================
-// UI RENDER
+// UI RENDER (без изменений)
 // ==============================
 function updatePriceUI(){
-  document.getElementById("priceDisplay").textContent = currentPrice.toFixed(2);
+  document.getElementById("priceDisplay").textContent = currentPrice ? currentPrice.toFixed(2) : "—";
 }
 
 function renderOrderBook(buys,sells){
@@ -382,7 +408,7 @@ function renderOrderBook(buys,sells){
 function renderTrades(list){
   const el=document.getElementById("tradeHistory");
   el.innerHTML="";
-  list.slice().reverse().forEach(t=>{
+  (list||[]).slice().reverse().forEach(t=>{
     const row=document.createElement("div");
     row.className="trade-row";
     const color = t.side==="buy" ? "var(--accent-green)" : "var(--accent-red)";
@@ -396,47 +422,53 @@ function renderTrades(list){
 }
 
 // ==============================
-// PAIR SWITCH (FIX: reset & reload history)
+// PAIR SWITCH — теперь надежно сбрасываем график и подписку
 // ==============================
 document.querySelectorAll(".pair-btn").forEach(btn=>{
   btn.addEventListener("click",()=>{
 
-    // UI
+    // UI активная кнопка
     document.querySelectorAll(".pair-btn").forEach(x=>x.classList.remove("active"));
     btn.classList.add("active");
 
-    // new pair
     const newPair = btn.dataset.pair;
+    if (newPair === selectedPair) return;
 
-    // 1) WS unsubscribe old
+    // 1) Unsubscribe old
     unsubscribePair(selectedPair);
 
-    // 2) reset chart completely
-    candleSeries.setData([]);
+    // 2) Reset chart & UI (сброс зума)
+    candleSeries.setData([]);               // очищаем свечи
+    try { chart.timeScale().fitContent(); } catch(e){/* noop */} // сброс визуала
     lastCandle = null;
     currentPrice = 0;
-    document.getElementById("priceDisplay").textContent = "—";
+    updatePriceUI();
 
     // clean UI blocks
     document.getElementById("orderBook").innerHTML="";
     document.getElementById("tradeHistory").innerHTML="";
 
-    // 3) switch
+    // 3) switch var
     selectedPair = newPair;
-
     document.getElementById("pairLabel").textContent = newPair.replace("-"," / ");
     document.getElementById("bookPairLabel").textContent = newPair;
     document.getElementById("tradesPairLabel").textContent = newPair;
 
-    // мгновенно показать локальную историю, если есть
-    if (pairHistory[selectedPair]?.length > 0) {
-        candleSeries.setData(pairHistory[selectedPair]);
-        lastCandle = pairHistory[selectedPair][pairHistory[selectedPair].length - 1];
+    // 4) If we have local cache - show it and reset view
+    if (pairHistory[selectedPair] && pairHistory[selectedPair].length > 0) {
+        const candles = pairHistory[selectedPair];
+        candleSeries.setData(candles);
+        try {
+          chart.timeScale().setVisibleRange({ from: candles[0].time, to: candles[candles.length-1].time });
+        } catch(e){
+          chart.timeScale().fitContent();
+        }
+        lastCandle = candles[candles.length - 1];
         currentPrice = lastCandle?.close || 0;
         updatePriceUI();
     }
 
-    // 4) WS subscribe new (придёт свежая history)
+    // 5) Subscribe new - server отправит историю и всё остальное
     subscribePair(selectedPair);
   });
 });
