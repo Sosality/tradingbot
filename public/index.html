@@ -347,22 +347,29 @@ function handleWS(msg){
   if (msg.type === "price" && msg.pair === selectedPair){
     currentPrice = Number(msg.price);
 
-    // обновление свечи (1m)
-    const now = Math.floor(Date.now() / 1000);
-    const minute = Math.floor(now/60)*60;
-    if (!lastCandle || lastCandle.time !== minute){
+    if (!lastCandle) return;
+
+    // ВАЖНО: привязка ко времени последней свечи
+    const nextCandleTime = lastCandle.time + 60;
+
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    // Если уже прошла минута — создаём новую свечу СРАЗУ ПОСЛЕ последней
+    if (nowSec >= nextCandleTime) {
       lastCandle = {
-        time: minute,
-        open: currentPrice,
+        time: nextCandleTime,
+        open: lastCandle.close,       // привязка к предыдущей
         high: currentPrice,
         low: currentPrice,
         close: currentPrice
       };
     } else {
-      lastCandle.high = Math.max(lastCandle.high,currentPrice);
-      lastCandle.low  = Math.min(lastCandle.low,currentPrice);
-      lastCandle.close=currentPrice;
+      // обновляем текущую свечу
+      lastCandle.high  = Math.max(lastCandle.high, currentPrice);
+      lastCandle.low   = Math.min(lastCandle.low, currentPrice);
+      lastCandle.close = currentPrice;
     }
+
     candleSeries.update(lastCandle);
     updatePriceUI();
   }
