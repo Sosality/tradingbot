@@ -217,7 +217,7 @@ const chart = LightweightCharts.createChart(chartDiv,{
   timeScale:{ borderVisible:false }
 });
 
-const candleSeries = chart.addCandlestickSeries({
+let candleSeries = chart.addCandlestickSeries({
   upColor:'rgba(14,190,131,1)',
   borderUpColor:'rgba(14,190,131,1)',
   wickUpColor:'rgba(14,190,131,1)',
