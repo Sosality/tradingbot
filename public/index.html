@@ -330,6 +330,7 @@ function handleWS(msg){
               }
 
               lastCandle = candles[candles.length - 1];
+              lastServerTime = lastCandle.time;
               currentPrice = lastCandle ? lastCandle.close : 0;
               updatePriceUI();
           } else {
