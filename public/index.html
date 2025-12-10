@@ -236,6 +236,7 @@ window.addEventListener("resize",()=>{
 let selectedPair = "BTC-USD";
 let currentPrice = 0;
 let lastCandle = null;
+let lastServerTime = 0;
 
 // локальный стор истории (кэш)
 const pairHistory = {
