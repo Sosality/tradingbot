@@ -422,53 +422,59 @@ function renderTrades(list){
 }
 
 // ==============================
-// PAIR SWITCH — теперь надежно сбрасываем график и подписку
+// PAIR SWITCH — HARD RESET PRICE SCALE
 // ==============================
 document.querySelectorAll(".pair-btn").forEach(btn=>{
   btn.addEventListener("click",()=>{
 
-    // UI активная кнопка
     document.querySelectorAll(".pair-btn").forEach(x=>x.classList.remove("active"));
     btn.classList.add("active");
 
     const newPair = btn.dataset.pair;
     if (newPair === selectedPair) return;
 
-    // 1) Unsubscribe old
+    // 1) Unsubscribe
     unsubscribePair(selectedPair);
 
-    // 2) Reset chart & UI (сброс зума)
-    candleSeries.setData([]);               // очищаем свечи
-    try { chart.timeScale().fitContent(); } catch(e){/* noop */} // сброс визуала
+    // 2) ПОЛНЫЙ СБРОС СЕРИИ И price scale
+    chart.removeSeries(candleSeries);
+    const newSeries = chart.addCandlestickSeries({
+      upColor:'rgba(14,190,131,1)',
+      borderUpColor:'rgba(14,190,131,1)',
+      wickUpColor:'rgba(14,190,131,1)',
+      downColor:'rgba(246,70,93,1)',
+      borderDownColor:'rgba(246,70,93,1)',
+      wickDownColor:'rgba(246,70,93,1)'
+    });
+
+    // сохраняем ссылку
+    window.__series = newSeries;
+
+    // переписываем глобальные ссылки
+    candleSeries = newSeries;
     lastCandle = null;
     currentPrice = 0;
     updatePriceUI();
 
-    // clean UI blocks
     document.getElementById("orderBook").innerHTML="";
     document.getElementById("tradeHistory").innerHTML="";
 
-    // 3) switch var
     selectedPair = newPair;
+
     document.getElementById("pairLabel").textContent = newPair.replace("-"," / ");
     document.getElementById("bookPairLabel").textContent = newPair;
     document.getElementById("tradesPairLabel").textContent = newPair;
 
-    // 4) If we have local cache - show it and reset view
-    if (pairHistory[selectedPair] && pairHistory[selectedPair].length > 0) {
-        const candles = pairHistory[selectedPair];
-        candleSeries.setData(candles);
-        try {
-          chart.timeScale().setVisibleRange({ from: candles[0].time, to: candles[candles.length-1].time });
-        } catch(e){
-          chart.timeScale().fitContent();
-        }
-        lastCandle = candles[candles.length - 1];
-        currentPrice = lastCandle?.close || 0;
-        updatePriceUI();
+    // 3) если есть кэш — заново отрисовываем
+    if (pairHistory[selectedPair]?.length) {
+      candleSeries.setData(pairHistory[selectedPair]);
+      chart.timeScale().fitContent();
+      lastCandle = pairHistory[selectedPair].slice(-1)[0];
+      currentPrice = lastCandle?.close || 0;
+      updatePriceUI();
     }
 
-    // 5) Subscribe new - server отправит историю и всё остальное
+    // 4) подписка на новую пару
     subscribePair(selectedPair);
   });
 });
