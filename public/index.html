@@ -351,13 +351,11 @@ function handleWS(msg){
 
     if (!lastCandle) return;
 
-    const now = Math.floor(Date.now() / 1000);
-    const currentCandleTime = lastCandle.time;
-    const expectedNextTime = currentCandleTime + 60;
+    // ✅ берём только серверное время
+    const serverTime = Math.floor(msg.ts / 1000);
 
-    // ❌ Никогда не догоняем пропущенные свечи циклом
-    if (now < expectedNextTime) {
-      // просто обновляем текущую свечу
+    // если серверное время не сдвинулось — просто обновляем свечу
+    if (serverTime <= lastServerTime){
       lastCandle.high  = Math.max(lastCandle.high, currentPrice);
       lastCandle.low   = Math.min(lastCandle.low, currentPrice);
       lastCandle.close = currentPrice;
@@ -366,10 +364,12 @@ function handleWS(msg){
       return;
     }
 
-    // ✅ Создаём ТОЛЬКО одну новую свечу
+    // ✅ создаём новую свечу только когда сервер действительно дал новую минуту
+    lastServerTime = lastCandle.time + 60;
+
     lastCandle = {
-      time: expectedNextTime,
-      open: currentCandleTime ? lastCandle.close : currentPrice,
+      time: lastServerTime,
+      open: lastCandle.close,
       high: currentPrice,
       low: currentPrice,
       close: currentPrice
