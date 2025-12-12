@@ -162,6 +162,8 @@ app.get("/auth/telegram", async (req, res) => {
     const cookieVal = makeSessionCookieValue(userRow.user_id);
     // set secure cookie (if deployed under https)
     const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
+    // set secure cookie (if deployed under https)
+    const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
     const cookieParts = [
       `${COOKIE_NAME}=${cookieVal}`,
       `Path=/`,
