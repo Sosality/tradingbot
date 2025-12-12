@@ -9,15 +9,18 @@ import { Pool } from "pg";
 import querystring from "querystring";
 
 const app = express();
-app.use(cors());
+
+// ИЗМЕНЕНИЕ 1: Настраиваем CORS для передачи сессионных куки
+app.use(cors({
+  origin: true, // Разрешает любые домены (фронтенд)
+  credentials: true // Разрешает передачу кук/сессий
+}));
+
 app.use(express.json());
 app.use(express.static("public"));
 
 // require env
 if (!process.env.DATABASE_URL) {
-  console.error("DATABASE_URL not set!");
-  process.exit(1);
-}
 if (!process.env.BOT_TOKEN) {
   console.warn("BOT_TOKEN not set! Telegram signature verification will fail.");
 }
