@@ -164,14 +164,17 @@ app.get("/auth/telegram", async (req, res) => {
     const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
     // set secure cookie (if deployed under https)
     const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
+    // set secure cookie (if deployed under https)
+    // ИЗМЕНЕНИЕ 2: SameSite=None + Secure для работы в iframe/Webview Telegram
+    const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
     const cookieParts = [
       `${COOKIE_NAME}=${cookieVal}`,
       `Path=/`,
       `HttpOnly`,
-      `SameSite=Lax`,
+      `SameSite=None`, // Важно для работы внутри Телеграма и кросс-доменов
       `Max-Age=${60 * 60 * 24 * 30}` // 30 days
     ];
-    if (isSecure) cookieParts.push("Secure");
+    if (isSecure) cookieParts.push("Secure"); // Secure обязателен при SameSite=None
     res.setHeader("Set-Cookie", cookieParts.join("; "));
     // redirect back to app
     return res.redirect(redirectTo);
