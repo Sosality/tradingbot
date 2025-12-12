@@ -184,25 +184,70 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
 const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com"; // твой WSS
 
 // ==============================
-// TELEGRAM PROFILE (без изменений)
+// TELEGRAM INIT & SERVER AUTH
 // ==============================
 const tg = window.Telegram?.WebApp;
+let initDataRaw = tg?.initData || ""; // signed initData string
 let profile = { first_name:"Guest", username:"", avatar:"", balance:0 };
 
-if (tg?.initDataUnsafe?.user){
-  const u = tg.initDataUnsafe.user;
-  profile = {
-    first_name: u.first_name || "Guest",
-    username: u.username || "",
-    avatar: u.photo_url || "",
-    balance: 0
-  };
+// helper to update UI profile
+function updateProfileUI(userObj){
+  document.getElementById("avatarImg").src = userObj.photo_url || "";
+  document.getElementById("profileName").textContent = userObj.first_name || "Guest";
+  document.getElementById("profileUsername").textContent = userObj.username ? "@"+userObj.username : "";
+  document.getElementById("profileBalance").textContent = "Баланс: " + (Number(userObj.balance || 0)).toFixed(2) + " VP";
 }
 
-document.getElementById("avatarImg").src = profile.avatar;
-document.getElementById("profileName").textContent = profile.first_name;
-document.getElementById("profileUsername").textContent = profile.username ? "@"+profile.username : "";
-document.getElementById("profileBalance").textContent = "Баланс: 0 VP";
+// call init API
+async function initSession(){
+  try {
+    // If no initData (local dev), try to use unsafe fallback
+    if (!initDataRaw && tg?.initDataUnsafe?.user) {
+      // In local/dev cases we will synthesize a signed-like string for serverless testing - server will reject without proper signature
+      // but if you want to test locally you can modify server to allow test mode.
+      console.warn("No initData available (not in Telegram). /api/init will likely reject signature.");
+    }
+
+    const r = await fetch(API_BASE + "/api/init", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: initDataRaw })
+    });
+
+    const data = await r.json();
+    if (!data.ok) {
+      console.warn("/api/init response:", data);
+      // If signature invalid, try to fallback to using initDataUnsafe for UI only (no DB)
+      if (tg?.initDataUnsafe?.user) {
+        const u = tg.initDataUnsafe.user;
+        profile = {
+          first_name: u.first_name || "Guest",
+          username: u.username || "",
+          avatar: u.photo_url || "",
+          balance: 0
+        };
+        updateProfileUI(profile);
+      }
+      return;
+    }
+
+    // got user from DB
+    profile = {
+      first_name: data.user.first_name || "Guest",
+      username: data.user.username || "",
+      avatar: data.user.photo_url || "",
+      balance: Number(data.user.balance || 0)
+    };
+    updateProfileUI(profile);
+
+    // load positions into local cache (and render)
+    window._positions = data.positions || [];
+    renderPositions();
+
+  } catch (err) {
+    console.error("initSession error:", err);
+  }
+}
 
 // ==============================
 // CHART (без изменений, только доступ к chart/timeScale)
