@@ -47,8 +47,10 @@ db.connect()
   });
 
 // ======================== TELEGRAM AUTH HELPERS ========================
-function telegramSecretKey() {
-  return crypto.createHash("sha256").update(process.env.BOT_TOKEN || "").digest();
+function telegramSecretKey(botToken) {
+  return crypto.createHmac("sha256", "WebAppData")
+               .update(botToken)
+               .digest();
 }
 
 function checkTelegramAuthInitData(initData) {
