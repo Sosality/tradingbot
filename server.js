@@ -278,7 +278,8 @@ app.post("/api/init", async (req, res) => {
       `${COOKIE_NAME}=${cookieVal}`,
       `Path=/`,
       `HttpOnly`,
-      `SameSite=Lax`,
+      `SameSite=None`,
+      `Secure`,
       `Max-Age=${60 * 60 * 24 * 30}`
     ];
     if (isSecure) cookieParts.push("Secure");
