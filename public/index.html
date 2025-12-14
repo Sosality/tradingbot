@@ -345,52 +345,83 @@ function unsubscribePair(pair){
 function handleWS(msg){
   if (!msg.type) return;
 
-  // ======== LONGER HISTORY HANDLING ========
   if (msg.type === "history") {
-      if (!msg.pair) return;
-      if (!pairHistory[msg.pair]) pairHistory[msg.pair] = [];
-
-      // Сохраняем массив свечей (ожидаем уже в формате time/open/..)
-      pairHistory[msg.pair] = msg.data.map(c => ({
-          time: c.time,
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close
-      }));
-
-      // Если это текущая выбранная пара — рисуем и СБРАСЫВАЕМ зум
-      if (msg.pair === selectedPair) {
-          const candles = pairHistory[msg.pair];
-          if (candles.length > 0) {
-              candleSeries.setData(candles);
-
-              // Сбрасываем зум: явно задаём видимый диапазон по всей истории
-              const firstTime = candles[0].time;
-              const lastTime = candles[candles.length - 1].time;
-              // Устанавливаем видимую область ровно под данные — это надёжнее, чем только fitContent()
-              try {
-                chart.timeScale().setVisibleRange({ from: firstTime, to: lastTime });
-              } catch(e){
-                // fallback
-                chart.timeScale().fitContent();
-              }
-
-              lastCandle = candles[candles.length - 1];
-              lastServerTime = lastCandle.time;
-              currentPrice = lastCandle ? lastCandle.close : 0;
-              updatePriceUI();
-          } else {
-              // если пришла пустая история — очищаем график
-              candleSeries.setData([]);
-              chart.timeScale().fitContent();
-              lastCandle = null;
-              currentPrice = 0;
-              updatePriceUI();
-          }
+    if (!msg.pair) return;
+    if (!pairHistory[msg.pair]) pairHistory[msg.pair] = [];
+    pairHistory[msg.pair] = msg.data.map(c => ({
+      time: c.time,
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close
+    }));
+    if (msg.pair === selectedPair) {
+      const candles = pairHistory[msg.pair];
+      if (candles.length > 0) {
+        candleSeries.setData(candles);
+        const firstTime = candles[0].time;
+        const lastTime = candles[candles.length - 1].time;
+        try {
+          chart.timeScale().setVisibleRange({ from: firstTime, to: lastTime + 60 }); // +60 чтобы текущая была видна
+        } catch(e){
+          chart.timeScale().fitContent();
+        }
+        lastCandle = { ...candles[candles.length - 1] }; // копия, чтобы не мутировать историю
+        lastServerTime = lastCandle.time;
+        currentPrice = lastCandle.close;
+        updatePriceUI();
+      } else {
+        candleSeries.setData([]);
+        chart.timeScale().fitContent();
+        lastCandle = null;
+        currentPrice = 0;
+        updatePriceUI();
       }
-      return;
+    }
+    return;
   }
+
+  if (msg.type === "price" && msg.pair === selectedPair){
+    currentPrice = Number(msg.price);
+
+    const now = Math.floor(Date.now() / 1000);
+    const currentMinute = now - (now % 60); // начало текущей минуты
+
+    if (!lastCandle) {
+      // Если нет свечи (редкий случай), просто обновляем цену
+      updatePriceUI();
+      return;
+    }
+
+    if (currentMinute === lastCandle.time) {
+      // Мы всё ещё в той же минуте — обновляем текущую свечу
+      lastCandle.high = Math.max(lastCandle.high, currentPrice);
+      lastCandle.low = Math.min(lastCandle.low, currentPrice);
+      lastCandle.close = currentPrice;
+      candleSeries.update(lastCandle);
+    } else {
+      // Переход в новую минуту — создаём новую свечу
+      lastCandle = {
+        time: currentMinute,
+        open: lastCandle.close, // открытие новой = закрытие предыдущей (continuity)
+        high: currentPrice,
+        low: currentPrice,
+        close: currentPrice
+      };
+      candleSeries.update(lastCandle);
+      lastServerTime = currentMinute; // для совместимости, если где-то используется
+    }
+    updatePriceUI();
+  }
+
+  // Orderbook и Trades без изменений
+  if (msg.type === "orderBook" && msg.pair === selectedPair){
+    renderOrderBook(msg.buy,msg.sell);
+  }
+  if (msg.type === "trades" && msg.pair === selectedPair){
+    renderTrades(msg.trades);
+  }
+}
 
   // ======== PRICE UPDATES ========
   if (msg.type === "price" && msg.pair === selectedPair){
