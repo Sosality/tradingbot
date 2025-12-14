@@ -268,20 +268,15 @@ const chart = LightweightCharts.createChart(chartDiv,{
   priceScale:{ borderVisible:false },
   timeScale:{ borderVisible:false }
 });
-
 let candleSeries = chart.addCandlestickSeries({
-  upColor:'rgba(14,190,131,1)',
-  borderUpColor:'rgba(14,190,131,1)',
-  wickUpColor:'rgba(14,190,131,1)',
-  downColor:'rgba(246,70,93,1)',
-  borderDownColor:'rgba(246,70,93,1)',
-  wickDownColor:'rgba(246,70,93,1)'
+  upColor:'rgba(14,190,131,1)', wickUpColor:'rgba(14,190,131,1)', borderUpColor:'rgba(14,190,131,1)',
+  downColor:'rgba(246,70,93,1)', wickDownColor:'rgba(246,70,93,1)', borderDownColor:'rgba(246,70,93,1)'
 });
 
 window.addEventListener("resize",()=>{
   chart.applyOptions({ width:chartDiv.clientWidth, height:chartDiv.clientHeight });
 });
-
+  
 // ==============================
 // STATE
 // ==============================
