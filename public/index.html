@@ -177,12 +177,18 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
 
 <script>
 (async function(){
+  // ==============================
+  // CONFIG
+  // ==============================
   const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com";
   const API_BASE = "https://tradingbot-p9n8.onrender.com";
 
+  // ==============================
+  // TELEGRAM INIT
+  // ==============================
   const tg = window.Telegram?.WebApp;
   tg?.ready();
-  tg?.expand(); // важно для мобильных
+  tg?.expand();
 
   let profile = { first_name:"Guest", username:"", photo_url:"", balance:0 };
 
@@ -212,7 +218,6 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
           body: JSON.stringify({ initData })
         });
       } else {
-        // fallback — если по какой-то причине initData пустой (редко), пробуем без него (сессия по кукам)
         response = await fetch(API_BASE + "/api/init", { method: "POST", body: JSON.stringify({}) });
       }
 
@@ -228,13 +233,12 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
         window._positions = data.positions || [];
         renderPositions();
       } else {
-        // Fallback на initDataUnsafe — для UI (аватарка и имя)
         if (tg?.initDataUnsafe?.user) {
           const u = tg.initDataUnsafe.user;
           profile = {
             first_name: u.first_name || "Guest",
             username: u.username || "",
-            photo_url: u.photo_url || "",   // ← вот откуда берётся аватарка
+            photo_url: u.photo_url || "",
             balance: 0
           };
         }
@@ -242,7 +246,6 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
       updateProfileUI(profile);
     } catch (err) {
       console.error("initSession error:", err);
-      // Даже при ошибке пытаемся показать хотя бы unsafe данные
       if (tg?.initDataUnsafe?.user) {
         const u = tg.initDataUnsafe.user;
         profile = {
@@ -253,299 +256,296 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
         };
         updateProfileUI(profile);
       }
+    }
   }
-}
 
-// ==============================
-// CHART (без изменений, только доступ к chart/timeScale)
-// ==============================
-const chartDiv = document.getElementById("chart");
-const chart = LightweightCharts.createChart(chartDiv,{
-  width: chartDiv.clientWidth,
-  height: chartDiv.clientHeight,
-  layout:{ background:{color:getComputedStyle(document.body).getPropertyValue('--bg')}, textColor:'#D1D8DE' },
-  grid:{ horzLines:{color:'rgba(255,255,255,0.03)'}, vertLines:{color:'rgba(255,255,255,0.03)'} },
-  priceScale:{ borderVisible:false },
-  timeScale:{ borderVisible:false }
-});
-let candleSeries = chart.addCandlestickSeries({
-  upColor:'rgba(14,190,131,1)', wickUpColor:'rgba(14,190,131,1)', borderUpColor:'rgba(14,190,131,1)',
-  downColor:'rgba(246,70,93,1)', wickDownColor:'rgba(246,70,93,1)', borderDownColor:'rgba(246,70,93,1)'
-});
+  // ==============================
+  // CHART SETUP
+  // ==============================
+  const chartDiv = document.getElementById("chart");
+  const chart = LightweightCharts.createChart(chartDiv,{
+    width: chartDiv.clientWidth,
+    height: chartDiv.clientHeight,
+    layout:{ background:{color:getComputedStyle(document.body).getPropertyValue('--bg')}, textColor:'#D1D8DE' },
+    grid:{ horzLines:{color:'rgba(255,255,255,0.03)'}, vertLines:{color:'rgba(255,255,255,0.03)'} },
+    priceScale:{ borderVisible:false },
+    timeScale:{ borderVisible:false }
+  });
 
-window.addEventListener("resize",()=>{
-  chart.applyOptions({ width:chartDiv.clientWidth, height:chartDiv.clientHeight });
-});
-  
-// ==============================
-// STATE
-// ==============================
-let selectedPair = "BTC-USD";
-let currentPrice = 0;
-let lastCandle = null;
-let lastServerTime = 0;
+  let candleSeries = chart.addCandlestickSeries({
+    upColor:'rgba(14,190,131,1)',
+    borderUpColor:'rgba(14,190,131,1)',
+    wickUpColor:'rgba(14,190,131,1)',
+    downColor:'rgba(246,70,93,1)',
+    borderDownColor:'rgba(246,70,93,1)',
+    wickDownColor:'rgba(246,70,93,1)'
+  });
 
-// локальный стор истории (кэш)
-const pairHistory = {
-  "BTC-USD": [],
-  "ETH-USD": []
-};
+  window.addEventListener("resize",()=>{
+    chart.applyOptions({ width:chartDiv.clientWidth, height:chartDiv.clientHeight });
+  });
 
-document.getElementById("pairLabel").textContent = "BTC / USD";
-document.getElementById("bookPairLabel").textContent = selectedPair;
-document.getElementById("tradesPairLabel").textContent = selectedPair;
+  // ==============================
+  // STATE
+  // ==============================
+  let selectedPair = "BTC-USD";
+  let currentPrice = 0;
+  let lastCandle = null; // текущая незавершённая свеча
 
-// ==============================
-// WS CLIENT
-// ==============================
-let socket = null;
-const wsStatus = document.getElementById("wsStatus");
-
-function connectWS(){
-  socket = new WebSocket(WSS_PRICE_URL);
-
-  socket.onopen = () => {
-    wsStatus.textContent = "connected";
-    // сразу подпишемся на выбранную пару
-    subscribePair(selectedPair);
+  const pairHistory = {
+    "BTC-USD": [],
+    "ETH-USD": []
   };
 
-  socket.onclose = () => {
-    wsStatus.textContent = "closed";
-    setTimeout(connectWS,1500);
-  };
+  document.getElementById("pairLabel").textContent = "BTC / USD";
+  document.getElementById("bookPairLabel").textContent = selectedPair;
+  document.getElementById("tradesPairLabel").textContent = selectedPair;
 
-  socket.onerror = () => {
-    wsStatus.textContent = "error";
-  };
+  // ==============================
+  // WS CLIENT
+  // ==============================
+  let socket = null;
+  const wsStatus = document.getElementById("wsStatus");
 
-  socket.onmessage = evt => {
-    try {
-      const msg = JSON.parse(evt.data);
-      handleWS(msg);
-    } catch(e){ console.error("WS parse error", e); }
-  };
-}
-
-function subscribePair(pair){
-  if (socket && socket.readyState === WebSocket.OPEN){
-    socket.send(JSON.stringify({ type:"subscribe", pair }));
+  function connectWS(){
+    socket = new WebSocket(WSS_PRICE_URL);
+    socket.onopen = () => {
+      wsStatus.textContent = "connected";
+      subscribePair(selectedPair);
+    };
+    socket.onclose = () => {
+      wsStatus.textContent = "closed";
+      setTimeout(connectWS, 1500);
+    };
+    socket.onerror = () => {
+      wsStatus.textContent = "error";
+    };
+    socket.onmessage = evt => {
+      try {
+        const msg = JSON.parse(evt.data);
+        handleWS(msg);
+      } catch(e){ console.error("WS parse error", e); }
+    };
   }
-}
 
-function unsubscribePair(pair){
-  if (socket && socket.readyState === WebSocket.OPEN){
-    socket.send(JSON.stringify({ type:"unsubscribe", pair }));
+  function subscribePair(pair){
+    if (socket && socket.readyState === WebSocket.OPEN){
+      socket.send(JSON.stringify({ type:"subscribe", pair }));
+    }
   }
-}
 
-// ==============================
-// WS HANDLER
-// ==============================
-function handleWS(msg){
-  if (!msg.type) return;
+  function unsubscribePair(pair){
+    if (socket && socket.readyState === WebSocket.OPEN){
+      socket.send(JSON.stringify({ type:"unsubscribe", pair }));
+    }
+  }
 
-  // ======== LONGER HISTORY HANDLING ========
-  if (msg.type === "history") {
+  // ==============================
+  // WS HANDLER — ИСПРАВЛЕННАЯ ЛОГИКА СВЕЧЕЙ
+  // ==============================
+  function handleWS(msg){
+    if (!msg.type) return;
+
+    // История закрытых свечей
+    if (msg.type === "history") {
       if (!msg.pair) return;
-      if (!pairHistory[msg.pair]) pairHistory[msg.pair] = [];
-
-      // Сохраняем массив свечей (ожидаем уже в формате time/open/..)
       pairHistory[msg.pair] = msg.data.map(c => ({
-          time: c.time,
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close
+        time: c.time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close
       }));
 
-      // Если это текущая выбранная пара — рисуем и СБРАСЫВАЕМ зум
       if (msg.pair === selectedPair) {
-          const candles = pairHistory[msg.pair];
-          if (candles.length > 0) {
-              candleSeries.setData(candles);
+        const candles = pairHistory[msg.pair];
+        if (candles.length > 0) {
+          candleSeries.setData(candles);
 
-              // Сбрасываем зум: явно задаём видимый диапазон по всей истории
-              const firstTime = candles[0].time;
-              const lastTime = candles[candles.length - 1].time;
-              // Устанавливаем видимую область ровно под данные — это надёжнее, чем только fitContent()
-              try {
-                chart.timeScale().setVisibleRange({ from: firstTime, to: lastTime });
-              } catch(e){
-                // fallback
-                chart.timeScale().fitContent();
-              }
+          const firstTime = candles[0].time;
+          const lastTime = candles[candles.length - 1].time;
 
-              lastCandle = candles[candles.length - 1];
-              lastServerTime = lastCandle.time;
-              currentPrice = lastCandle ? lastCandle.close : 0;
-              updatePriceUI();
-          } else {
-              // если пришла пустая история — очищаем график
-              candleSeries.setData([]);
-              chart.timeScale().fitContent();
-              lastCandle = null;
-              currentPrice = 0;
-              updatePriceUI();
+          try {
+            chart.timeScale().setVisibleRange({ from: firstTime, to: lastTime + 60 }); // +60 чтобы текущая свеча была видна
+          } catch(e) {
+            chart.timeScale().fitContent();
           }
+
+          // Копируем последнюю свечу как основу для текущей незавершённой
+          lastCandle = { ...candles[candles.length - 1] };
+          currentPrice = lastCandle.close;
+          updatePriceUI();
+        } else {
+          candleSeries.setData([]);
+          chart.timeScale().fitContent();
+          lastCandle = null;
+          currentPrice = 0;
+          updatePriceUI();
+        }
       }
       return;
+    }
+
+    // Обновление цены в реальном времени
+    if (msg.type === "price" && msg.pair === selectedPair){
+      currentPrice = Number(msg.price);
+
+      // Если истории ещё нет — просто обновляем UI цены
+      if (!lastCandle) {
+        updatePriceUI();
+        return;
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      const currentMinute = now - (now % 60); // начало текущей минуты
+
+      if (currentMinute === lastCandle.time) {
+        // Всё ещё та же минута — обновляем текущую свечу
+        lastCandle.high = Math.max(lastCandle.high, currentPrice);
+        lastCandle.low = Math.min(lastCandle.low, currentPrice);
+        lastCandle.close = currentPrice;
+        candleSeries.update(lastCandle);
+      } else {
+        // Новая минута — создаём новую незавершённую свечу
+        lastCandle = {
+          time: currentMinute,
+          open: lastCandle.close,  // continuity
+          high: currentPrice,
+          low: currentPrice,
+          close: currentPrice
+        };
+        candleSeries.update(lastCandle);
+      }
+
+      updatePriceUI();
+    }
+
+    // Orderbook и трейды
+    if (msg.type === "orderBook" && msg.pair === selectedPair){
+      renderOrderBook(msg.buy, msg.sell);
+    }
+    if (msg.type === "trades" && msg.pair === selectedPair){
+      renderTrades(msg.trades);
+    }
   }
 
-  // ======== PRICE UPDATES ========
-  if (msg.type === "price" && msg.pair === selectedPair){
-    currentPrice = Number(msg.price);
+  // ==============================
+  // UI RENDER
+  // ==============================
+  function updatePriceUI(){
+    document.getElementById("priceDisplay").textContent = currentPrice ? currentPrice.toFixed(2) : "—";
+  }
 
-    if (!lastCandle) return;
+  function renderOrderBook(buys, sells){
+    const el = document.getElementById("orderBook");
+    el.innerHTML = "";
+    sells.slice(0,20).forEach(s=>{
+      const r=document.createElement("div");
+      r.className="orderbook-row sell";
+      r.innerHTML=`<div class="price">${s.price.toFixed(2)}</div><div>${s.size.toFixed(4)}</div>`;
+      el.appendChild(r);
+    });
+    el.appendChild(Object.assign(document.createElement("div"),{style:"height:6px"}));
+    buys.slice(0,20).forEach(b=>{
+      const r=document.createElement("div");
+      r.className="orderbook-row buy";
+      r.innerHTML=`<div class="price">${b.price.toFixed(2)}</div><div>${b.size.toFixed(4)}</div>`;
+      el.appendChild(r);
+    });
+  }
 
-    // ✅ берём только серверное время
-    const serverTime = Math.floor(msg.ts / 1000);
+  function renderTrades(list){
+    const el=document.getElementById("tradeHistory");
+    el.innerHTML="";
+    (list||[]).slice().reverse().forEach(t=>{
+      const row=document.createElement("div");
+      row.className="trade-row";
+      const color = t.side==="buy" ? "var(--accent-green)" : "var(--accent-red)";
+      row.innerHTML = `
+        <div style="color:${color};font-family:Roboto Mono">${t.price.toFixed(2)}</div>
+        <div>${t.size.toFixed(3)}</div>
+        <div style="color:var(--muted);font-size:12px">${new Date(t.time).toLocaleTimeString()}</div>
+      `;
+      el.appendChild(row);
+    });
+  }
 
-    // если серверное время не сдвинулось — просто обновляем свечу
-    if (serverTime <= lastServerTime){
-      lastCandle.high  = Math.max(lastCandle.high, currentPrice);
-      lastCandle.low   = Math.min(lastCandle.low, currentPrice);
-      lastCandle.close = currentPrice;
-      candleSeries.update(lastCandle);
-      updatePriceUI();
+  function renderPositions(){
+    // Если у тебя есть своя реализация — вставь сюда, иначе оставь пустой
+    const el = document.getElementById("positionsList");
+    if (!window._positions || window._positions.length === 0) {
+      el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px 0">Нет открытых позиций</div>';
       return;
     }
-
-    // ✅ создаём новую свечу только когда сервер действительно дал новую минуту
-    lastServerTime = lastCandle.time + 60;
-
-    lastCandle = {
-      time: lastServerTime,
-      open: lastCandle.close,
-      high: currentPrice,
-      low: currentPrice,
-      close: currentPrice
-    };
-
-    candleSeries.update(lastCandle);
-    updatePriceUI();
-  }
-
-  // ======== ORDERBOOK / TRADES ========
-  if (msg.type === "orderBook" && msg.pair === selectedPair){
-    renderOrderBook(msg.buy,msg.sell);
-  }
-
-  if (msg.type === "trades" && msg.pair === selectedPair){
-    renderTrades(msg.trades);
-  }
-}
-
-// ==============================
-// UI RENDER (без изменений)
-// ==============================
-function updatePriceUI(){
-  document.getElementById("priceDisplay").textContent = currentPrice ? currentPrice.toFixed(2) : "—";
-}
-
-function renderOrderBook(buys,sells){
-  const el = document.getElementById("orderBook");
-  el.innerHTML = "";
-
-  sells.slice(0,20).forEach(s=>{
-    const r=document.createElement("div");
-    r.className="orderbook-row sell";
-    r.innerHTML=`<div class="price">${s.price.toFixed(2)}</div><div>${s.size.toFixed(4)}</div>`;
-    el.appendChild(r);
-  });
-
-  el.appendChild(Object.assign(document.createElement("div"),{style:"height:6px"}));
-
-  buys.slice(0,20).forEach(b=>{
-    const r=document.createElement("div");
-    r.className="orderbook-row buy";
-    r.innerHTML=`<div class="price">${b.price.toFixed(2)}</div><div>${b.size.toFixed(4)}</div>`;
-    el.appendChild(r);
-  });
-}
-
-function renderTrades(list){
-  const el=document.getElementById("tradeHistory");
-  el.innerHTML="";
-  (list||[]).slice().reverse().forEach(t=>{
-    const row=document.createElement("div");
-    row.className="trade-row";
-    const color = t.side==="buy" ? "var(--accent-green)" : "var(--accent-red)";
-    row.innerHTML = `
-      <div style="color:${color};font-family:Roboto Mono">${t.price.toFixed(2)}</div>
-      <div>${t.size.toFixed(3)}</div>
-      <div style="color:var(--muted);font-size:12px">${new Date(t.time).toLocaleTimeString()}</div>
-    `;
-    el.appendChild(row);
-  });
-}
-
-// ==============================
-// PAIR SWITCH — HARD RESET PRICE SCALE
-// ==============================
-document.querySelectorAll(".pair-btn").forEach(btn=>{
-  btn.addEventListener("click",()=>{
-
-    document.querySelectorAll(".pair-btn").forEach(x=>x.classList.remove("active"));
-    btn.classList.add("active");
-
-    const newPair = btn.dataset.pair;
-    if (newPair === selectedPair) return;
-
-    // 1) Unsubscribe
-    unsubscribePair(selectedPair);
-
-    // 2) ПОЛНЫЙ СБРОС СЕРИИ И price scale
-    chart.removeSeries(candleSeries);
-    const newSeries = chart.addCandlestickSeries({
-      upColor:'rgba(14,190,131,1)',
-      borderUpColor:'rgba(14,190,131,1)',
-      wickUpColor:'rgba(14,190,131,1)',
-      downColor:'rgba(246,70,93,1)',
-      borderDownColor:'rgba(246,70,93,1)',
-      wickDownColor:'rgba(246,70,93,1)'
+    // Пример простой отрисовки — можешь заменить на свою
+    el.innerHTML = "";
+    window._positions.forEach(pos => {
+      const div = document.createElement("div");
+      div.className = "pos-card";
+      div.innerHTML = `
+        <div>${pos.type} ${selectedPair}</div>
+        <div>Entry: ${pos.entry_price}</div>
+      `;
+      el.appendChild(div);
     });
+  }
 
-    // сохраняем ссылку
-    window.__series = newSeries;
+  // ==============================
+  // PAIR SWITCH
+  // ==============================
+  document.querySelectorAll(".pair-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      document.querySelectorAll(".pair-btn").forEach(x=>x.classList.remove("active"));
+      btn.classList.add("active");
+      const newPair = btn.dataset.pair;
+      if (newPair === selectedPair) return;
 
-    // переписываем глобальные ссылки
-    candleSeries = newSeries;
-    lastCandle = null;
-    currentPrice = 0;
-    updatePriceUI();
+      unsubscribePair(selectedPair);
 
-    document.getElementById("orderBook").innerHTML="";
-    document.getElementById("tradeHistory").innerHTML="";
+      chart.removeSeries(candleSeries);
+      const newSeries = chart.addCandlestickSeries({
+        upColor:'rgba(14,190,131,1)',
+        borderUpColor:'rgba(14,190,131,1)',
+        wickUpColor:'rgba(14,190,131,1)',
+        downColor:'rgba(246,70,93,1)',
+        borderDownColor:'rgba(246,70,93,1)',
+        wickDownColor:'rgba(246,70,93,1)'
+      });
+      candleSeries = newSeries;
 
-    selectedPair = newPair;
-
-    document.getElementById("pairLabel").textContent = newPair.replace("-"," / ");
-    document.getElementById("bookPairLabel").textContent = newPair;
-    document.getElementById("tradesPairLabel").textContent = newPair;
-
-    // 3) если есть кэш — заново отрисовываем
-    if (pairHistory[selectedPair]?.length) {
-      candleSeries.setData(pairHistory[selectedPair]);
-      chart.timeScale().fitContent();
-      lastCandle = pairHistory[selectedPair].slice(-1)[0];
-      currentPrice = lastCandle?.close || 0;
+      lastCandle = null;
+      currentPrice = 0;
       updatePriceUI();
-    }
+      document.getElementById("orderBook").innerHTML="";
+      document.getElementById("tradeHistory").innerHTML="";
 
-    // 4) подписка на новую пару
-    subscribePair(selectedPair);
+      selectedPair = newPair;
+      document.getElementById("pairLabel").textContent = newPair.replace("-"," / ");
+      document.getElementById("bookPairLabel").textContent = newPair;
+      document.getElementById("tradesPairLabel").textContent = newPair;
+
+      if (pairHistory[selectedPair]?.length) {
+        candleSeries.setData(pairHistory[selectedPair]);
+        chart.timeScale().fitContent();
+
+        const lastHist = pairHistory[selectedPair].slice(-1)[0];
+        if (lastHist) {
+          lastCandle = { ...lastHist };
+          currentPrice = lastCandle.close;
+          updatePriceUI();
+        }
+      }
+
+      subscribePair(selectedPair);
+    });
   });
-});
 
-// ==============================
-// START
-// ==============================
-await initSession();
-connectWS();
-
+  // ==============================
+  // START
+  // ==============================
+  await initSession();
+  connectWS();
 })();
 </script>
-
 </body>
 </html>
