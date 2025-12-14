@@ -1,96 +1,103 @@
-// server.js
 import dotenv from "dotenv";
 dotenv.config();
-
 import express from "express";
 import crypto from "crypto";
 import cors from "cors";
 import { Pool } from "pg";
-import querystring from "querystring";
 
 const app = express();
 
-// ИЗМЕНЕНИЕ 1: Настраиваем CORS для передачи сессионных куки
 app.use(cors({
-  origin: true, // Разрешает любые домены (фронтенд)
-  credentials: true // Разрешает передачу кук/сессий
+  origin: true,                  // или укажи свой домен, например "https://твой-домен.onrender.com"
+  credentials: true
 }));
-
 app.use(express.json());
 app.use(express.static("public"));
 
-// require env
-if (!process.env.DATABASE_URL) {
+// Проверки env
 if (!process.env.BOT_TOKEN) {
   console.warn("BOT_TOKEN not set! Telegram signature verification will fail.");
 }
+if (!process.env.DATABASE_URL) {
+  console.error("DATABASE_URL not set! Server will crash.");
+  process.exit(1);
+}
 
+// Создаём пул БД ВНЕ условий
 const db = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// Helper: create secretKey per Telegram docs
+// Helper: secret key по документации Telegram
 function telegramSecretKey() {
   return crypto.createHash("sha256").update(process.env.BOT_TOKEN || "").digest();
 }
 
-// Проверка подписанного initData string (Telegram WebApp)
+// Проверка initData (WebApp)
 function checkTelegramAuthInitData(initData) {
   try {
     const params = new URLSearchParams(initData);
     const hash = params.get("hash");
     if (!hash) return false;
     params.delete("hash");
-    const dataCheckString = [...params.entries()].sort().map(([k,v]) => `${k}=${v}`).join("\n");
+
+    // Правильная сортировка по ключу
+    const dataCheckString = Array.from(params.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${k}=${v}`)
+      .join("\n");
+
     const secretKey = telegramSecretKey();
     const computed = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
     return computed === hash;
   } catch (e) {
-    console.error("checkTelegramAuthInitData err", e.message || e);
+    console.error("checkTelegramAuthInitData err", e);
     return false;
   }
 }
 
-// Проверка подписанных query params от Telegram Login Widget (GET)
+// Проверка query-параметров (Login Widget)
 function checkTelegramAuthParams(paramsObj) {
   try {
-    // paramsObj is object from req.query
     const copy = { ...paramsObj };
     const hash = copy.hash;
     if (!hash) return false;
     delete copy.hash;
-    delete copy.redirect; // we may have redirect param, ignore it for check
+    delete copy.redirect;
 
     const dataCheckString = Object.keys(copy)
       .sort()
       .map(k => `${k}=${copy[k]}`)
       .join("\n");
+
     const secretKey = telegramSecretKey();
     const computed = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
     return computed === hash;
   } catch (e) {
-    console.error("checkTelegramAuthParams err", e.message || e);
+    console.error("checkTelegramAuthParams err", e);
     return false;
   }
 }
 
-// Session cookie helpers
+// Session cookie
 const COOKIE_NAME = "tg_session";
 function makeSessionCookieValue(userId) {
   const secret = process.env.COOKIE_SECRET || process.env.BOT_TOKEN || "fallback_secret";
   const mac = crypto.createHmac("sha256", secret).update(String(userId)).digest("hex");
   return `${userId}:${mac}`;
 }
+
 function verifySessionCookieValue(val) {
   if (!val || typeof val !== "string") return false;
   const [userId, mac] = val.split(":");
   if (!userId || !mac) return false;
-  const expected = crypto.createHmac("sha256", (process.env.COOKIE_SECRET || process.env.BOT_TOKEN || "fallback_secret")).update(String(userId)).digest("hex");
-  return mac === expected ? userId : false;
+  const secret = process.env.COOKIE_SECRET || process.env.BOT_TOKEN || "fallback_secret";
+  const expected = crypto.createHmac("sha256", secret).update(String(userId)).digest("hex");
+  return mac === expected ? Number(userId) || userId : false; // возвращаем как есть
 }
 
-// DB init
+// Инициализация БД
 async function initDB() {
   await db.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -99,11 +106,10 @@ async function initDB() {
       username TEXT,
       photo_url TEXT,
       balance NUMERIC NOT NULL DEFAULT 1000,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
-
   await db.query(`
     CREATE TABLE IF NOT EXISTS positions (
       id BIGSERIAL PRIMARY KEY,
@@ -113,149 +119,144 @@ async function initDB() {
       margin NUMERIC NOT NULL,
       leverage INT NOT NULL,
       size NUMERIC NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW()
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
-  console.log("DB initialized");
+  console.log("DB tables ensured");
 }
 await initDB();
 
-// Helper: create / update user record
+// Upsert пользователя
 async function upsertUserFromObj(userObj) {
   const userId = String(userObj.id);
-  await db.query(
-    `INSERT INTO users(user_id, first_name, username, photo_url)
-     VALUES ($1,$2,$3,$4) ON CONFLICT(user_id) DO UPDATE
-       SET first_name = EXCLUDED.first_name,
-           username = EXCLUDED.username,
-           photo_url = EXCLUDED.photo_url,
-           updated_at = NOW()`,
-    [userId, userObj.first_name || null, userObj.username || null, userObj.photo_url || null]
+  await db.query(`
+    INSERT INTO users (user_id, first_name, username, photo_url)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (user_id) DO UPDATE SET
+      first_name = EXCLUDED.first_name,
+      username = EXCLUDED.username,
+      photo_url = EXCLUDED.photo_url,
+      updated_at = CURRENT_TIMESTAMP
+  `, [userId, userObj.first_name || null, userObj.username || null, userObj.photo_url || null]);
+
+  const res = await db.query(
+    "SELECT user_id, first_name, username, photo_url, balance FROM users WHERE user_id = $1",
+    [userId]
   );
-  const res = await db.query("SELECT user_id, first_name, username, photo_url, balance FROM users WHERE user_id=$1", [userId]);
   return res.rows[0];
 }
 
-// ===== /auth/telegram  <-- endpoint для Telegram Login Widget (GET)
-// Telegram widget делает GET на data-auth-url с параметрами user + hash
+// /auth/telegram — для Login Widget (не обязателен для Mini App, но оставляем)
 app.get("/auth/telegram", async (req, res) => {
   try {
-    const params = req.query || {};
+    const params = req.query;
     const redirectTo = params.redirect || "/";
-    const ok = checkTelegramAuthParams(params);
-    if (!ok) {
-      console.warn("Telegram login widget signature invalid");
+    if (!checkTelegramAuthParams(params)) {
       return res.status(403).send("Invalid Telegram signature");
     }
-    // build user from params
+
     const user = {
       id: params.id,
       first_name: params.first_name,
-      last_name: params.last_name,
       username: params.username,
       photo_url: params.photo_url
     };
-    // upsert user
-    const userRow = await upsertUserFromObj(user);
 
-    // set cookie
+    const userRow = await upsertUserFromObj(user);
     const cookieVal = makeSessionCookieValue(userRow.user_id);
-    // set secure cookie (if deployed under https)
-    const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
-    // set secure cookie (if deployed under https)
-    const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
-    // set secure cookie (if deployed under https)
-    // ИЗМЕНЕНИЕ 2: SameSite=None + Secure для работы в iframe/Webview Telegram
+
     const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
     const cookieParts = [
       `${COOKIE_NAME}=${cookieVal}`,
       `Path=/`,
       `HttpOnly`,
-      `SameSite=None`, // Важно для работы внутри Телеграма и кросс-доменов
-      `Max-Age=${60 * 60 * 24 * 30}` // 30 days
+      `SameSite=None`,
+      `Max-Age=${60 * 60 * 24 * 30}`
     ];
-    if (isSecure) cookieParts.push("Secure"); // Secure обязателен при SameSite=None
+    if (isSecure) cookieParts.push("Secure");
+
     res.setHeader("Set-Cookie", cookieParts.join("; "));
-    // redirect back to app
-    return res.redirect(redirectTo);
+    res.redirect(redirectTo);
   } catch (err) {
     console.error("/auth/telegram error", err);
-    return res.status(500).send("Server error");
+    res.status(500).send("Server error");
   }
 });
 
-// ===== /api/init  <-- поддерживает оба пути: initData (Telegram WebApp) или cookie-сессию
+// Основной эндпоинт для Mini App
 app.post("/api/init", async (req, res) => {
   try {
     const { initData } = req.body;
 
-    // 1) если пришёл initData (Telegram WebApp в iframe) — проверяем и используем
+    let userRow;
+
     if (initData) {
-      const okSig = checkTelegramAuthInitData(initData);
-      if (!okSig) {
-        if (process.env.DEV_ALLOW_BYPASS === "1") {
-          console.warn("DEV_ALLOW_BYPASS active — accepting invalid initData");
-        } else {
-          return res.status(403).json({ ok: false, error: "INVALID_SIGNATURE" });
-        }
+      // Проверка подписи
+      if (!checkTelegramAuthInitData(initData) && process.env.DEV_ALLOW_BYPASS !== "1") {
+        return res.status(403).json({ ok: false, error: "INVALID_SIGNATURE" });
       }
+
       const params = new URLSearchParams(initData);
       const rawUser = params.get("user");
       if (!rawUser) return res.status(400).json({ ok: false, error: "NO_USER" });
+
       const userObj = JSON.parse(rawUser);
-      const userRow = await upsertUserFromObj(userObj);
-      const positionsRes = await db.query("SELECT * FROM positions WHERE user_id=$1 ORDER BY created_at ASC", [userRow.user_id]);
-      // set session cookie so subsequent loads from browser work
-      const cookieVal = makeSessionCookieValue(userRow.user_id);
-      const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
-      const cookieParts = [
-        `${COOKIE_NAME}=${cookieVal}`,
-        `Path=/`,
-        `HttpOnly`,
-        `SameSite=Lax`,
-        `Max-Age=${60 * 60 * 24 * 30}` // 30 days
-      ];
-      if (isSecure) cookieParts.push("Secure");
-      res.setHeader("Set-Cookie", cookieParts.join("; "));
-      return res.json({ ok: true, user: userRow, positions: positionsRes.rows });
+      userRow = await upsertUserFromObj(userObj);
+    } else {
+      // Fallback на куки
+      const cookieHeader = req.headers.cookie || "";
+      const cookies = Object.fromEntries(
+        cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
+      );
+      const sessionVal = cookies[COOKIE_NAME];
+      const userId = verifySessionCookieValue(sessionVal);
+
+      if (!userId) return res.status(401).json({ ok: false, error: "NO_SESSION" });
+
+      const ures = await db.query(
+        "SELECT user_id, first_name, username, photo_url, balance FROM users WHERE user_id = $1",
+        [userId]
+      );
+      if (!ures.rows.length) return res.status(404).json({ ok: false, error: "NO_USER" });
+      userRow = ures.rows[0];
     }
 
-    // 2) Если initData нет — пытаемся восстановить по cookie-сессии
-    const cookies = (req.headers.cookie || "").split(";").map(s => s.trim()).filter(Boolean);
-    const cookieObj = {};
-    cookies.forEach(c => {
-      const idx = c.indexOf("=");
-      if (idx === -1) return;
-      cookieObj[c.slice(0, idx)] = c.slice(idx + 1);
-    });
-    const sessionVal = cookieObj[COOKIE_NAME];
-    const userId = verifySessionCookieValue(sessionVal);
-    if (userId) {
-      const ures = await db.query("SELECT user_id, first_name, username, photo_url, balance FROM users WHERE user_id=$1", [userId]);
-      if (!ures.rows.length) return res.status(404).json({ ok:false, error: "NO_USER" });
-      const positionsRes = await db.query("SELECT * FROM positions WHERE user_id=$1 ORDER BY created_at ASC", [userId]);
-      return res.json({ ok:true, user: ures.rows[0], positions: positionsRes.rows });
-    }
+    // Загружаем позиции
+    const positionsRes = await db.query(
+      "SELECT * FROM positions WHERE user_id = $1 ORDER BY created_at ASC",
+      [userRow.user_id]
+    );
 
-    // nothing found
-    return res.status(400).json({ ok: false, error: "NO_INIT_DATA" });
+    // Устанавливаем куки (на всякий случай, даже если пришёл initData)
+    const cookieVal = makeSessionCookieValue(userRow.user_id);
+    const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
+    const cookieParts = [
+      `${COOKIE_NAME}=${cookieVal}`,
+      `Path=/`,
+      `HttpOnly`,
+      `SameSite=Lax`,
+      `Max-Age=${60 * 60 * 24 * 30}`
+    ];
+    if (isSecure) cookieParts.push("Secure");
+    res.setHeader("Set-Cookie", cookieParts.join("; "));
 
+    res.json({ ok: true, user: userRow, positions: positionsRes.rows });
   } catch (err) {
     console.error("/api/init error:", err);
-    return res.status(500).json({ ok: false, error: "SERVER_ERROR" });
+    res.status(500).json({ ok: false, error: "SERVER_ERROR" });
   }
 });
 
-// keep your order endpoints (open/close) unchanged or copy existing ones
+// Заглушки для ордеров (реализуешь позже)
 app.post("/api/order/open", async (req, res) => {
-  // Implement or copy your previous logic here (use DB)
-  return res.status(501).json({ ok:false, error: "NOT_IMPLEMENTED" });
+  res.status(501).json({ ok: false, error: "NOT_IMPLEMENTED" });
 });
+
 app.post("/api/order/close", async (req, res) => {
-  return res.status(501).json({ ok:false, error: "NOT_IMPLEMENTED" });
+  res.status(501).json({ ok: false, error: "NOT_IMPLEMENTED" });
 });
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server started on", PORT));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
