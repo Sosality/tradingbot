@@ -48,6 +48,7 @@ db.connect()
 
 // ======================== TELEGRAM AUTH HELPERS ========================
 function telegramSecretKey(botToken) {
+  if (!botToken) return Buffer.from("");
   return crypto.createHmac("sha256", "WebAppData")
                .update(botToken)
                .digest();
