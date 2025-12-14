@@ -55,7 +55,8 @@ function telegramSecretKey(botToken) {
 
 function checkTelegramAuthInitData(initData) {
   try {
-    console.log("🔍 Checking initData signature...");
+    console.log("🔍 Checking initData signature (NEW METHOD)...");
+
     const params = new URLSearchParams(initData);
     const hash = params.get("hash");
     if (!hash) {
@@ -63,17 +64,25 @@ function checkTelegramAuthInitData(initData) {
       return false;
     }
     params.delete("hash");
+    // Игнорируем новое поле signature, если оно есть (оно не участвует в hash)
+    params.delete("signature");
 
     const dataCheckString = Array.from(params.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => `${k}=${v}`)
       .join("\n");
 
-    const secretKey = telegramSecretKey();
-    const computed = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
+    console.log("Data check string:\n", dataCheckString);
+
+    const secretKey = telegramSecretKey(process.env.BOT_TOKEN || "");
+    const computed = crypto.createHmac("sha256", secretKey)
+                           .update(dataCheckString)
+                           .digest("hex");
 
     const isValid = computed === hash;
-    console.log(isValid ? "✅ initData signature valid" : "❌ initData signature INVALID");
+    console.log(isValid ? "✅ initData signature VALID" : "❌ initData signature INVALID");
+    console.log("Computed hash:", computed);
+    console.log("Received hash:", hash);
     return isValid;
   } catch (e) {
     console.error("💥 Error checking initData:", e);
