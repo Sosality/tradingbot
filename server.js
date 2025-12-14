@@ -212,6 +212,7 @@ app.post("/api/init", async (req, res) => {
       if (!sigValid) console.log("⚠️ Signature invalid but DEV_ALLOW_BYPASS enabled");
 
       const params = new URLSearchParams(initData);
+      params.delete("signature");
       const rawUser = params.get("user");
       if (!rawUser) {
         console.log("❌ No 'user' field in initData");
