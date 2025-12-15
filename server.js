@@ -56,7 +56,7 @@ function telegramSecretKey(botToken) {
 
 function checkTelegramAuthInitData(initData) {
   try {
-    console.log("🔍 Checking Telegram initData signature (OFFICIAL METHOD)...");
+    console.log("🔍 Checking Telegram initData signature (FINAL CORRECT METHOD)...");
 
     const params = new URLSearchParams(initData);
     const receivedHash = params.get("hash");
@@ -66,7 +66,7 @@ function checkTelegramAuthInitData(initData) {
     }
     params.delete("hash");
 
-    // Удаляем signature (новое поле, не участвует в проверке hash)
+    // Удаляем signature, если присутствует
     if (params.has("signature")) {
       console.log("🗑️ Removing 'signature' field from validation");
       params.delete("signature");
@@ -86,7 +86,7 @@ function checkTelegramAuthInitData(initData) {
 
     const isValid = computedHash === receivedHash;
     if (isValid) {
-      console.log("✅ Telegram initData signature VALID!");
+      console.log("✅ Telegram initData signature VALID! 🎉");
     } else {
       console.log("❌ Telegram initData signature INVALID");
       console.log("Computed:", computedHash);
