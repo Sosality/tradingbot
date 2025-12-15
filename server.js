@@ -4,6 +4,7 @@ import express from "express";
 import crypto from "crypto";
 import cors from "cors";
 import { Pool } from "pg";
+import { validate } from '@telegram-apps/init-data-node';
 
 const app = express();
 
@@ -57,48 +58,18 @@ function telegramSecretKey(botToken) {
 
 function checkTelegramAuthInitData(initData) {
   try {
-    console.log("🔍 Checking Telegram initData signature (OFFICIAL METHOD FROM DOCS)...");
+    console.log("🔍 Validating initData with official @telegram-apps/init-data-node library...");
 
-    const params = new URLSearchParams(initData);
-    const receivedHash = params.get("hash");
-    if (!receivedHash) {
-      console.log("❌ initData has no hash");
-      return false;
-    }
-    params.delete("hash");
+    // Библиотека автоматически обрабатывает и hash, и signature (с padding!), и выбирает правильный метод
+    validate(initData, process.env.BOT_TOKEN);
 
-    // Удаляем signature (не участвует в проверке hash)
-    if (params.has("signature")) {
-      console.log("🗑️ Removing 'signature' field from validation");
-      params.delete("signature");
-    }
-
-    // Строим data_check_string без декодирования URL (значения остаются encoded, как в initData)
-    const pairs = [];
-    for (const [key, value] of params) {
-      pairs.push(`${key}=${value}`);
-    }
-    pairs.sort();
-    const dataCheckString = pairs.join("\n");
-
-    console.log("Data check string:\n", dataCheckString);
-
-    const secretKey = telegramSecretKey(process.env.BOT_TOKEN || "");
-    const computedHash = crypto.createHmac("sha256", secretKey)
-                               .update(dataCheckString)
-                               .digest("hex");
-
-    const isValid = computedHash === receivedHash.toLowerCase(); // на всякий случай lowercase
-    if (isValid) {
-      console.log("✅ Telegram initData signature VALID! 🎉🎉🎉");
-    } else {
-      console.log("❌ Telegram initData signature INVALID");
-      console.log("Computed:", computedHash);
-      console.log("Received:", receivedHash);
-    }
-    return isValid;
+    console.log("✅ initData signature VALID (library confirmed)!");
+    return true;
   } catch (err) {
-    console.error("💥 Error verifying initData:", err);
+    console.error("❌ initData validation FAILED:", err.message);
+    if (err.message.includes("SIGN_INVALID")) {
+      console.log("Possible causes: wrong BOT_TOKEN, outdated initData, or Telegram bug with signature");
+    }
     return false;
   }
 }
