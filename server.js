@@ -315,7 +315,7 @@ async function getAuthenticatedUser(req) {
 app.post("/api/order/open", async (req, res) => {
   console.log("/api/order/open called:", req.body);
   try {
-    const user = await getUserFromRequest(req);
+    const user = await getAuthenticatedUser(req);
     const { pair, type, size, leverage, entryPrice } = req.body; // type: "LONG" или "SHORT"
 
     if (!pair || !type || !size || !leverage || !entryPrice) {
