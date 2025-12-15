@@ -47,16 +47,17 @@ db.connect()
   });
 
 // ======================== TELEGRAM AUTH HELPERS ========================
+// ПРАВИЛЬНЫЙ secret key для Mini Apps (bot-token method)
 function telegramSecretKey(botToken) {
   if (!botToken) return Buffer.from("");
   return crypto.createHmac("sha256", "WebAppData")
                .update(botToken)
-               .digest();
+               .digest(); // binary digest
 }
 
 function checkTelegramAuthInitData(initData) {
   try {
-    console.log("🔍 Checking Telegram initData signature (FINAL CORRECT METHOD)...");
+    console.log("🔍 Checking Telegram initData signature (OFFICIAL METHOD FROM DOCS)...");
 
     const params = new URLSearchParams(initData);
     const receivedHash = params.get("hash");
@@ -66,16 +67,19 @@ function checkTelegramAuthInitData(initData) {
     }
     params.delete("hash");
 
-    // Удаляем signature, если присутствует
+    // Удаляем signature (не участвует в проверке hash)
     if (params.has("signature")) {
       console.log("🗑️ Removing 'signature' field from validation");
       params.delete("signature");
     }
 
-    const dataCheckString = Array.from(params.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([k, v]) => `${k}=${v}`)
-      .join("\n");
+    // Строим data_check_string без декодирования URL (значения остаются encoded, как в initData)
+    const pairs = [];
+    for (const [key, value] of params) {
+      pairs.push(`${key}=${value}`);
+    }
+    pairs.sort();
+    const dataCheckString = pairs.join("\n");
 
     console.log("Data check string:\n", dataCheckString);
 
@@ -84,9 +88,9 @@ function checkTelegramAuthInitData(initData) {
                                .update(dataCheckString)
                                .digest("hex");
 
-    const isValid = computedHash === receivedHash;
+    const isValid = computedHash === receivedHash.toLowerCase(); // на всякий случай lowercase
     if (isValid) {
-      console.log("✅ Telegram initData signature VALID! 🎉");
+      console.log("✅ Telegram initData signature VALID! 🎉🎉🎉");
     } else {
       console.log("❌ Telegram initData signature INVALID");
       console.log("Computed:", computedHash);
