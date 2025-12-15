@@ -231,8 +231,10 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
           photo_url: data.user.photo_url || "",
           balance: Number(data.user.balance || 0)
         };
+        currentUserId = data.user.user_id; // ← сохраняем ID
         window._positions = data.positions || [];
         renderPositions();
+      }
       } else {
         if (tg?.initDataUnsafe?.user) {
           const u = tg.initDataUnsafe.user;
