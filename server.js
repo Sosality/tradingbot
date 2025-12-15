@@ -281,13 +281,26 @@ app.post("/api/init", async (req, res) => {
 // ======================== ORDER ENDPOINTS ========================
 
 // Получаем user_id из сессии (куки) — общая функция
-async function getUserFromRequest(req) {
-  const cookieHeader = req.headers.cookie || "";
-  const cookies = Object.fromEntries(
-    cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
-  );
-  const sessionVal = cookies[COOKIE_NAME];
-  const userId = verifySessionCookieValue(sessionVal);
+async function getAuthenticatedUser(req) {
+  let userId;
+
+  // Приоритет 1: userId из тела запроса (надёжно из Mini App)
+  if (req.body && req.body.userId) {
+    userId = String(req.body.userId);
+    console.log(`Authenticated via userId from body: ${userId}`);
+  } else {
+    // Приоритет 2: fallback на куки (для браузера вне Telegram)
+    const cookieHeader = req.headers.cookie || "";
+    const cookies = Object.fromEntries(
+      cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
+    );
+    const sessionVal = cookies[COOKIE_NAME];
+    userId = verifySessionCookieValue(sessionVal);
+    if (userId) {
+      console.log(`Authenticated via cookie: ${userId}`);
+    }
+  }
+
   if (!userId) throw new Error("NO_SESSION");
 
   const res = await db.query(
@@ -295,6 +308,7 @@ async function getUserFromRequest(req) {
     [userId]
   );
   if (!res.rows.length) throw new Error("NO_USER");
+
   return res.rows[0];
 }
 
