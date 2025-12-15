@@ -48,18 +48,15 @@ db.connect()
 
 // ======================== TELEGRAM AUTH HELPERS ========================
 function telegramSecretKey(botToken) {
-  // ✅ ОФИЦИАЛЬНЫЙ АЛГОРИТМ TELEGRAM
-  // secret_key = HMAC_SHA256(bot_token, "WebAppData")
   if (!botToken) return Buffer.from("");
-  return crypto
-    .createHmac("sha256", botToken)
-    .update("WebAppData")
-    .digest();
+  return crypto.createHmac("sha256", "WebAppData")
+               .update(botToken)
+               .digest();
 }
 
 function checkTelegramAuthInitData(initData) {
   try {
-    console.log("🔍 Checking Telegram initData signature...");
+    console.log("🔍 Checking Telegram initData signature (OFFICIAL METHOD)...");
 
     const params = new URLSearchParams(initData);
     const receivedHash = params.get("hash");
@@ -67,33 +64,34 @@ function checkTelegramAuthInitData(initData) {
       console.log("❌ initData has no hash");
       return false;
     }
-
     params.delete("hash");
-    if (params.has("signature")) params.delete("signature");
 
-    const dataCheckString = [...params.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
+    // Удаляем signature (новое поле, не участвует в проверке hash)
+    if (params.has("signature")) {
+      console.log("🗑️ Removing 'signature' field from validation");
+      params.delete("signature");
+    }
+
+    const dataCheckString = Array.from(params.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => `${k}=${v}`)
       .join("\n");
 
     console.log("Data check string:\n", dataCheckString);
 
-    const secretKey = telegramSecretKey(process.env.BOT_TOKEN);
-    const computedHash = crypto
-      .createHmac("sha256", secretKey)
-      .update(dataCheckString)
-      .digest("hex");
+    const secretKey = telegramSecretKey(process.env.BOT_TOKEN || "");
+    const computedHash = crypto.createHmac("sha256", secretKey)
+                               .update(dataCheckString)
+                               .digest("hex");
 
     const isValid = computedHash === receivedHash;
-
     if (isValid) {
-      console.log("✅ Telegram initData signature VALID");
+      console.log("✅ Telegram initData signature VALID!");
     } else {
       console.log("❌ Telegram initData signature INVALID");
       console.log("Computed:", computedHash);
       console.log("Received:", receivedHash);
     }
-
     return isValid;
   } catch (err) {
     console.error("💥 Error verifying initData:", err);
