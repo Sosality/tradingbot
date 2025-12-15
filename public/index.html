@@ -517,6 +517,7 @@ function openPosition(side) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        userId: currentUserId, // ← добавь
         pair: selectedPair,
         type: side,
         size: size,
