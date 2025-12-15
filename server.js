@@ -278,16 +278,116 @@ app.post("/api/init", async (req, res) => {
   }
 });
 
+// ======================== ORDER ENDPOINTS ========================
+
+// Получаем user_id из сессии (куки) — общая функция
+async function getUserFromRequest(req) {
+  const cookieHeader = req.headers.cookie || "";
+  const cookies = Object.fromEntries(
+    cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
+  );
+  const sessionVal = cookies[COOKIE_NAME];
+  const userId = verifySessionCookieValue(sessionVal);
+  if (!userId) throw new Error("NO_SESSION");
+
+  const res = await db.query(
+    "SELECT user_id, balance FROM users WHERE user_id = $1",
+    [userId]
+  );
+  if (!res.rows.length) throw new Error("NO_USER");
+  return res.rows[0];
+}
+
 app.post("/api/order/open", async (req, res) => {
   console.log("/api/order/open called:", req.body);
-  res.status(501).json({ ok: false, error: "NOT_IMPLEMENTED" });
+  try {
+    const user = await getUserFromRequest(req);
+    const { pair, type, size, leverage, entryPrice } = req.body; // type: "LONG" или "SHORT"
+
+    if (!pair || !type || !size || !leverage || !entryPrice) {
+      return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
+    }
+
+    const margin = Number(size) / Number(leverage);
+    if (margin > Number(user.balance)) {
+      return res.status(400).json({ ok: false, error: "INSUFFICIENT_BALANCE", required: margin, available: user.balance });
+    }
+
+    // Замораживаем маржу
+    await db.query(
+      "UPDATE users SET balance = balance - $1 WHERE user_id = $2",
+      [margin, user.user_id]
+    );
+
+    // Сохраняем позицию
+    const posRes = await db.query(`
+      INSERT INTO positions (user_id, type, entry_price, margin, leverage, size)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [user.user_id, type, entryPrice, margin, leverage, size]);
+
+    console.log(`✅ Position opened: ${type} ${pair} size=${size} leverage=${leverage} margin=${margin}`);
+
+    res.json({ ok: true, position: posRes.rows[0], newBalance: Number(user.balance) - margin });
+  } catch (err) {
+    console.error("Error opening position:", err.message);
+    res.status(500).json({ ok: false, error: err.message || "SERVER_ERROR" });
+  }
 });
 
 app.post("/api/order/close", async (req, res) => {
   console.log("/api/order/close called:", req.body);
-  res.status(501).json({ ok: false, error: "NOT_IMPLEMENTED" });
-});
+  try {
+    const user = await getUserFromRequest(req);
+    const { positionId, closePrice } = req.body;
 
+    if (!positionId || !closePrice) {
+      return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
+    }
+
+    // Получаем позицию
+    const posRes = await db.query(
+      "SELECT * FROM positions WHERE id = $1 AND user_id = $2",
+      [positionId, user.user_id]
+    );
+    if (!posRes.rows.length) {
+      return res.status(404).json({ ok: false, error: "POSITION_NOT_FOUND" });
+    }
+    const pos = posRes.rows[0];
+
+    // Расчёт PnL
+    let pnl = 0;
+    if (pos.type === "LONG") {
+      pnl = (closePrice - pos.entry_price) * pos.size;
+    } else if (pos.type === "SHORT") {
+      pnl = (pos.entry_price - closePrice) * pos.size;
+    }
+
+    // Возвращаем маржу + PnL на баланс
+    const totalReturn = Number(pos.margin) + pnl;
+    await db.query(
+      "UPDATE users SET balance = balance + $1 WHERE user_id = $2",
+      [totalReturn, user.user_id]
+    );
+
+    // Удаляем позицию
+    await db.query("DELETE FROM positions WHERE id = $1", [positionId]);
+
+    // Получаем новый баланс
+    const newBalRes = await db.query("SELECT balance FROM users WHERE user_id = $1", [user.user_id]);
+
+    console.log(`✅ Position closed: ${pos.type} PnL=${pnl.toFixed(2)} Total return=${totalReturn.toFixed(2)}`);
+
+    res.json({
+      ok: true,
+      pnl,
+      newBalance: Number(newBalRes.rows[0].balance)
+    });
+  } catch (err) {
+    console.error("Error closing position:", err.message);
+    res.status(500).json({ ok: false, error: err.message || "SERVER_ERROR" });
+  }
+});
 app.get("/api/health", (req, res) => {
   console.log("/api/health check");
   res.json({ ok: true });
