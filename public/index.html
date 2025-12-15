@@ -432,9 +432,116 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
   // ==============================
   // UI RENDER
   // ==============================
-  function updatePriceUI(){
-    document.getElementById("priceDisplay").textContent = currentPrice ? currentPrice.toFixed(2) : "—";
+// Глобальная переменная для текущих позиций
+window._positions = [];
+
+// Обновлённый рендер позиций с PnL и кнопкой закрытия
+function renderPositions() {
+  const el = document.getElementById("positionsList");
+  if (!window._positions || window._positions.length === 0) {
+    el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px 0">Нет открытых позиций</div>';
+    return;
   }
+
+  el.innerHTML = "";
+  window._positions.forEach(pos => {
+    const pnl = pos.type === "LONG"
+      ? (currentPrice - pos.entry_price) * pos.size
+      : (pos.entry_price - currentPrice) * pos.size;
+
+    const pnlColor = pnl >= 0 ? "var(--accent-green)" : "var(--accent-red)";
+    const pnlSign = pnl >= 0 ? "+" : "";
+
+    const div = document.createElement("div");
+    div.className = "pos-card";
+    div.innerHTML = `
+      <div>
+        <div style="font-weight:600">${pos.type} ${selectedPair}</div>
+        <div style="font-size:12px;color:var(--muted)">Size: ${pos.size} | Lev: x${pos.leverage}</div>
+        <div style="font-size:12px;color:var(--muted)">Entry: $${pos.entry_price.toFixed(2)}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:700;color:${pnlColor}">${pnlSign}${pnl.toFixed(2)} VP</div>
+        <button class="btn btn-ghost" style="font-size:12px;padding:4px 8px;margin-top:4px" data-id="${pos.id}">Close</button>
+      </div>
+    `;
+    el.appendChild(div);
+  });
+
+  // Добавляем обработчики на кнопки Close
+  document.querySelectorAll("#positionsList button[data-id]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      const response = await fetch(API_BASE + "/api/order/close", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ positionId: id, closePrice: currentPrice })
+      });
+      const data = await response.json();
+      if (data.ok) {
+        // Обновляем позиции и баланс
+        window._positions = window._positions.filter(p => p.id != id);
+        renderPositions();
+        profile.balance = data.newBalance;
+        updateProfileUI(profile);
+        alert(`Позиция закрыта! PnL: ${data.pnl >= 0 ? "+" : ""}${data.pnl.toFixed(2)} VP`);
+      } else {
+        alert("Ошибка при закрытии: " + data.error);
+      }
+    });
+  });
+}
+
+// Обновляем PnL в реальном времени при изменении цены
+function updatePriceUI(){
+  document.getElementById("priceDisplay").textContent = currentPrice ? currentPrice.toFixed(2) : "—";
+  renderPositions(); // ← важно: перерисовываем позиции при каждом тике
+}
+
+// Обработчики открытия позиций
+document.getElementById("openLong").addEventListener("click", openPosition("LONG"));
+document.getElementById("openShort").addEventListener("click", openPosition("SHORT"));
+
+function openPosition(side) {
+  return async () => {
+    const size = Number(document.getElementById("sizeInput").value);
+    const leverageEl = document.querySelector("#leverageSegment .chip.active");
+    const leverage = Number(leverageEl?.dataset.value || 10);
+
+    if (!size || size <= 0) return alert("Введите корректную сумму");
+
+    const response = await fetch(API_BASE + "/api/order/open", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pair: selectedPair,
+        type: side,
+        size: size,
+        leverage: leverage,
+        entryPrice: currentPrice
+      })
+    });
+
+    const data = await response.json();
+    if (data.ok) {
+      window._positions.push(data.position);
+      renderPositions();
+      profile.balance = data.newBalance;
+      updateProfileUI(profile);
+      alert(`${side} позиция открыта! Маржа: ${(size/leverage).toFixed(2)} VP`);
+    } else {
+      alert("Ошибка открытия позиции: " + (data.error || "Unknown"));
+    }
+  };
+}
+
+// Выбор плеча
+document.querySelectorAll("#leverageSegment .chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll("#leverageSegment .chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+  });
+});
 
   function renderOrderBook(buys, sells){
     const el = document.getElementById("orderBook");
@@ -467,26 +574,6 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
         <div style="color:var(--muted);font-size:12px">${new Date(t.time).toLocaleTimeString()}</div>
       `;
       el.appendChild(row);
-    });
-  }
-
-  function renderPositions(){
-    // Если у тебя есть своя реализация — вставь сюда, иначе оставь пустой
-    const el = document.getElementById("positionsList");
-    if (!window._positions || window._positions.length === 0) {
-      el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px 0">Нет открытых позиций</div>';
-      return;
-    }
-    // Пример простой отрисовки — можешь заменить на свою
-    el.innerHTML = "";
-    window._positions.forEach(pos => {
-      const div = document.createElement("div");
-      div.className = "pos-card";
-      div.innerHTML = `
-        <div>${pos.type} ${selectedPair}</div>
-        <div>Entry: ${pos.entry_price}</div>
-      `;
-      el.appendChild(div);
     });
   }
 
