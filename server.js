@@ -94,8 +94,15 @@ function verifySessionCookieValue(val) {
 // ======================== INIT DB ========================
 async function initDB() {
   try {
+    console.log("🔄 Recreating DB tables...");
+
+    // Удаляем таблицы, если существуют (порядок важен из-за foreign key)
+    await db.query(`DROP TABLE IF EXISTS positions CASCADE;`);
+    await db.query(`DROP TABLE IF EXISTS users CASCADE;`);
+
+    // Создаём заново
     await db.query(`
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE users (
         user_id TEXT PRIMARY KEY,
         first_name TEXT,
         username TEXT,
@@ -105,8 +112,9 @@ async function initDB() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
     await db.query(`
-      CREATE TABLE IF NOT EXISTS positions (
+      CREATE TABLE positions (
         id BIGSERIAL PRIMARY KEY,
         user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
         type TEXT NOT NULL,
@@ -117,9 +125,11 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log("✅ DB tables ensured");
+
+    console.log("✅ DB tables recreated successfully!");
   } catch (err) {
-    console.error("❌ Error creating tables:", err.message);
+    console.error("❌ Error recreating tables:", err.message);
+    console.error(err.stack);
   }
 }
 await initDB();
