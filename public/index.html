@@ -478,7 +478,11 @@ function renderPositions() {
       const response = await fetch(API_BASE + "/api/order/close", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ positionId: id, closePrice: currentPrice })
+        body: JSON.stringify({
+          userId: currentUserId, // ← добавь
+          positionId: id,
+          closePrice: currentPrice
+        })
       });
       const data = await response.json();
       if (data.ok) {
