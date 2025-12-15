@@ -96,10 +96,6 @@ async function initDB() {
   try {
     console.log("🔄 Recreating DB tables...");
 
-    // Удаляем таблицы, если существуют (порядок важен из-за foreign key)
-    await db.query(`DROP TABLE IF EXISTS positions CASCADE;`);
-    await db.query(`DROP TABLE IF EXISTS users CASCADE;`);
-
     // Создаём заново
     await db.query(`
       CREATE TABLE users (
