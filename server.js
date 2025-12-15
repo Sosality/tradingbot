@@ -352,7 +352,7 @@ app.post("/api/order/open", async (req, res) => {
 app.post("/api/order/close", async (req, res) => {
   console.log("/api/order/close called:", req.body);
   try {
-    const user = await getUserFromRequest(req);
+    const user = await getAuthenticatedUser(req);
     const { positionId, closePrice } = req.body;
 
     if (!positionId || !closePrice) {
