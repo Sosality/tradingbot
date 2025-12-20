@@ -442,60 +442,94 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
   function renderPositions() {
     const el = document.getElementById("positionsList");
     if (!window._positions || window._positions.length === 0) {
-      el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px 0">Нет открытых позиций</div>';
+      el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:32px 0;font-size:14px">Нет открытых позиций</div>';
       return;
     }
 
     el.innerHTML = "";
     window._positions.forEach(pos => {
+      // Расчёт текущего PnL
       const pnl = pos.type === "LONG"
         ? (currentPrice - pos.entry_price) * pos.size
         : (pos.entry_price - currentPrice) * pos.size;
 
+      const pnlPercent = ((pnl / pos.margin) * 100).toFixed(2);
       const pnlColor = pnl >= 0 ? "var(--accent-green)" : "var(--accent-red)";
       const pnlSign = pnl >= 0 ? "+" : "";
 
-      const div = document.createElement("div");
-      div.className = "pos-card";
-      div.innerHTML = `
-        <div>
-          <div style="font-weight:600">${pos.type} ${selectedPair}</div>
-          <div style="font-size:12px;color:var(--muted)">Size: ${pos.size} | Lev: x${pos.leverage}</div>
-          <div style="font-size:12px;color:var(--muted)">Entry: $${pos.entry_price.toFixed(2)}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-weight:700;color:${pnlColor}">${pnlSign}${pnl.toFixed(2)} VP</div>
-          <button class="btn btn-ghost" style="font-size:12px;padding:4px 8px;margin-top:4px" data-id="${pos.id}">Close</button>
+      // ROE (Return on Equity) — доходность на маржу
+      const roeColor = pnl >= 0 ? "var(--accent-green)" : "var(--accent-red)";
+      const roeSign = pnl >= 0 ? "+" : "";
+
+      const card = document.createElement("div");
+      card.className = "pos-card";
+      card.style.padding = "12px";
+      card.style.borderRadius = "10px";
+      card.style.marginBottom = "10px";
+      card.style.background = "rgba(255,255,255,0.03)";
+      card.style.border = "1px solid rgba(255,255,255,0.05)";
+
+      card.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:start">
+          <div>
+            <div style="font-weight:700;font-size:15px;color:${pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">
+              ${pos.type === "LONG" ? "🟢 LONG" : "🔴 SHORT"} ${selectedPair}
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">
+              Размер: ${pos.size.toFixed(2)} VP | Плечо: x${pos.leverage}
+            </div>
+            <div style="font-size:12px;color:var(--muted)">
+              Вход: $${pos.entry_price.toFixed(2)} | Маржа: ${pos.margin.toFixed(2)} VP
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700;font-size:16px;color:${pnlColor}">
+              ${pnlSign}${pnl.toFixed(2)} VP
+            </div>
+            <div style="font-size:12px;color:${roeColor};margin-top:2px">
+              ROE: ${roeSign}${pnlPercent}%
+            </div>
+            <button class="btn btn-ghost" 
+                    style="margin-top:8px;padding:6px 12px;font-size:13px"
+                    data-id="${pos.id}">
+              Закрыть
+            </button>
+          </div>
         </div>
       `;
-      el.appendChild(div);
+
+      el.appendChild(card);
     });
 
-    // Добавляем обработчики на кнопки Close
+    // Обработчики кнопок "Закрыть"
     document.querySelectorAll("#positionsList button[data-id]").forEach(btn => {
-      btn.addEventListener("click", async () => {
+      btn.onclick = async () => {
+        if (!confirm("Закрыть позицию по текущей цене?")) return;
+
         const id = btn.dataset.id;
         const response = await fetch(API_BASE + "/api/order/close", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId: currentUserId, // ← добавь
+            userId: currentUserId,
             positionId: id,
             closePrice: currentPrice
           })
         });
+
         const data = await response.json();
         if (data.ok) {
-          // Обновляем позиции и баланс
           window._positions = window._positions.filter(p => p.id != id);
           renderPositions();
           profile.balance = data.newBalance;
           updateProfileUI(profile);
-          alert(`Позиция закрыта! PnL: ${data.pnl >= 0 ? "+" : ""}${data.pnl.toFixed(2)} VP`);
+
+          const pnlText = data.pnl >= 0 ? `+${data.pnl.toFixed(2)}` : data.pnl.toFixed(2);
+          alert(`Позиция закрыта!\nPnL: ${pnlText} VP\nНовый баланс: ${data.newBalance.toFixed(2)} VP`);
         } else {
-          alert("Ошибка при закрытии: " + data.error);
+          alert("Ошибка закрытия: " + (data.error || "Неизвестно"));
         }
-      });
+      };
     });
   }
 
