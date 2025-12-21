@@ -568,36 +568,55 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
   document.getElementById("openLong").addEventListener("click", openPosition("LONG"));
   document.getElementById("openShort").addEventListener("click", openPosition("SHORT"));
 
-  function openPosition(side) {
+function openPosition(side) {
     return async () => {
-      const size = Number(document.getElementById("sizeInput").value);
+      // 1. Считываем маржу (деньги пользователя)
+      const marginInput = Number(document.getElementById("sizeInput").value);
+      
+      // 2. Считываем плечо
       const leverageEl = document.querySelector("#leverageSegment .chip.active");
       const leverage = Number(leverageEl?.dataset.value || 10);
 
-      if (!size || size <= 0) return alert("Введите корректную сумму");
+      if (!marginInput || marginInput <= 0) return alert("Введите корректную сумму маржи");
 
-      const response = await fetch(API_BASE + "/api/order/open", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: currentUserId, // ← добавь
-          pair: selectedPair,
-          type: side,
-          size: size,
-          leverage: leverage,
-          entryPrice: currentPrice
-        })
-      });
+      // 3. Рассчитываем итоговый размер позиции (Size)
+      // Если маржа 100$ и плечо x10, то размер позиции = 1000$
+      const positionSize = marginInput * leverage;
 
-      const data = await response.json();
-      if (data.ok) {
-        window._positions.push(data.position);
-        renderPositions();
-        profile.balance = data.newBalance;
-        updateProfileUI(profile);
-        alert(`${side} позиция открыта! Маржа: ${(size/leverage).toFixed(2)} VP`);
-      } else {
-        alert("Ошибка открытия позиции: " + (data.error || "Unknown"));
+      // 4. Отправляем на сервер
+      try {
+        const response = await fetch(API_BASE + "/api/order/open", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: currentUserId,
+            pair: selectedPair,
+            type: side,
+            size: positionSize, // <-- ОТПРАВЛЯЕМ УЖЕ УМНОЖЕННЫЙ РАЗМЕР
+            leverage: leverage,
+            entryPrice: currentPrice
+          })
+        });
+
+        const data = await response.json();
+        
+        if (data.ok) {
+          window._positions.push(data.position);
+          renderPositions();
+          
+          if (data.newBalance !== undefined) {
+             profile.balance = data.newBalance;
+             updateProfileUI(profile);
+          }
+
+          // Показываем в алерте понятные цифры
+          alert(`Позиция ${side} открыта!\nМаржа: ${marginInput} VP\nОбъем позиции: ${positionSize} VP (x${leverage})`);
+        } else {
+          alert("Ошибка: " + (data.error || "Не удалось открыть ордер"));
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Ошибка соединения");
       }
     };
   }
