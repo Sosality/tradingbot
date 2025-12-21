@@ -350,7 +350,7 @@ app.post("/api/order/open", async (req, res) => {
 });
 
 app.post("/api/order/close", async (req, res) => {
-  console.log("/api/order/close called:", req.body);
+  console.log("📡 /api/order/close called:", req.body);
   try {
     const user = await getAuthenticatedUser(req);
     const { positionId, closePrice } = req.body;
@@ -359,46 +359,75 @@ app.post("/api/order/close", async (req, res) => {
       return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
     }
 
-    // Получаем позицию
+    // 1. Получаем позицию из базы
     const posRes = await db.query(
       "SELECT * FROM positions WHERE id = $1 AND user_id = $2",
       [positionId, user.user_id]
     );
+
     if (!posRes.rows.length) {
       return res.status(404).json({ ok: false, error: "POSITION_NOT_FOUND" });
     }
+
     const pos = posRes.rows[0];
 
-    // Расчёт PnL
-    let pnl = 0;
-    if (pos.type === "LONG") {
-      pnl = (closePrice - pos.entry_price) * pos.size;
-    } else if (pos.type === "SHORT") {
-      pnl = (pos.entry_price - closePrice) * pos.size;
+    // 2. Приводим все данные к числам (PostgreSQL возвращает Numeric как String)
+    const cPrice = Number(closePrice);
+    const ePrice = Number(pos.entry_price);
+    const pSize = Number(pos.size);
+    const pMargin = Number(pos.margin);
+
+    // 3. Расчёт процентного изменения цены (ROE)
+    // Формула: (Текущая - Вход) / Вход
+    const priceChangePct = (cPrice - ePrice) / ePrice;
+
+    // 4. Расчёт PnL (процент изменения * объем всей позиции)
+    let pnl = priceChangePct * pSize;
+
+    // Если это SHORT, инвертируем PnL (прибыль при падении)
+    if (pos.type === "SHORT") {
+      pnl = -pnl;
     }
 
-    // Возвращаем маржу + PnL на баланс
-    const totalReturn = Number(pos.margin) + pnl;
+    // 5. Защита от "ухода в долг" (Ликвидация)
+    // Максимальный убыток не может превышать вложенную маржу
+    if (pnl < -pMargin) {
+      pnl = -pMargin;
+    }
+
+    // 6. Считаем итоговый возврат средств на баланс (Маржа + Прибыль/Убыток)
+    const totalReturn = pMargin + pnl;
+
+    // 7. Обновляем баланс пользователя и удаляем позицию в одной транзакции
+    await db.query("BEGIN"); // Начинаем транзакцию для надежности
+    
     await db.query(
       "UPDATE users SET balance = balance + $1 WHERE user_id = $2",
       [totalReturn, user.user_id]
     );
 
-    // Удаляем позицию
     await db.query("DELETE FROM positions WHERE id = $1", [positionId]);
 
-    // Получаем новый баланс
-    const newBalRes = await db.query("SELECT balance FROM users WHERE user_id = $1", [user.user_id]);
+    await db.query("COMMIT"); // Сохраняем изменения
 
-    console.log(`✅ Position closed: ${pos.type} PnL=${pnl.toFixed(2)} Total return=${totalReturn.toFixed(2)}`);
+    // 8. Получаем актуальный баланс для ответа
+    const newBalRes = await db.query("SELECT balance FROM users WHERE user_id = $1", [user.user_id]);
+    const finalBalance = Number(newBalRes.rows[0].balance);
+
+    console.log(`✅ Позиция закрыта! 
+      Тип: ${pos.type}, 
+      PnL: ${pnl.toFixed(2)} VP, 
+      Вернулось на баланс: ${totalReturn.toFixed(2)} VP`);
 
     res.json({
       ok: true,
-      pnl,
-      newBalance: Number(newBalRes.rows[0].balance)
+      pnl: Number(pnl.toFixed(2)),
+      newBalance: finalBalance
     });
+
   } catch (err) {
-    console.error("Error closing position:", err.message);
+    await db.query("ROLLBACK"); // Откатываем изменения при ошибке
+    console.error("❌ Ошибка закрытия позиции:", err.message);
     res.status(500).json({ ok: false, error: err.message || "SERVER_ERROR" });
   }
 });
