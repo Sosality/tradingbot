@@ -438,7 +438,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
   // Глобальная переменная для текущих позиций
   window._positions = [];
 
-// Обновлённый безопасный рендер позиций
+// Обновлённый рендер позиций с правильной математикой
   function renderPositions() {
     const el = document.getElementById("positionsList");
     el.innerHTML = "";
@@ -449,33 +449,40 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
     }
 
     window._positions.forEach(pos => {
-      // 1. Нормализация данных (защита от строк и разных названий полей)
+      // 1. Получаем данные
       const entryPrice = Number(pos.entry_price || pos.entryPrice || 0);
-      const size = Number(pos.size || 0);
+      const size = Number(pos.size || 0);       // Твой объем позиции (Notional Value)
       const leverage = Number(pos.leverage || 1);
       const margin = Number(pos.margin || 0);
       const type = (pos.type || "LONG").toUpperCase();
       
-      // 2. Расчёт PnL (если цена еще 0, то PnL 0)
+      // 2. РАСЧЁТ PnL (Правильная формула)
       let pnl = 0;
-      if (currentPrice > 0) {
-        pnl = type === "LONG"
-          ? (currentPrice - entryPrice) * size
-          : (entryPrice - currentPrice) * size;
+      if (currentPrice > 0 && entryPrice > 0) {
+        // Считаем процентное изменение цены: (Текущая - Вход) / Вход
+        const priceChangePct = (currentPrice - entryPrice) / entryPrice;
+        
+        // Умножаем процент на размер позиции
+        pnl = priceChangePct * size;
+
+        // Если это SHORT, инвертируем знак (падение цены = прибыль)
+        if (type === "SHORT") {
+          pnl = -pnl;
+        }
       }
 
-      // 3. Защита от деления на ноль для процентов
-      let pnlPercent = "0.00";
+      // 3. Расчет ROE (доходность на вложенную маржу в %)
+      let roePercent = "0.00";
       if (margin > 0) {
-        pnlPercent = ((pnl / margin) * 100).toFixed(2);
+        roePercent = ((pnl / margin) * 100).toFixed(2);
       }
 
+      // Цвета и знаки
       const pnlColor = pnl >= 0 ? "var(--accent-green)" : "var(--accent-red)";
       const sign = pnl >= 0 ? "+" : "";
 
       const card = document.createElement("div");
       card.className = "pos-card";
-      // Стили перенесены сюда для надежности
       card.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:10px;margin-bottom:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);";
 
       card.innerHTML = `
@@ -484,10 +491,10 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
             ${type === "LONG" ? "🟢 LONG" : "🔴 SHORT"} ${selectedPair}
           </div>
           <div style="font-size:12px;color:var(--muted);margin-top:4px">
-            Размер: ${size.toFixed(2)} | x${leverage}
+            Объем: ${size.toFixed(2)} VP | Плечо: x${leverage}
           </div>
           <div style="font-size:12px;color:var(--muted)">
-            Вход: ${entryPrice.toFixed(2)}
+            Вход: $${entryPrice.toFixed(2)}
           </div>
         </div>
         <div style="text-align:right">
@@ -495,7 +502,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
             ${sign}${pnl.toFixed(2)} VP
           </div>
           <div style="font-size:12px;color:${pnlColor};margin-top:2px">
-            ${sign}${pnlPercent}%
+            ROE: ${sign}${roePercent}%
           </div>
           <button class="btn btn-ghost" 
                   style="margin-top:6px;padding:4px 10px;font-size:12px;border:1px solid rgba(255,255,255,0.1)"
@@ -508,10 +515,10 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
       el.appendChild(card);
     });
 
-    // Привязываем события клика
+    // Обработчики кнопок
     el.querySelectorAll("button[data-id]").forEach(btn => {
       btn.onclick = (e) => {
-        e.stopPropagation(); // Чтобы клик не срабатывал дважды
+        e.stopPropagation();
         closePos(btn.dataset.id);
       };
     });
