@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
-/* ————— ОБЩИЕ ПЕРЕМЕННЫЕ ————— */
+/* ————— ТВОЙ СТИЛЬ ————— */
 :root{
   --bg:#0B0E11;
   --panel:#1E2329;
@@ -20,147 +20,108 @@
   --glass: rgba(255,255,255,0.02);
   --white:#E6EEF3;
 }
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;}
+.app{display:flex;flex-direction:column;height:100vh;}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-bottom:1px solid rgba(255,255,255,0.03)}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{font-weight:700;font-size:18px}
+.profile{display:flex;align-items:center;gap:12px}
+.avatar{width:44px;height:44px;border-radius:50%;background:#222;overflow:hidden;flex-shrink:0}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.profile-info{display:flex;flex-direction:column;font-size:13px}
+.profile-name{font-weight:600}
+.profile-username{color:var(--muted);font-size:12px}
+.profile-balance{font-family:"Roboto Mono",monospace;color:#cfd8dc;font-weight:700;margin-top:4px;font-size:13px}
+.container{display:grid;grid-template-columns:1fr 360px;gap:12px;padding:12px;height:calc(100vh - 72px);overflow:hidden;}
+.left-col {display: flex;flex-direction: column;gap: 12px;overflow-y: auto;min-height: 0;}
+.card{background:var(--panel);border-radius:12px;padding:12px;box-shadow:0 4px 18px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.02)}
+.chart-wrap{height:56vh;border-radius:10px;overflow:hidden;}
+.top-stats{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.price{font-family:"Roboto Mono",monospace;font-size:28px;font-weight:700}
+.price-change{font-weight:700;padding:6px 8px;border-radius:8px;font-size:13px}
+.price-change.up{background:rgba(14,190,131,0.12);color:var(--accent-green)}
+.price-change.down{background:rgba(246,70,93,0.10);color:var(--accent-red)}
+.controls{display:flex;gap:10px;margin-top:8px}
+.controls input, .controls select{background:#111;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);color:var(--white);font-size:14px}
+.segment{display:flex;gap:8px}
+.chip{padding:8px 10px;border-radius:8px;background:#15181b;cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
+.chip.active{border-color:rgba(255,255,255,0.06);box-shadow:0 4px 10px rgba(0,0,0,0.6)}
+.right-col{display:flex;flex-direction:column;gap:12px}
+.side-section{display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.orderbook-list{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);max-height:220px;overflow:auto;padding:8px;border-radius:8px;background:linear-gradient(180deg, transparent, rgba(255,255,255,0.01))}
+.orderbook-row{display:flex;justify-content:space-between;gap:8px;padding:6px 8px;border-radius:6px}
+.orderbook-row .price{width:100px}
+.orderbook-row.buy .price{color:var(--accent-green)}
+.orderbook-row.sell .price{color:var(--accent-red)}
+.trade-history{max-height:160px;overflow:auto;padding:8px}
+.trade-row{display:flex;justify-content:space-between;padding:6px 8px;border-radius:6px;font-size:13px}
+.pos-card{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.01)}
+.bottom-nav{display:flex;gap:8px;padding:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);border-top:1px solid rgba(255,255,255,0.02)}
+.btn{padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
+.btn-primary{background:var(--accent-green);color:#001}
+.btn-danger{background:var(--accent-red);color:#001}
+.btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--white)}
+.pair-switch { display:flex; gap:8px; align-items:center; margin-right:8px; }
+.pair-btn { padding:6px 8px; border-radius:8px; background:#101216; border:1px solid rgba(255,255,255,0.02); cursor:pointer; color:var(--muted) }
+.pair-btn.active { color:var(--white); border-color:rgba(255,255,255,0.06); box-shadow:0 6px 18px rgba(0,0,0,0.6) }
 
-*{ box-sizing:border-box; outline: none; -webkit-tap-highlight-color: transparent; }
-html,body{ height:100%; margin:0; background:var(--bg); color:var(--white); font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial; overflow: hidden; }
-
-/* Основная структура приложения */
-.app{ display:flex; flex-direction:column; height:100vh; height: 100dvh; /* dvh для корректной работы в мобильных браузерах */ }
-
-/* ————— ШАПКА ————— */
-.header{ display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); border-bottom:1px solid rgba(255,255,255,0.03); flex-shrink: 0; }
-.brand{ display:flex; flex-direction: column; justify-content: center; }
-.logo{ font-weight:700; font-size:16px; margin-bottom: 2px; }
-.brand-subtitle { color:var(--muted); font-size:11px; }
-
-/* Правая часть шапки */
-.header-right { display:flex; align-items:center; gap:10px; }
-
-.profile{ display:flex; align-items:center; gap:10px; cursor: pointer; }
-.avatar{ width:36px; height:36px; border-radius:50%; background:#222; overflow:hidden; flex-shrink:0; border: 1px solid rgba(255,255,255,0.1); }
-.avatar img{ width:100%; height:100%; object-fit:cover; }
-.profile-info{ display:flex; flex-direction:column; font-size:12px; text-align: right; }
-.profile-name{ font-weight:600; max-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.profile-balance{ font-family:"Roboto Mono",monospace; color:#cfd8dc; font-weight:700; margin-top:2px; font-size:11px; }
-
-/* ————— КОНТЕЙНЕР (ГЛАВНАЯ СЕТКА) ————— */
-.container{
-  display: grid;
-  grid-template-columns: 1fr 320px; /* ПК: График слева, стакан справа */
-  gap: 12px;
-  padding: 12px;
-  flex: 1; /* Занимает все доступное пространство между шапкой и подвалом */
-  overflow: hidden; /* Чтобы скроллились колонки внутри, а не вся страница */
+/* ————— [NEW] СТИЛИ ЗАГРУЗЧИКА ————— */
+#app-loader {
+  position: fixed;
+  top: 0; 
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s ease, visibility 0.5s;
 }
 
-.left-col { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; height: 100%; min-height: 0; padding-right: 4px; }
-.right-col { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; height: 100%; padding-right: 4px; }
-
-/* Карточки */
-.card{ background:var(--panel); border-radius:12px; padding:12px; box-shadow:0 4px 18px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.02); position: relative; }
-
-/* График */
-.chart-wrap{ height: 50vh; border-radius:10px; overflow:hidden; border: 1px solid rgba(255,255,255,0.05); }
-
-/* Статистика цены */
-.top-stats{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap: wrap; }
-.price{ font-family:"Roboto Mono",monospace; font-size:24px; font-weight:700; }
-.price-change{ font-weight:700; padding:4px 8px; border-radius:6px; font-size:12px; }
-.price-change.up{ background:rgba(14,190,131,0.12); color:var(--accent-green); }
-.price-change.down{ background:rgba(246,70,93,0.10); color:var(--accent-red); }
-
-/* Управление (Кнопки и инпуты) */
-.controls-wrapper { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
-.controls-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
-
-.controls-inputs { display: flex; gap: 8px; flex: 1; min-width: 200px; }
-.controls input { background:#111; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); color:var(--white); font-size:14px; width: 100%; }
-
-.segment{ display:flex; gap:6px; background: #111; padding: 4px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03); }
-.chip{ padding:6px 10px; border-radius:6px; background:transparent; cursor:pointer; font-size: 12px; font-weight: 600; color: var(--muted); transition: all 0.2s; }
-.chip.active{ background: var(--panel); color: var(--white); box-shadow: 0 2px 8px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); }
-
-.trade-buttons { display: flex; gap: 8px; flex: 1; }
-.trade-buttons button { flex: 1; white-space: nowrap; }
-
-/* Боковые панели (Orderbook) */
-.side-section{ display:flex; flex-direction:column; gap:8px; overflow:hidden; max-height: 50%; }
-.orderbook-list{ display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); overflow-y:auto; padding-right: 2px; }
-.orderbook-row{ display:flex; justify-content:space-between; padding:4px 6px; border-radius:4px; }
-.orderbook-row:hover { background: rgba(255,255,255,0.03); }
-.orderbook-row .price{ width:80px; font-weight: 600; font-size: 12px; }
-.orderbook-row.buy .price{ color:var(--accent-green); }
-.orderbook-row.sell .price{ color:var(--accent-red); }
-
-.trade-history{ overflow-y:auto; padding-right: 2px; max-height: 200px; }
-.trade-row{ display:flex; justify-content:space-between; padding:4px 6px; border-radius:4px; font-size:12px; margin-bottom: 2px; }
-
-/* Позиции */
-.pos-card{ display:flex; flex-direction: column; padding:12px; border-radius:8px; margin-bottom:8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.03); gap: 8px; }
-.pos-header { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-.pos-details { display: flex; justify-content: space-between; align-items: flex-end; width: 100%; font-size: 12px; color: var(--muted); }
-
-/* Подвал */
-.bottom-nav{ display:flex; gap:8px; padding:12px; background:var(--panel); border-top:1px solid rgba(255,255,255,0.05); flex-shrink: 0; align-items: center; }
-
-/* Кнопки */
-.btn{ padding:10px 14px; border-radius:8px; border:0; cursor:pointer; font-weight:700; font-size: 13px; transition: opacity 0.2s; display: flex; align-items: center; justify-content: center; }
-.btn:active { opacity: 0.7; }
-.btn-primary{ background:var(--accent-green); color:#0B0E11; }
-.btn-danger{ background:var(--accent-red); color:#0B0E11; }
-.btn-ghost{ background:transparent; border:1px solid rgba(255,255,255,0.05); color:var(--muted); }
-
-/* Переключатель пар */
-.pair-switch { display:flex; gap:6px; background: #15181b; padding: 4px; border-radius: 8px; }
-.pair-btn { padding:6px 12px; border-radius:6px; cursor:pointer; color:var(--muted); font-size: 12px; font-weight: 600; transition: all 0.2s; }
-.pair-btn.active { color:var(--white); background: rgba(255,255,255,0.05); }
-
-/* ————— АДАПТИВ (МОБИЛЬНЫЕ) ————— */
-@media (max-width: 900px) {
-  /* Меняем Grid на Flex колонку */
-  .container {
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto; /* Включаем общий скролл страницы */
-    padding-bottom: 20px;
-  }
-  
-  /* Разрешаем элементам растягиваться по высоте контента */
-  .left-col, .right-col {
-    overflow: visible;
-    height: auto;
-  }
-
-  /* График на мобильном фиксированной высоты */
-  .chart-wrap {
-    height: 400px;
-    min-height: 400px;
-  }
-
-  /* Улучшаем кнопки на мобильном */
-  .trade-buttons button {
-    padding: 14px;
-    font-size: 14px;
-  }
-
-  /* Скрываем лишнее в шапке если совсем узко */
-  .profile-username { display: none; }
-  .brand-subtitle { display: none; }
-  
-  /* Переключатель пар компактнее */
-  .pair-btn { padding: 6px 8px; }
-
-  /* Нижняя панель фиксируется при скролле (опционально, но лучше оставить как часть потока на iOS) */
-  /* Но мы оставим ее в flex-layout .app, она будет прижата к низу экрана всегда */
+#app-loader.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
-/* ————— ЗАГРУЗЧИК ————— */
-#app-loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease, visibility 0.5s; }
-#app-loader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-.loader-logo { font-weight: 700; font-size: 24px; margin-bottom: 24px; color: var(--white); letter-spacing: -0.5px; }
-.loader-track { width: 200px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; position: relative; }
-.loader-bar { position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: var(--accent-green); transition: width 0.3s ease-out; box-shadow: 0 0 10px rgba(14, 203, 129, 0.5); }
-.loader-text { margin-top: 12px; font-size: 12px; color: var(--muted); font-family: 'Roboto Mono', monospace; }
+.loader-logo {
+  font-weight: 700;
+  font-size: 24px;
+  margin-bottom: 24px;
+  color: var(--white);
+  letter-spacing: -0.5px;
+}
+
+.loader-track {
+  width: 200px;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.loader-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0%; /* Будет меняться JS */
+  background: var(--accent-green);
+  transition: width 0.3s ease-out;
+  box-shadow: 0 0 10px rgba(14, 203, 129, 0.5);
+}
+
+.loader-text {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  font-family: 'Roboto Mono', monospace;
+}
 </style>
 </head>
 
