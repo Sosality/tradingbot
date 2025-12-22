@@ -5,14 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>TradeSim — BTC/ETH Futures (Telegram auth)</title>
 
-<!-- Telegram WebApp -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<!-- Lightweight-charts -->
 <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
-/* ————— ТВОЙ СТИЛЬ БЕЗ ИЗМЕНЕНИЙ ————— */
+/* ————— ТВОЙ СТИЛЬ ————— */
 :root{
   --bg:#0B0E11;
   --panel:#1E2329;
@@ -67,13 +65,78 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
 .pair-switch { display:flex; gap:8px; align-items:center; margin-right:8px; }
 .pair-btn { padding:6px 8px; border-radius:8px; background:#101216; border:1px solid rgba(255,255,255,0.02); cursor:pointer; color:var(--muted) }
 .pair-btn.active { color:var(--white); border-color:rgba(255,255,255,0.06); box-shadow:0 6px 18px rgba(0,0,0,0.6) }
+
+/* ————— [NEW] СТИЛИ ЗАГРУЗЧИКА ————— */
+#app-loader {
+  position: fixed;
+  top: 0; 
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s ease, visibility 0.5s;
+}
+
+#app-loader.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.loader-logo {
+  font-weight: 700;
+  font-size: 24px;
+  margin-bottom: 24px;
+  color: var(--white);
+  letter-spacing: -0.5px;
+}
+
+.loader-track {
+  width: 200px;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.loader-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0%; /* Будет меняться JS */
+  background: var(--accent-green);
+  transition: width 0.3s ease-out;
+  box-shadow: 0 0 10px rgba(14, 203, 129, 0.5);
+}
+
+.loader-text {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  font-family: 'Roboto Mono', monospace;
+}
 </style>
 </head>
 
 <body>
+
+<div id="app-loader">
+  <div class="loader-logo">⧉ TradeSim</div>
+  <div class="loader-track">
+    <div class="loader-bar" id="loaderBar"></div>
+  </div>
+  <div class="loader-text" id="loaderText">Loading assets...</div>
+</div>
+
 <div class="app">
 
-<!-- HEADER — без изменений -->
 <header class="header">
   <div class="brand">
     <div class="logo">⧉ TradeSim</div>
@@ -97,7 +160,6 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
   </div>
 </header>
 
-<!-- MAIN LAYOUT — без изменений -->
 <main class="container">
   <section class="left-col">
     <div class="card">
@@ -173,10 +235,29 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
   <div style="color:var(--muted);font-size:13px;padding:6px 8px">WS: <span id="wsStatus">—</span></div>
 </div>
 
-</div> <!-- app -->
-
-<script>
+</div> <script>
 (async function(){
+  // ==============================
+  // [NEW] LOADER LOGIC
+  // ==============================
+  const loaderEl = document.getElementById('app-loader');
+  const loaderBar = document.getElementById('loaderBar');
+  const loaderText = document.getElementById('loaderText');
+
+  function setProgress(percent, text) {
+    loaderBar.style.width = percent + '%';
+    if(text) loaderText.textContent = text;
+  }
+
+  // Начальное состояние
+  setProgress(10, "Connecting Telegram...");
+
+  // Обещание (Promise), которое разрешится, когда придет история графика
+  let historyResolve = null;
+  const historyPromise = new Promise(resolve => {
+    historyResolve = resolve;
+  });
+
   // ==============================
   // CONFIG
   // ==============================
@@ -234,7 +315,6 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
         renderPositions();
         updateProfileUI(profile);
       } else {
-        // Fallback на unsafe данные (если сервер не ответил ok)
         if (tg?.initDataUnsafe?.user) {
           const u = tg.initDataUnsafe.user;
           profile = {
@@ -248,7 +328,6 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
       }
     } catch (err) {
       console.error("initSession error:", err);
-      // Даже при ошибке показываем хотя бы unsafe данные
       if (tg?.initDataUnsafe?.user) {
         const u = tg.initDataUnsafe.user;
         profile = {
@@ -293,7 +372,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
   // ==============================
   let selectedPair = "BTC-USD";
   let currentPrice = 0;
-  let lastCandle = null; // текущая незавершённая свеча
+  let lastCandle = null; 
 
   const pairHistory = {
     "BTC-USD": [],
@@ -344,7 +423,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
   }
 
   // ==============================
-  // WS HANDLER — ИСПРАВЛЕННАЯ ЛОГИКА СВЕЧЕЙ
+  // WS HANDLER
   // ==============================
   function handleWS(msg){
     if (!msg.type) return;
@@ -369,12 +448,11 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
           const lastTime = candles[candles.length - 1].time;
 
           try {
-            chart.timeScale().setVisibleRange({ from: firstTime, to: lastTime + 60 }); // +60 чтобы текущая свеча была видна
+            chart.timeScale().setVisibleRange({ from: firstTime, to: lastTime + 60 });
           } catch(e) {
             chart.timeScale().fitContent();
           }
 
-          // Копируем последнюю свечу как основу для текущей незавершённой
           lastCandle = { ...candles[candles.length - 1] };
           currentPrice = lastCandle.close;
           updatePriceUI();
@@ -385,45 +463,43 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
           currentPrice = 0;
           updatePriceUI();
         }
+
+        // [NEW] Разрешаем промис загрузки истории
+        if (historyResolve) {
+            historyResolve(); 
+            historyResolve = null; // Чтобы не вызывать повторно
+        }
       }
       return;
     }
 
-    // Обновление цены в реальном времени
     if (msg.type === "price" && msg.pair === selectedPair){
       currentPrice = Number(msg.price);
-
-      // Если истории ещё нет — просто обновляем UI цены
       if (!lastCandle) {
         updatePriceUI();
         return;
       }
-
       const now = Math.floor(Date.now() / 1000);
-      const currentMinute = now - (now % 60); // начало текущей минуты
+      const currentMinute = now - (now % 60);
 
       if (currentMinute === lastCandle.time) {
-        // Всё ещё та же минута — обновляем текущую свечу
         lastCandle.high = Math.max(lastCandle.high, currentPrice);
         lastCandle.low = Math.min(lastCandle.low, currentPrice);
         lastCandle.close = currentPrice;
         candleSeries.update(lastCandle);
       } else {
-        // Новая минута — создаём новую незавершённую свечу
         lastCandle = {
           time: currentMinute,
-          open: lastCandle.close,  // continuity
+          open: lastCandle.close,
           high: currentPrice,
           low: currentPrice,
           close: currentPrice
         };
         candleSeries.update(lastCandle);
       }
-
       updatePriceUI();
     }
 
-    // Orderbook и трейды
     if (msg.type === "orderBook" && msg.pair === selectedPair){
       renderOrderBook(msg.buy, msg.sell);
     }
@@ -433,12 +509,10 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
   }
 
   // ==============================
-  // UI RENDER
+  // UI RENDER & FUNCTIONS
   // ==============================
-  // Глобальная переменная для текущих позиций
   window._positions = [];
 
-// Обновлённый рендер позиций с правильной математикой
   function renderPositions() {
     const el = document.getElementById("positionsList");
     el.innerHTML = "";
@@ -449,35 +523,26 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
     }
 
     window._positions.forEach(pos => {
-      // 1. Получаем данные
       const entryPrice = Number(pos.entry_price || pos.entryPrice || 0);
-      const size = Number(pos.size || 0);       // Твой объем позиции (Notional Value)
+      const size = Number(pos.size || 0);
       const leverage = Number(pos.leverage || 1);
       const margin = Number(pos.margin || 0);
       const type = (pos.type || "LONG").toUpperCase();
       
-      // 2. РАСЧЁТ PnL (Правильная формула)
       let pnl = 0;
       if (currentPrice > 0 && entryPrice > 0) {
-        // Считаем процентное изменение цены: (Текущая - Вход) / Вход
         const priceChangePct = (currentPrice - entryPrice) / entryPrice;
-        
-        // Умножаем процент на размер позиции
         pnl = priceChangePct * size;
-
-        // Если это SHORT, инвертируем знак (падение цены = прибыль)
         if (type === "SHORT") {
           pnl = -pnl;
         }
       }
 
-      // 3. Расчет ROE (доходность на вложенную маржу в %)
       let roePercent = "0.00";
       if (margin > 0) {
         roePercent = ((pnl / margin) * 100).toFixed(2);
       }
 
-      // Цвета и знаки
       const pnlColor = pnl >= 0 ? "var(--accent-green)" : "var(--accent-red)";
       const sign = pnl >= 0 ? "+" : "";
 
@@ -511,11 +576,9 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
           </button>
         </div>
       `;
-
       el.appendChild(card);
     });
 
-    // Обработчики кнопок
     el.querySelectorAll("button[data-id]").forEach(btn => {
       btn.onclick = (e) => {
         e.stopPropagation();
@@ -524,10 +587,8 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
     });
   }
 
-  // Выносим функцию закрытия отдельно для чистоты
   async function closePos(id) {
     if (!confirm("Закрыть позицию?")) return;
-    
     try {
       const response = await fetch(API_BASE + "/api/order/close", {
         method: "POST",
@@ -541,10 +602,8 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
 
       const data = await response.json();
       if (data.ok) {
-        // Убираем позицию из локального массива сразу
         window._positions = window._positions.filter(p => (p.id != id && p._id != id));
         renderPositions();
-        
         if (data.newBalance) {
           profile.balance = data.newBalance;
           updateProfileUI(profile);
@@ -558,32 +617,24 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-fami
     }
   }
 
-  // Обновляем PnL в реальном времени при изменении цены
   function updatePriceUI(){
     document.getElementById("priceDisplay").textContent = currentPrice ? currentPrice.toFixed(2) : "—";
-    renderPositions(); // ← важно: перерисовываем позиции при каждом тике
+    renderPositions();
   }
 
-  // Обработчики открытия позиций
   document.getElementById("openLong").addEventListener("click", openPosition("LONG"));
   document.getElementById("openShort").addEventListener("click", openPosition("SHORT"));
 
-function openPosition(side) {
+  function openPosition(side) {
     return async () => {
-      // 1. Считываем маржу (деньги пользователя)
       const marginInput = Number(document.getElementById("sizeInput").value);
-      
-      // 2. Считываем плечо
       const leverageEl = document.querySelector("#leverageSegment .chip.active");
       const leverage = Number(leverageEl?.dataset.value || 10);
 
       if (!marginInput || marginInput <= 0) return alert("Введите корректную сумму маржи");
 
-      // 3. Рассчитываем итоговый размер позиции (Size)
-      // Если маржа 100$ и плечо x10, то размер позиции = 1000$
       const positionSize = marginInput * leverage;
 
-      // 4. Отправляем на сервер
       try {
         const response = await fetch(API_BASE + "/api/order/open", {
           method: "POST",
@@ -592,7 +643,7 @@ function openPosition(side) {
             userId: currentUserId,
             pair: selectedPair,
             type: side,
-            size: positionSize, // <-- ОТПРАВЛЯЕМ УЖЕ УМНОЖЕННЫЙ РАЗМЕР
+            size: positionSize,
             leverage: leverage,
             entryPrice: currentPrice
           })
@@ -608,8 +659,6 @@ function openPosition(side) {
              profile.balance = data.newBalance;
              updateProfileUI(profile);
           }
-
-          // Показываем в алерте понятные цифры
           alert(`Позиция ${side} открыта!\nМаржа: ${marginInput} VP\nОбъем позиции: ${positionSize} VP (x${leverage})`);
         } else {
           alert("Ошибка: " + (data.error || "Не удалось открыть ордер"));
@@ -621,7 +670,6 @@ function openPosition(side) {
     };
   }
 
-  // Выбор плеча
   document.querySelectorAll("#leverageSegment .chip").forEach(chip => {
     chip.addEventListener("click", () => {
       document.querySelectorAll("#leverageSegment .chip").forEach(c => c.classList.remove("active"));
@@ -663,9 +711,6 @@ function openPosition(side) {
     });
   }
 
-  // ==============================
-  // PAIR SWITCH
-  // ==============================
   document.querySelectorAll(".pair-btn").forEach(btn=>{
     btn.addEventListener("click",()=>{
       document.querySelectorAll(".pair-btn").forEach(x=>x.classList.remove("active"));
@@ -714,10 +759,34 @@ function openPosition(side) {
   });
 
   // ==============================
-  // START
+  // [NEW] START SEQUENCE
   // ==============================
+  
+  // 1. Грузим данные юзера
+  setProgress(30, "Loading User Data...");
   await initSession();
+  
+  // 2. Подключаемся к сокету
+  setProgress(60, "Connecting to Market...");
   connectWS();
+
+  // 3. Ждем, пока сокет откроется и пришлет "history" (свечи для графика)
+  // Ставим таймаут 5 сек, чтобы не висело вечно, если сервер тупит
+  const timeoutPromise = new Promise(resolve => setTimeout(resolve, 5000));
+  await Promise.race([historyPromise, timeoutPromise]);
+  
+  // 4. Финал
+  setProgress(100, "Ready!");
+  
+  // Небольшая задержка перед исчезновением для красоты
+  setTimeout(() => {
+    loaderEl.classList.add('hidden');
+    // Удаляем из DOM полностью после анимации
+    setTimeout(() => {
+      loaderEl.style.display = 'none';
+    }, 500);
+  }, 500);
+
 })();
 </script>
 </body>
