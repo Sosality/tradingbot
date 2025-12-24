@@ -150,13 +150,24 @@ html,body{height:100%;background:var(--bg);color:var(--white);font-family:Inter,
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
-        <div class="controls" style="flex:1">
-          <input id="sizeInput" type="number" placeholder="Сумма (VP)" value="100" />
-          <div class="segment" id="leverageSegment" style="align-items:center">
-            <div class="chip" data-value="1">x1</div>
-            <div class="chip" data-value="5">x5</div>
-            <div class="chip active" data-value="10">x10</div>
-            <div class="chip" data-value="20">x20</div>
+        <div class="controls">
+          <div class="controls-top">
+            <input id="sizeInput" type="number" placeholder="Сумма (VP)" value="100" />
+          </div>
+          <div class="leverage-controls">
+            <div class="leverage-buttons">
+              <div class="chip" data-value="1">x1</div>
+              <div class="chip" data-value="5">x5</div>
+              <div class="chip" data-value="10">x10</div>
+              <div class="chip" data-value="20">x20</div>
+              <div class="chip" data-value="50">x50</div>
+            </div>
+            <input type="range" id="leverageSlider" min="1" max="50" value="10" class="leverage-slider" />
+            <div class="leverage-value" id="leverageValue">x10</div>
+          </div>
+          <div class="action-buttons">
+            <button id="openLong" class="btn btn-primary">BUY / LONG</button>
+            <button id="openShort" class="btn btn-danger">SELL / SHORT</button>
           </div>
         </div>
 
