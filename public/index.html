@@ -3,383 +3,306 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<title>TradeSim — Futures</title>
+<title>TradeSim — Pro Futures</title>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
 <style>
-/* ————— CORE STYLES ————— */
+/* ————— PROFESSIONAL THEME ————— */
 :root {
-  --bg: #0B0E11;
-  --panel: #1E2329;
-  --muted: #848E9C;
-  --accent-green: #0ECB81;
-  --accent-red: #F6465D;
-  --input-bg: #2B3139;
-  --border: rgba(255, 255, 255, 0.05);
-  --white: #EAECEF;
-  --primary-btn: #FCD535; /* Binance-like yellow for primary actions looks good, keeping requested green/red for trade */
-  --thumb-color: #EAECEF;
+  /* Binance/Bybit inspired dark palette */
+  --bg-app: #161A1E;       /* Самый темный фон */
+  --bg-panel: #1E2329;     /* Фон карточек */
+  --bg-input: #2B3139;     /* Фон инпутов */
+  --border-color: #2E333D; /* Границы */
+  
+  --text-primary: #EAECEF;
+  --text-secondary: #848E9C;
+  
+  --accent-green: #0ECB81; /* Рост */
+  --accent-red: #F6465D;   /* Падение */
+  --accent-brand: #FCD535; /* Бренд/Выделение (желтый, как на биржах) */
+  
+  --slider-track: #474D57;
+  --slider-fill: #FCD535;
 }
 
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
 
 html, body {
   height: 100%;
   margin: 0;
-  background: var(--bg);
-  color: var(--white);
+  background: var(--bg-app);
+  color: var(--text-primary);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  overflow: hidden; /* App feels native */
+  overflow: hidden;
+  font-size: 14px;
 }
 
-/* Скроллбары */
-::-webkit-scrollbar { width: 4px; height: 4px; }
+/* Кастомный скролл */
+::-webkit-scrollbar { width: 3px; height: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
 
 /* ————— LAYOUT ————— */
-.app {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
+.app { display: flex; flex-direction: column; height: 100vh; }
 
+/* Header */
 .header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
-
-.logo { font-weight: 700; font-size: 16px; letter-spacing: -0.5px; }
-
-.profile-sm {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  background: rgba(255,255,255,0.05);
-  padding: 4px 8px 4px 4px;
-  border-radius: 20px;
+.brand-logo { font-weight: 600; font-size: 15px; letter-spacing: -0.3px; color: var(--text-primary); }
+.balance-badge {
+  background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 4px;
+  font-family: 'Roboto Mono'; font-size: 12px; color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
-.avatar-sm { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; background: #333; }
 
-/* Основной контейнер с адаптивной сеткой */
+/* Grid Container */
 .container {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 300px; /* Десктоп: график + сайдбар */
-  gap: 8px;
-  padding: 8px;
-  overflow-y: auto;
+  flex: 1; display: grid; grid-template-columns: 1fr 320px; gap: 6px;
+  padding: 6px; overflow-y: auto;
 }
 
-.main-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.side-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.col-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.col-side { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 
-/* Карточки */
-.card {
-  background: var(--panel);
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid var(--border);
+/* Cards */
+.card { background: var(--bg-panel); border-radius: 4px; padding: 12px; } /* Биржи используют острые углы или малый радиус */
+
+/* ————— CHART AREA ————— */
+.market-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.pair-name { font-size: 18px; font-weight: 600; }
+.price-large { font-family: 'Roboto Mono'; font-size: 20px; font-weight: 600; color: var(--accent-green); transition: color 0.2s; }
+.chart-wrap { position: relative; height: 400px; width: 100%; overflow: hidden; }
+
+/* ————— CONTROLS (THE NEW DESIGN) ————— */
+.trade-panel { display: flex; flex-direction: column; gap: 16px; }
+
+/* Input Field with Suffix */
+.input-wrap { position: relative; }
+.input-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: block; }
+.custom-input {
+  width: 100%; background: var(--bg-input); border: 1px solid transparent;
+  padding: 10px 40px 10px 12px; border-radius: 4px;
+  color: var(--text-primary); font-family: 'Roboto Mono'; font-size: 14px;
+  transition: border 0.2s;
 }
-
-/* График */
-.chart-container {
-  position: relative;
-  height: 450px; /* Фиксированная высота для удобства */
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--bg);
-}
-
-/* Статистика цены над графиком */
-.ticker-stats {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-.price-big { font-family: 'Roboto Mono', monospace; font-size: 24px; font-weight: 700; }
-.pair-title { font-size: 16px; font-weight: 700; color: var(--white); }
-
-/* ————— CONTROLS & LEVERAGE ————— */
-.control-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.custom-input:focus { border-color: var(--accent-brand); }
+.input-suffix {
+  position: absolute; right: 12px; top: 34px; /* подстраиваем под label */
+  color: var(--text-secondary); font-size: 12px; pointer-events: none;
 }
 
-.input-group {
-  display: flex;
-  gap: 10px;
-}
-.input-field {
-  flex: 1;
-  background: var(--input-bg);
-  border: 1px solid var(--border);
-  padding: 12px;
-  border-radius: 8px;
-  color: var(--white);
-  font-size: 16px;
-  outline: none;
-}
-.input-field:focus { border-color: var(--accent-green); }
-
-/* Slider & Leverage UI */
-.leverage-wrap {
-  background: rgba(0,0,0,0.2);
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-}
-.leverage-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: var(--muted);
-}
-.leverage-val { color: var(--accent-green); font-weight: 700; font-family: 'Roboto Mono'; }
-
-/* Стили ползунка */
-input[type=range] {
-  -webkit-appearance: none;
-  width: 100%;
-  background: transparent;
-  margin: 8px 0;
-}
-input[type=range]::-webkit-slider-runnable-track {
-  width: 100%;
-  height: 4px;
-  background: #444;
-  border-radius: 2px;
-}
-input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  height: 20px;
-  width: 20px;
-  border-radius: 50%;
-  background: var(--white);
-  margin-top: -8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
-  cursor: pointer;
-  border: 2px solid var(--accent-green);
-}
-
-.lev-buttons {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 8px;
-  gap: 4px;
-}
-.lev-btn {
-  flex: 1;
-  background: var(--input-bg);
-  border: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 11px;
-  padding: 6px 0;
+/* LEVERAGE REDESIGN */
+.leverage-module {
+  background: rgba(0,0,0,0.15);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
+  padding: 12px;
 }
-.lev-btn.active {
-  background: rgba(14, 203, 129, 0.15);
-  color: var(--accent-green);
-  border-color: var(--accent-green);
+
+.lev-top-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.lev-title { font-size: 12px; color: var(--text-secondary); }
+.lev-value { 
+  font-family: 'Roboto Mono'; font-weight: 700; font-size: 14px; 
+  color: var(--accent-brand);
+}
+
+/* Custom Range Slider */
+.range-wrap { position: relative; width: 100%; height: 24px; display: flex; align-items: center; }
+input[type=range] {
+  -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer; z-index: 2;
+}
+/* Track (полоска) */
+input[type=range]::-webkit-slider-runnable-track {
+  width: 100%; height: 4px; border-radius: 2px;
+  background: linear-gradient(to right, var(--slider-fill) 0%, var(--slider-fill) var(--progress), var(--slider-track) var(--progress), var(--slider-track) 100%);
+}
+/* Thumb (кружок) */
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--accent-brand);
+  margin-top: -6px; /* центрируем относительно высоты трека 4px */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  transition: transform 0.1s;
+}
+input[type=range]:active::-webkit-slider-thumb { transform: scale(1.2); }
+
+/* Chips (Presets) */
+.lev-chips { display: flex; justify-content: space-between; gap: 4px; margin-top: 10px; }
+.chip {
+  flex: 1; text-align: center;
+  font-size: 11px; padding: 6px 0;
+  background: var(--bg-input); color: var(--text-secondary);
+  border-radius: 2px; cursor: pointer;
+  transition: all 0.2s; user-select: none;
+  font-family: 'Roboto Mono';
+}
+.chip:hover { background: #363c45; color: var(--text-primary); }
+.chip.active {
+  background: rgba(252, 213, 53, 0.15); /* Прозрачный желтый */
+  color: var(--accent-brand);
   font-weight: 700;
+  border: 1px solid rgba(252, 213, 53, 0.3);
 }
 
-/* Trade Buttons */
-.trade-actions { display: flex; gap: 8px; margin-top: 4px; }
-.btn-trade {
-  flex: 1;
-  padding: 14px;
-  border-radius: 8px;
-  border: none;
-  font-weight: 700;
-  font-size: 15px;
-  cursor: pointer;
-  color: white;
+/* Buttons */
+.btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.btn {
+  border: none; border-radius: 4px; padding: 12px; font-weight: 600; font-size: 14px;
+  cursor: pointer; color: #fff; transition: opacity 0.2s;
 }
-.btn-long { background: var(--accent-green); }
-.btn-short { background: var(--accent-red); }
-.btn-long:active, .btn-short:active { opacity: 0.8; transform: scale(0.98); }
+.btn:active { opacity: 0.85; }
+.btn-buy { background: var(--accent-green); }
+.btn-sell { background: var(--accent-red); }
 
-/* ————— LISTS (Positions, Orderbook) ————— */
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.list-scroll {
-  max-height: 250px;
-  overflow-y: auto;
-}
-
-.ob-row, .trade-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  padding: 4px 0;
-  font-family: 'Roboto Mono', monospace;
-}
-.ob-row.sell .price { color: var(--accent-red); }
-.ob-row.buy .price { color: var(--accent-green); }
-.text-muted { color: var(--muted); }
+/* ————— TABLES (Orderbook / History) ————— */
+.panel-header { font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 8px; display:flex; justify-content:space-between;}
+.list-wrap { max-height: 200px; overflow-y: auto; font-family: 'Roboto Mono'; font-size: 11px; }
+.row { display: flex; justify-content: space-between; padding: 3px 0; }
+.text-green { color: var(--accent-green); }
+.text-red { color: var(--accent-red); }
+.text-muted { color: var(--text-secondary); }
 
 /* Position Card */
-.pos-card {
-  background: rgba(255,255,255,0.03);
-  border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 8px;
-  border-left: 3px solid transparent;
+.pos-item {
+  border-top: 1px solid var(--border-color); padding: 10px 0;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center;
 }
-.pos-card.long { border-left-color: var(--accent-green); }
-.pos-card.short { border-left-color: var(--accent-red); }
+.pos-info { font-size: 13px; }
+.pos-pnl { text-align: right; font-family: 'Roboto Mono'; font-weight: 700; }
+.btn-mini {
+  background: var(--bg-input); border: 1px solid var(--border-color);
+  color: var(--text-primary); font-size: 10px; padding: 4px 8px; border-radius: 2px;
+  cursor: pointer; margin-top: 4px; display: inline-block;
+}
 
-/* ————— RESPONSIVE (MOBILE) ————— */
+/* ————— MOBILE ADAPTATION ————— */
 @media (max-width: 900px) {
-  .container {
-    grid-template-columns: 1fr; /* Одна колонка */
-    padding-bottom: 80px; /* Место под навбар, если он плавающий */
+  .container { grid-template-columns: 1fr; padding-bottom: 50px; }
+  .col-side {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px; order: 2;
   }
-  .side-col {
-    order: 2; /* Сайдбар вниз */
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* Ордербук и история рядом */
-    gap: 8px;
-  }
-  .chart-container {
-    height: 350px; /* Меньше высота на мобильном */
-  }
-}
-
-@media (max-width: 500px) {
-  .side-col { grid-template-columns: 1fr; } /* На совсем узких - друг под другом */
+  .chart-wrap { height: 320px; }
 }
 
 /* ————— LOADER ————— */
 #app-loader {
-  position: fixed; inset: 0; background: var(--bg); z-index: 9999;
+  position: fixed; inset: 0; background: var(--bg-app); z-index: 9999;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  transition: opacity 0.4s;
 }
-.loader-bar-bg { width: 160px; height: 3px; background: #333; border-radius: 3px; overflow: hidden; margin-top: 20px;}
-.loader-bar { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.2s; }
+.spinner {
+  width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1);
+  border-top-color: var(--accent-brand); border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 </style>
 </head>
 
 <body>
 
 <div id="app-loader">
-  <div class="logo" style="font-size: 24px;">⧉ TradeSim</div>
-  <div class="loader-bar-bg"><div class="loader-bar" id="loaderBar"></div></div>
-  <div style="margin-top: 10px; color: var(--muted); font-size: 12px;" id="loaderText">Initializing...</div>
+  <div class="spinner"></div>
+  <div style="margin-top: 16px; font-size: 12px; color: var(--text-secondary); font-family: 'Roboto Mono'">LOADING MARKET</div>
 </div>
 
 <div class="app">
   <header class="header">
-    <div style="display:flex; gap:12px; align-items:center;">
-      <div class="logo">⧉ TradeSim</div>
-    </div>
-    <div class="profile-sm">
-      <img id="avatarImg" src="" class="avatar-sm" style="display:none">
-      <span id="balanceDisplay" style="font-family:'Roboto Mono'">0.00 VP</span>
-    </div>
+    <div class="brand-logo">⧉ TradePro</div>
+    <div class="balance-badge" id="balanceDisplay">0.00 VP</div>
   </header>
 
-  <main class="container">
+  <div class="container">
     
-    <section class="main-col">
+    <section class="col-main">
       <div class="card">
-        <div class="ticker-stats">
-          <div>
-            <span class="pair-title" id="pairLabel">BTC/USD</span>
-            <span class="text-muted" style="font-size:12px; margin-left:6px;">Perp</span>
+        <div class="market-header">
+          <div style="display:flex; gap:10px; align-items:center;">
+             <span class="pair-name" id="pairLabel">BTC/USD</span>
+             <div style="display:flex; gap:4px;">
+               <div class="btn-mini" onclick="switchPair('BTC-USD')" style="cursor:pointer">BTC</div>
+               <div class="btn-mini" onclick="switchPair('ETH-USD')" style="cursor:pointer">ETH</div>
+             </div>
           </div>
-          <div class="price-big" id="priceDisplay">...</div>
+          <div class="price-large" id="priceDisplay">--.--</div>
         </div>
-        
-        <div class="chart-container" id="chart"></div>
-        
-        <div style="display:flex; gap:8px; margin-top:10px;">
-          <button class="lev-btn active pair-btn" data-pair="BTC-USD" style="padding: 8px;">BTC</button>
-          <button class="lev-btn pair-btn" data-pair="ETH-USD" style="padding: 8px;">ETH</button>
-        </div>
+        <div class="chart-wrap" id="chart"></div>
       </div>
 
-      <div class="card control-panel">
-        <div class="input-group">
-          <input type="number" id="sizeInput" class="input-field" placeholder="Маржа (VP)" value="100">
+      <div class="card trade-panel">
+        
+        <div class="input-wrap">
+          <label class="input-label">Размер маржи</label>
+          <input type="number" id="sizeInput" class="custom-input" placeholder="10 - 10000" value="100">
+          <span class="input-suffix">VP</span>
         </div>
 
-        <div class="leverage-wrap">
-          <div class="leverage-header">
-            <span>Кредитное плечо</span>
-            <span class="leverage-val" id="levDisplay">10x</span>
+        <div class="leverage-module">
+          <div class="lev-top-row">
+            <span class="lev-title">Кредитное плечо</span>
+            <span class="lev-value" id="levDisplay">10x</span>
           </div>
-          <input type="range" min="1" max="50" step="1" value="10" id="levSlider">
           
-          <div class="lev-buttons">
-            <div class="lev-btn" data-v="1">1x</div>
-            <div class="lev-btn" data-v="5">5x</div>
-            <div class="lev-btn active" data-v="10">10x</div>
-            <div class="lev-btn" data-v="20">20x</div>
-            <div class="lev-btn" data-v="50">50x</div>
+          <div class="range-wrap">
+            <input type="range" min="1" max="50" step="1" value="10" id="levSlider" style="--progress: 18%">
+          </div>
+          
+          <div class="lev-chips">
+            <div class="chip" data-v="1">1x</div>
+            <div class="chip" data-v="5">5x</div>
+            <div class="chip active" data-v="10">10x</div>
+            <div class="chip" data-v="20">20x</div>
+            <div class="chip" data-v="50">50x</div>
           </div>
         </div>
 
-        <div class="trade-actions">
-          <button id="btnLong" class="btn-trade btn-long">Buy / Long</button>
-          <button id="btnShort" class="btn-trade btn-short">Sell / Short</button>
+        <div class="btn-grid">
+          <button id="btnLong" class="btn btn-buy">Buy / Long</button>
+          <button id="btnShort" class="btn btn-sell">Sell / Short</button>
         </div>
       </div>
 
       <div class="card">
-        <div class="section-header">
-          <span>Открытые позиции</span>
-        </div>
+        <div class="panel-header">Открытые позиции</div>
         <div id="positionsList"></div>
       </div>
     </section>
 
-    <aside class="side-col">
+    <aside class="col-side">
       <div class="card">
-        <div class="section-header">Order Book</div>
-        <div class="list-scroll" id="orderBook"></div>
+        <div class="panel-header">
+          <span>Order Book</span>
+          <span>Size</span>
+        </div>
+        <div class="list-wrap" id="orderBook"></div>
       </div>
       <div class="card">
-        <div class="section-header">History</div>
-        <div class="list-scroll" id="tradeHistory"></div>
+        <div class="panel-header">Recent Trades</div>
+        <div class="list-wrap" id="tradeHistory"></div>
       </div>
     </aside>
 
-  </main>
+  </div>
 </div>
 
 <script>
 (async function(){
   // --- UI References ---
-  const loaderEl = document.getElementById('app-loader');
-  const loaderBar = document.getElementById('loaderBar');
-  const loaderText = document.getElementById('loaderText');
-  
   const slider = document.getElementById('levSlider');
   const levDisplay = document.getElementById('levDisplay');
-  const levBtns = document.querySelectorAll('.lev-btn[data-v]');
+  const chips = document.querySelectorAll('.chip');
+  const loaderEl = document.getElementById('app-loader');
   
   // --- Config ---
   const WSS_URL = "wss://tradingbot-backend-2yws.onrender.com";
@@ -394,39 +317,53 @@ input[type=range]::-webkit-slider-thumb {
   if(tg) {
     tg.ready();
     tg.expand();
-    // Цвет хедера под темную тему
     tg.setHeaderColor?.('#1E2329'); 
-    tg.setBackgroundColor?.('#0B0E11');
+    tg.setBackgroundColor?.('#161A1E');
   }
 
-  // --- Leverage Logic (Sync Slider & Buttons) ---
-  function updateLeverage(val) {
+  // --- LEVERAGE LOGIC (SYNC & VISUALS) ---
+  function updateSliderVisual(val) {
+    const min = slider.min || 1;
+    const max = slider.max || 50;
+    const percentage = ((val - min) / (max - min)) * 100;
+    slider.style.setProperty('--progress', percentage + '%');
+    
+    // Change slider color based on risk (optional visual flair)
+    if(val > 20) document.documentElement.style.setProperty('--slider-fill', '#F6465D');
+    else document.documentElement.style.setProperty('--slider-fill', '#FCD535');
+  }
+
+  function setLeverage(val) {
     currentLeverage = parseInt(val);
     slider.value = currentLeverage;
     levDisplay.textContent = currentLeverage + "x";
     
-    // Подсветка кнопок
-    levBtns.forEach(btn => {
-      const btnVal = parseInt(btn.dataset.v);
-      if (btnVal === currentLeverage) btn.classList.add('active');
-      else btn.classList.remove('active');
+    // Update Chips
+    chips.forEach(c => {
+      if(parseInt(c.dataset.v) === currentLeverage) c.classList.add('active');
+      else c.classList.remove('active');
     });
+    
+    updateSliderVisual(currentLeverage);
   }
 
-  slider.addEventListener('input', (e) => updateLeverage(e.target.value));
+  slider.addEventListener('input', (e) => setLeverage(e.target.value));
   
-  levBtns.forEach(btn => {
-    btn.addEventListener('click', () => updateLeverage(btn.dataset.v));
+  chips.forEach(c => {
+    c.addEventListener('click', () => setLeverage(c.dataset.v));
   });
 
-  // --- Chart Setup ---
+  // Init visual state
+  updateSliderVisual(10);
+
+  // --- CHART ---
   const chartEl = document.getElementById("chart");
   const chart = LightweightCharts.createChart(chartEl, {
-    layout: { background: { type: 'solid', color: '#0B0E11' }, textColor: '#848E9C' },
-    grid: { vertLines: { color: '#1E2329' }, horzLines: { color: '#1E2329' } },
-    timeScale: { borderColor: '#1E2329' },
-    rightPriceScale: { borderColor: '#1E2329' },
-    crosshair: { vertLine: { color: '#333' }, horzLine: { color: '#333' } }
+    layout: { background: { type: 'solid', color: '#1E2329' }, textColor: '#848E9C' },
+    grid: { vertLines: { color: '#2E333D' }, horzLines: { color: '#2E333D' } },
+    timeScale: { borderColor: '#2E333D', timeVisible: true },
+    rightPriceScale: { borderColor: '#2E333D' },
+    crosshair: { vertLine: { color: '#555', style: 1 }, horzLine: { color: '#555', style: 1 } }
   });
   
   let candleSeries = chart.addCandlestickSeries({
@@ -434,20 +371,17 @@ input[type=range]::-webkit-slider-thumb {
     downColor: '#F6465D', borderDownColor: '#F6465D', wickDownColor: '#F6465D',
   });
 
-  // Авто-ресайз графика
   new ResizeObserver(entries => {
-    if(entries.length === 0 || !entries[0].contentRect) return;
+    if(!entries[0]) return;
     const { width, height } = entries[0].contentRect;
     chart.applyOptions({ width, height });
   }).observe(chartEl);
 
-  // --- State & History ---
+  // --- DATA LOGIC ---
   let lastCandle = null;
   const pairHistory = { "BTC-USD": [], "ETH-USD": [] };
-
-  // --- WebSocket ---
   let socket = null;
-  
+
   function connectWS() {
     socket = new WebSocket(WSS_URL);
     socket.onopen = () => {
@@ -461,16 +395,13 @@ input[type=range]::-webkit-slider-thumb {
 
   function handleWS(msg) {
     if(msg.type === "history" && msg.pair === selectedPair) {
-      const data = msg.data.map(c => ({ 
-        time: c.time, open: c.open, high: c.high, low: c.low, close: c.close 
-      }));
+      const data = msg.data.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }));
       pairHistory[msg.pair] = data;
       candleSeries.setData(data);
-      
       if(data.length) {
         lastCandle = data[data.length - 1];
         currentPrice = lastCandle.close;
-        updatePriceDisplay();
+        updateUI();
         chart.timeScale().fitContent();
       }
       return;
@@ -478,12 +409,11 @@ input[type=range]::-webkit-slider-thumb {
     
     if(msg.type === "price" && msg.pair === selectedPair) {
       currentPrice = Number(msg.price);
-      updatePriceDisplay();
+      updateUI();
       
       if(lastCandle) {
         const now = Math.floor(Date.now()/1000);
         const candleTime = now - (now % 60);
-        
         if(candleTime === lastCandle.time) {
           lastCandle.high = Math.max(lastCandle.high, currentPrice);
           lastCandle.low = Math.min(lastCandle.low, currentPrice);
@@ -500,40 +430,39 @@ input[type=range]::-webkit-slider-thumb {
     if(msg.type === "trades" && msg.pair === selectedPair) renderTrades(msg.trades);
   }
 
-  // --- Rendering ---
-  function updatePriceDisplay() {
-    document.getElementById("priceDisplay").textContent = currentPrice.toFixed(2);
-    document.title = `${currentPrice.toFixed(0)} | TradeSim`;
-    renderPositions(); // Обновляем PnL
+  function updateUI() {
+    const el = document.getElementById("priceDisplay");
+    el.textContent = currentPrice.toFixed(2);
+    el.style.color = (!lastCandle || currentPrice >= lastCandle.open) ? "var(--accent-green)" : "var(--accent-red)";
+    renderPositions();
   }
 
   function renderOrderBook(buys, sells) {
     const el = document.getElementById("orderBook");
     let html = "";
-    sells.slice(0, 15).reverse().forEach(s => {
-      html += `<div class="ob-row sell"><span class="price">${s.price.toFixed(2)}</span><span class="text-muted">${s.size.toFixed(4)}</span></div>`;
+    sells.slice(0, 10).reverse().forEach(s => {
+      html += `<div class="row"><span class="text-red">${s.price.toFixed(2)}</span><span class="text-muted">${s.size.toFixed(4)}</span></div>`;
     });
-    html += '<div style="height:4px; border-bottom:1px dashed #333; margin:4px 0;"></div>';
-    buys.slice(0, 15).forEach(b => {
-      html += `<div class="ob-row buy"><span class="price">${b.price.toFixed(2)}</span><span class="text-muted">${b.size.toFixed(4)}</span></div>`;
+    html += '<div style="height:1px; background:var(--border-color); margin:4px 0;"></div>';
+    buys.slice(0, 10).forEach(b => {
+      html += `<div class="row"><span class="text-green">${b.price.toFixed(2)}</span><span class="text-muted">${b.size.toFixed(4)}</span></div>`;
     });
     el.innerHTML = html;
   }
 
   function renderTrades(trades) {
     const el = document.getElementById("tradeHistory");
-    const html = trades.slice().reverse().map(t => {
-      const color = t.side === 'buy' ? 'var(--accent-green)' : 'var(--accent-red)';
-      return `<div class="trade-row"><span style="color:${color}">${t.price.toFixed(2)}</span><span class="text-muted">${t.size.toFixed(4)}</span></div>`;
-    }).join('');
-    el.innerHTML = html;
+    el.innerHTML = trades.slice().reverse().map(t => 
+      `<div class="row"><span class="${t.side==='buy'?'text-green':'text-red'}">${t.price.toFixed(2)}</span><span class="text-muted">${t.size.toFixed(4)}</span></div>`
+    ).join('');
   }
 
+  // --- POSITIONS & ORDERS ---
   window._positions = [];
   function renderPositions() {
     const el = document.getElementById("positionsList");
     if(!window._positions.length) {
-      el.innerHTML = `<div class="text-muted" style="text-align:center; padding:20px; font-size:13px;">Нет активных позиций</div>`;
+      el.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-secondary); font-size:12px">Нет позиций</div>`;
       return;
     }
     
@@ -549,31 +478,24 @@ input[type=range]::-webkit-slider-thumb {
         pnl = type === "LONG" ? (diff * size) : (-diff * size);
       }
       
-      const pnlClass = pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-      const sideClass = type === "LONG" ? "long" : "short";
+      const pnlColor = pnl >= 0 ? "text-green" : "text-red";
       
       return `
-        <div class="pos-card ${sideClass}">
-          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-            <div style="font-weight:700; font-size:13px;">${type} ${selectedPair} <span style="color:var(--muted); font-weight:400;">x${lev}</span></div>
-            <div style="font-weight:700; color:${pnlClass}">${pnl > 0 ? '+' : ''}${pnl.toFixed(2)} VP</div>
+        <div class="pos-item">
+          <div class="pos-info">
+            <div style="font-weight:700; color:${type==='LONG'?'var(--accent-green)':'var(--accent-red)'}">${type} ${selectedPair}</div>
+            <div class="text-muted">x${lev} | ${size.toFixed(0)} VP</div>
+            <div class="text-muted">Entry: ${entry.toFixed(2)}</div>
           </div>
-          <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-            <div class="text-muted" style="font-size:11px;">
-              Вход: ${entry.toFixed(2)}<br>
-              Объем: ${size.toFixed(0)}
-            </div>
-            <button onclick="closePosition('${pos.id || pos._id}')" 
-              style="background:rgba(255,255,255,0.1); border:none; color:white; border-radius:4px; padding:4px 8px; font-size:11px; cursor:pointer;">
-              Закрыть
-            </button>
+          <div style="text-align:right">
+             <div class="pos-pnl ${pnlColor}">${pnl>0?'+':''}${pnl.toFixed(2)}</div>
+             <div class="btn-mini" onclick="closePosition('${pos.id || pos._id}')">Закрыть</div>
           </div>
         </div>
       `;
     }).join('');
   }
 
-  // --- API Actions ---
   window.closePosition = async (id) => {
     if(!confirm("Закрыть позицию?")) return;
     try {
@@ -586,23 +508,19 @@ input[type=range]::-webkit-slider-thumb {
         window._positions = window._positions.filter(p => p.id != id && p._id != id);
         if(data.newBalance) updateBalance(data.newBalance);
         renderPositions();
-      } else { alert(data.error || "Ошибка"); }
-    } catch(e) { alert("Network error"); }
+      } else alert(data.error);
+    } catch(e) {}
   };
 
   async function openTrade(side) {
     const margin = parseFloat(document.getElementById("sizeInput").value);
-    if(!margin || margin <= 0) return alert("Введите сумму маржи");
-    
+    if(!margin || margin <= 0) return alert("Неверная сумма");
     const size = margin * currentLeverage;
     
     try {
       const res = await fetch(API_URL + "/api/order/open", {
         method: "POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          userId: currentUserId, pair: selectedPair, type: side,
-          size: size, leverage: currentLeverage, entryPrice: currentPrice
-        })
+        body: JSON.stringify({ userId: currentUserId, pair: selectedPair, type: side, size, leverage: currentLeverage, entryPrice: currentPrice })
       });
       const data = await res.json();
       if(data.ok) {
@@ -610,70 +528,53 @@ input[type=range]::-webkit-slider-thumb {
         if(data.newBalance !== undefined) updateBalance(data.newBalance);
         renderPositions();
         tg?.HapticFeedback?.notificationOccurred('success');
-      } else { alert(data.error); }
-    } catch(e) { console.error(e); alert("Network error"); }
+      } else alert(data.error);
+    } catch(e) { alert("Network error"); }
   }
 
   document.getElementById("btnLong").onclick = () => openTrade("LONG");
   document.getElementById("btnShort").onclick = () => openTrade("SHORT");
 
-  // --- Initialization ---
   function updateBalance(val) {
     document.getElementById("balanceDisplay").textContent = Number(val).toFixed(2) + " VP";
   }
 
+  // --- PAIR SWITCH ---
+  window.switchPair = (pair) => {
+    if(pair === selectedPair) return;
+    selectedPair = pair;
+    document.getElementById('pairLabel').textContent = pair.replace('-', '/');
+    candleSeries.setData([]);
+    lastCandle = null;
+    if(socket) {
+       socket.send(JSON.stringify({type:"unsubscribe", pair: selectedPair})); // bug fix: unsub old
+       socket.close(); // force reconnect logic
+    }
+  };
+
+  // --- START ---
   async function init() {
-    loaderBar.style.width = "30%";
-    
-    // Auth
     try {
-      const initData = tg?.initData || "";
-      const res = await fetch(API_URL + "/api/init", {
-        method: "POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ initData })
-      });
-      const data = await res.json();
-      if(data.ok && data.user) {
-        currentUserId = data.user.user_id;
-        updateBalance(data.user.balance || 0);
-        window._positions = data.positions || [];
-        if(data.user.photo_url) {
-          const img = document.getElementById("avatarImg");
-          img.src = data.user.photo_url; img.style.display = "block";
-        }
-      }
-    } catch(e) { console.error("Auth fail", e); }
+       const initData = tg?.initData || "";
+       const res = await fetch(API_URL + "/api/init", {
+         method: "POST", headers:{"Content-Type":"application/json"},
+         body: JSON.stringify({ initData })
+       });
+       const data = await res.json();
+       if(data.ok && data.user) {
+         currentUserId = data.user.user_id;
+         updateBalance(data.user.balance || 0);
+         window._positions = data.positions || [];
+       }
+    } catch(e){}
     
-    loaderBar.style.width = "70%";
     connectWS();
     
-    // Wait for price (fake delay ensuring connection)
-    await new Promise(r => setTimeout(r, 1500));
-    
-    loaderBar.style.width = "100%";
+    // Simulate loading
     setTimeout(() => {
-      loaderEl.style.opacity = '0';
-      setTimeout(()=> loaderEl.style.display = 'none', 400);
-    }, 500);
+       loaderEl.style.display = 'none';
+    }, 1500);
   }
-
-  // --- Pair Switching ---
-  document.querySelectorAll('.pair-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const newPair = btn.dataset.pair;
-      if(newPair === selectedPair) return;
-      document.querySelectorAll('.pair-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      selectedPair = newPair;
-      document.getElementById('pairLabel').textContent = newPair.replace('-', '/');
-      
-      // Reset chart
-      candleSeries.setData([]);
-      lastCandle = null;
-      if(socket) socket.send(JSON.stringify({type:"unsubscribe", pair: selectedPair})); // Unsub old
-      if(socket) socket.send(JSON.stringify({type:"subscribe", pair: newPair})); // Sub new
-    });
-  });
 
   init();
 })();
