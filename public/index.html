@@ -648,12 +648,42 @@ html,body{height:100%;background:var(--bg);color:var(--white);font-family:Inter,
     };
   }
 
-  document.querySelectorAll("#leverageSegment .chip").forEach(chip => {
+  // Текущий выбранный leverage
+  let currentLeverage = 10;
+
+  // Синхронизация кнопок и слайдера
+  const leverageButtons = document.querySelectorAll("#leverageSegment .chip");
+  const leverageSlider = document.getElementById("leverageSlider");
+  const leverageValue = document.getElementById("leverageValue");
+
+  function updateLeverage(value) {
+    value = Number(value);
+    currentLeverage = value;
+    leverageValue.textContent = `x${value}`;
+
+    // Активируем ближайшую кнопку
+    leverageButtons.forEach(btn => {
+      btn.classList.toggle("active", Number(btn.dataset.value) === value);
+    });
+  }
+
+  // Клик по кнопке
+  leverageButtons.forEach(chip => {
     chip.addEventListener("click", () => {
-      document.querySelectorAll("#leverageSegment .chip").forEach(c => c.classList.remove("active"));
-      chip.classList.add("active");
+      const val = Number(chip.dataset.value);
+      updateLeverage(val);
+      leverageSlider.value = val;
     });
   });
+
+  // Ползунок
+  leverageSlider.addEventListener("input", (e) => {
+    updateLeverage(e.target.value);
+  });
+
+  // Инициализация
+  updateLeverage(10);
+  leverageSlider.value = 10;
 
   function renderOrderBook(buys, sells){
     const el = document.getElementById("orderBook");
