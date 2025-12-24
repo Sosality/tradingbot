@@ -124,13 +124,34 @@ input[type=range]::-webkit-slider-thumb {
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
-        <div class="controls" style="flex:1">
-          <input id="sizeInput" type="number" placeholder="Сумма (VP)" value="100" />
-          <div class="segment" id="leverageSegment" style="align-items:center">
-            <div class="chip" data-value="1">x1</div>
-            <div class="chip" data-value="5">x5</div>
-            <div class="chip active" data-value="10">x10</div>
-            <div class="chip" data-value="20">x20</div>
+        <div class="controls-area">
+          <div class="input-group">
+            <input type="number" id="marginInput" class="input-field" placeholder="Сумма (VP)" value="100" style="width:100%; padding:12px; background:var(--input-bg); border:1px solid var(--border); color:#fff; border-radius:8px;">
+          </div>
+
+          <div class="leverage-container">
+            <div class="leverage-header">
+              <span>Кредитное плечо</span>
+              <span class="leverage-val" id="leverageDisplay">20x</span>
+            </div>
+    
+            <div class="slider-wrap">
+              <span style="font-size:10px; color:var(--muted)">1x</span>
+              <input type="range" id="leverageSlider" min="1" max="50" step="1" value="20">
+              <span style="font-size:10px; color:var(--muted)">50x</span>
+            </div>
+
+            <div class="chips-row">
+              <div class="chip" data-v="5">5x</div>
+              <div class="chip" data-v="10">10x</div>
+              <div class="chip active" data-v="20">20x</div>
+              <div class="chip" data-v="50">50x</div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:12px;">
+            <button id="btnLong" style="flex:1; padding:14px; background:var(--accent-green); border:none; border-radius:8px; font-weight:700; cursor:pointer;">Buy / Long</button>
+            <button id="btnShort" style="flex:1; padding:14px; background:var(--accent-red); border:none; border-radius:8px; font-weight:700; color:#fff; cursor:pointer;">Sell / Short</button>
           </div>
         </div>
 
