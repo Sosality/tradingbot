@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
+/* ————— ТВОЙ СТИЛЬ ————— */
 :root{
   --bg:#0B0E11;
   --panel:#1E2329;
@@ -17,77 +18,109 @@
   --accent-green:#0ECB81;
   --accent-red:#F6465D;
   --glass: rgba(255,255,255,0.02);
+  --white:#E6EEF3;
 }
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:var(--bg);color:var(--white);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;}
-.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
-.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border-bottom:1px solid rgba(255,255,255,0.03);flex-shrink:0}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;}
+.app{display:flex;flex-direction:column;height:100vh;}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-bottom:1px solid rgba(255,255,255,0.03)}
 .brand{display:flex;align-items:center;gap:12px}
 .logo{font-weight:700;font-size:18px}
 .profile{display:flex;align-items:center;gap:12px}
-.avatar{width:40px;height:40px;border-radius:50%;background:#222;overflow:hidden;flex-shrink:0}
+.avatar{width:44px;height:44px;border-radius:50%;background:#222;overflow:hidden;flex-shrink:0}
 .avatar img{width:100%;height:100%;object-fit:cover}
 .profile-info{display:flex;flex-direction:column;font-size:13px}
 .profile-name{font-weight:600}
 .profile-username{color:var(--muted);font-size:12px}
-.profile-balance{font-family:"Roboto Mono",monospace;font-weight:700;margin-top:4px;font-size:13px}
-.container{flex:1;display:flex;flex-direction:column;padding:12px;gap:12px;overflow:hidden}
-.main-card{background:var(--panel);border-radius:12px;padding:14px;box-shadow:0 4px 18px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;height:100%}
-.top-stats{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px}
-.pair-label{font-weight:700;font-size:16px}
-.market-tag{background:var(--glass);padding:4px 8px;border-radius:8px;color:var(--muted);font-size:12px;margin-top:4px}
-.price{font-family:"Roboto Mono",monospace;font-size:30px;font-weight:700}
-.chart-wrap{flex:1;border-radius:10px;overflow:hidden;min-height:280px}
-.controls{margin-top:12px;display:flex;flex-direction:column;gap:12px}
-.controls-top{display:flex;gap:10px;align-items:center}
-.controls input{background:#111;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);color:var(--white);font-size:15px;flex:1}
-.leverage-controls{display:flex;flex-direction:column;gap:8px}
-.leverage-buttons{display:flex;gap:8px;justify-content:center}
-.chip{padding:8px 12px;border-radius:10px;background:#15181b;cursor:pointer;border:1px solid rgba(255,255,255,0.02);font-size:14px;transition:all .2s}
-.chip.active{background:#1E2329;border-color:rgba(255,255,255,0.1);box-shadow:0 4px 10px rgba(0,0,0,0.6)}
-.leverage-slider{width:100%;height:8px;border-radius:4px;background:rgba(255,255,255,0.1);outline:none;cursor:pointer}
-.leverage-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent-green);cursor:pointer;box-shadow:0 0 10px rgba(14,203,129,0.5)}
-.leverage-value{text-align:center;margin-top:4px;font-family:"Roboto Mono",monospace;font-size:14px;color:var(--white)}
-.action-buttons{display:flex;gap:10px}
-.btn{flex:1;padding:14px;border-radius:12px;border:0;cursor:pointer;font-weight:700;font-size:16px}
-.btn-primary{background:var(--accent-green);color:#000}
-.btn-danger{background:var(--accent-red);color:#000}
-.positions-card{margin-top:12px;background:var(--panel);border-radius:12px;padding:14px;box-shadow:0 4px 18px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.02)}
-.positions-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-weight:700;font-size:15px}
-.positions-list{min-height:60px}
-.pos-card{display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:10px;margin-bottom:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05)}
-.pos-info{flex:1}
-.pos-type{font-weight:700;font-size:14px}
-.pos-details{font-size:12px;color:var(--muted);margin-top:4px}
-.pos-pnl{font-weight:700;font-size:15px}
-.pos-roe{font-size:12px;margin-top:2px}
-.btn-close{padding:6px 12px;font-size:12px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:var(--white);border-radius:8px;cursor:pointer}
-.side-sections{display:flex;flex-direction:column;gap:12px;margin-top:12px}
-.side-card{flex:1;background:var(--panel);border-radius:12px;padding:14px;box-shadow:0 4px 18px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column}
-.side-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:700;font-size:14px}
-.orderbook-list,.trade-history{flex:1;overflow:auto;font-size:13px;color:var(--muted)}
-.orderbook-row,.trade-row{display:flex;justify-content:space-between;padding:4px 0}
-.orderbook-row .price{width:90px;text-align:right}
+.profile-balance{font-family:"Roboto Mono",monospace;color:#cfd8dc;font-weight:700;margin-top:4px;font-size:13px}
+.container{display:grid;grid-template-columns:1fr 360px;gap:12px;padding:12px;height:calc(100vh - 72px);overflow:hidden;}
+.left-col {display: flex;flex-direction: column;gap: 12px;overflow-y: auto;min-height: 0;}
+.card{background:var(--panel);border-radius:12px;padding:12px;box-shadow:0 4px 18px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.02)}
+.chart-wrap{height:56vh;border-radius:10px;overflow:hidden;}
+.top-stats{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.price{font-family:"Roboto Mono",monospace;font-size:28px;font-weight:700}
+.price-change{font-weight:700;padding:6px 8px;border-radius:8px;font-size:13px}
+.price-change.up{background:rgba(14,190,131,0.12);color:var(--accent-green)}
+.price-change.down{background:rgba(246,70,93,0.10);color:var(--accent-red)}
+.controls{display:flex;gap:10px;margin-top:8px}
+.controls input, .controls select{background:#111;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);color:var(--white);font-size:14px}
+.segment{display:flex;gap:8px}
+.chip{padding:8px 10px;border-radius:8px;background:#15181b;cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
+.chip.active{border-color:rgba(255,255,255,0.06);box-shadow:0 4px 10px rgba(0,0,0,0.6)}
+.right-col{display:flex;flex-direction:column;gap:12px}
+.side-section{display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.orderbook-list{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);max-height:220px;overflow:auto;padding:8px;border-radius:8px;background:linear-gradient(180deg, transparent, rgba(255,255,255,0.01))}
+.orderbook-row{display:flex;justify-content:space-between;gap:8px;padding:6px 8px;border-radius:6px}
+.orderbook-row .price{width:100px}
 .orderbook-row.buy .price{color:var(--accent-green)}
 .orderbook-row.sell .price{color:var(--accent-red)}
-.bottom-nav{display:flex;align-items:center;gap:12px;padding:12px;background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent);border-top:1px solid rgba(255,255,255,0.02);flex-shrink:0}
-.btn-ghost{padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--white);font-weight:700}
-.pair-switch{display:flex;gap:8px}
-.pair-btn{padding:6px 10px;border-radius:8px;background:#101216;border:1px solid rgba(255,255,255,0.02);cursor:pointer;color:var(--muted);font-size:14px}
-.pair-btn.active{color:var(--white);border-color:rgba(255,255,255,0.1);background:#1E2329}
+.trade-history{max-height:160px;overflow:auto;padding:8px}
+.trade-row{display:flex;justify-content:space-between;padding:6px 8px;border-radius:6px;font-size:13px}
+.pos-card{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.01)}
+.bottom-nav{display:flex;gap:8px;padding:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);border-top:1px solid rgba(255,255,255,0.02)}
+.btn{padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
+.btn-primary{background:var(--accent-green);color:#001}
+.btn-danger{background:var(--accent-red);color:#001}
+.btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--white)}
+.pair-switch { display:flex; gap:8px; align-items:center; margin-right:8px; }
+.pair-btn { padding:6px 8px; border-radius:8px; background:#101216; border:1px solid rgba(255,255,255,0.02); cursor:pointer; color:var(--muted) }
+.pair-btn.active { color:var(--white); border-color:rgba(255,255,255,0.06); box-shadow:0 6px 18px rgba(0,0,0,0.6) }
 
-/* Адаптив */
-@media (min-width: 768px) {
-  .container{flex-direction:row}
-  .main-card{flex:1;max-width:600px}
-  .side-sections{flex:1;max-width:400px}
+/* ————— [NEW] СТИЛИ ЗАГРУЗЧИКА ————— */
+#app-loader {
+  position: fixed;
+  top: 0; 
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s ease, visibility 0.5s;
 }
-@media (max-width: 480px) {
-  .header{padding:10px 12px}
-  .logo{font-size:16px}
-  .price{font-size:26px}
-  .btn{font-size:15px;padding:12px}
-  .chip{font-size:13px;padding:6px 10px}
+
+#app-loader.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.loader-logo {
+  font-weight: 700;
+  font-size: 24px;
+  margin-bottom: 24px;
+  color: var(--white);
+  letter-spacing: -0.5px;
+}
+
+.loader-track {
+  width: 200px;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.loader-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0%; /* Будет меняться JS */
+  background: var(--accent-green);
+  transition: width 0.3s ease-out;
+  box-shadow: 0 0 10px rgba(14, 203, 129, 0.5);
+}
+
+.loader-text {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  font-family: 'Roboto Mono', monospace;
 }
 </style>
 </head>
@@ -150,24 +183,13 @@ html,body{height:100%;background:var(--bg);color:var(--white);font-family:Inter,
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
-        <div class="controls">
-          <div class="controls-top">
-            <input id="sizeInput" type="number" placeholder="Сумма (VP)" value="100" />
-          </div>
-          <div class="leverage-controls">
-            <div class="leverage-buttons">
-              <div class="chip" data-value="1">x1</div>
-              <div class="chip" data-value="5">x5</div>
-              <div class="chip" data-value="10">x10</div>
-              <div class="chip" data-value="20">x20</div>
-              <div class="chip" data-value="50">x50</div>
-            </div>
-            <input type="range" id="leverageSlider" min="1" max="50" value="10" class="leverage-slider" />
-            <div class="leverage-value" id="leverageValue">x10</div>
-          </div>
-          <div class="action-buttons">
-            <button id="openLong" class="btn btn-primary">BUY / LONG</button>
-            <button id="openShort" class="btn btn-danger">SELL / SHORT</button>
+        <div class="controls" style="flex:1">
+          <input id="sizeInput" type="number" placeholder="Сумма (VP)" value="100" />
+          <div class="segment" id="leverageSegment" style="align-items:center">
+            <div class="chip" data-value="1">x1</div>
+            <div class="chip" data-value="5">x5</div>
+            <div class="chip active" data-value="10">x10</div>
+            <div class="chip" data-value="20">x20</div>
           </div>
         </div>
 
@@ -648,42 +670,12 @@ html,body{height:100%;background:var(--bg);color:var(--white);font-family:Inter,
     };
   }
 
-  // Текущий выбранный leverage
-  let currentLeverage = 10;
-
-  // Синхронизация кнопок и слайдера
-  const leverageButtons = document.querySelectorAll("#leverageSegment .chip");
-  const leverageSlider = document.getElementById("leverageSlider");
-  const leverageValue = document.getElementById("leverageValue");
-
-  function updateLeverage(value) {
-    value = Number(value);
-    currentLeverage = value;
-    leverageValue.textContent = `x${value}`;
-
-    // Активируем ближайшую кнопку
-    leverageButtons.forEach(btn => {
-      btn.classList.toggle("active", Number(btn.dataset.value) === value);
-    });
-  }
-
-  // Клик по кнопке
-  leverageButtons.forEach(chip => {
+  document.querySelectorAll("#leverageSegment .chip").forEach(chip => {
     chip.addEventListener("click", () => {
-      const val = Number(chip.dataset.value);
-      updateLeverage(val);
-      leverageSlider.value = val;
+      document.querySelectorAll("#leverageSegment .chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
     });
   });
-
-  // Ползунок
-  leverageSlider.addEventListener("input", (e) => {
-    updateLeverage(e.target.value);
-  });
-
-  // Инициализация
-  updateLeverage(10);
-  leverageSlider.value = 10;
 
   function renderOrderBook(buys, sells){
     const el = document.getElementById("orderBook");
