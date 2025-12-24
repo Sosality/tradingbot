@@ -2,642 +2,790 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>TradeSim — Telegram Mini App</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TradeSim — BTC/ETH Futures (Telegram auth)</title>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
-/* ————— BASE STYLES ————— */
-:root {
-  --bg: #0B0E11;
-  --panel: #1E2329;
-  --muted: #848E9C;
-  --accent-green: #0ECB81;
-  --accent-red: #F6465D;
-  --border: rgba(255,255,255,0.05);
-  --white: #EAECEF;
-  --input-bg: #2B3139;
+/* ————— ТВОЙ СТИЛЬ ————— */
+:root{
+  --bg:#0B0E11;
+  --panel:#1E2329;
+  --muted:#98A0A6;
+  --accent-green:#0ECB81;
+  --accent-red:#F6465D;
   --glass: rgba(255,255,255,0.02);
+  --white:#E6EEF3;
 }
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;}
+.app{display:flex;flex-direction:column;height:100vh;}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-bottom:1px solid rgba(255,255,255,0.03)}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{font-weight:700;font-size:18px}
+.profile{display:flex;align-items:center;gap:12px}
+.avatar{width:44px;height:44px;border-radius:50%;background:#222;overflow:hidden;flex-shrink:0}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.profile-info{display:flex;flex-direction:column;font-size:13px}
+.profile-name{font-weight:600}
+.profile-username{color:var(--muted);font-size:12px}
+.profile-balance{font-family:"Roboto Mono",monospace;color:#cfd8dc;font-weight:700;margin-top:4px;font-size:13px}
+.container{display:grid;grid-template-columns:1fr 360px;gap:12px;padding:12px;height:calc(100vh - 72px);overflow:hidden;}
+.left-col {display: flex;flex-direction: column;gap: 12px;overflow-y: auto;min-height: 0;}
+.card{background:var(--panel);border-radius:12px;padding:12px;box-shadow:0 4px 18px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.02)}
+.chart-wrap{height:56vh;border-radius:10px;overflow:hidden;}
+.top-stats{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.price{font-family:"Roboto Mono",monospace;font-size:28px;font-weight:700}
+.price-change{font-weight:700;padding:6px 8px;border-radius:8px;font-size:13px}
+.price-change.up{background:rgba(14,190,131,0.12);color:var(--accent-green)}
+.price-change.down{background:rgba(246,70,93,0.10);color:var(--accent-red)}
+.controls{display:flex;gap:10px;margin-top:8px}
+.controls input, .controls select{background:#111;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);color:var(--white);font-size:14px}
+.segment{display:flex;gap:8px}
+.chip{padding:8px 10px;border-radius:8px;background:#15181b;cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
+.chip.active{border-color:rgba(255,255,255,0.06);box-shadow:0 4px 10px rgba(0,0,0,0.6)}
+.right-col{display:flex;flex-direction:column;gap:12px}
+.side-section{display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.orderbook-list{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);max-height:220px;overflow:auto;padding:8px;border-radius:8px;background:linear-gradient(180deg, transparent, rgba(255,255,255,0.01))}
+.orderbook-row{display:flex;justify-content:space-between;gap:8px;padding:6px 8px;border-radius:6px}
+.orderbook-row .price{width:100px}
+.orderbook-row.buy .price{color:var(--accent-green)}
+.orderbook-row.sell .price{color:var(--accent-red)}
+.trade-history{max-height:160px;overflow:auto;padding:8px}
+.trade-row{display:flex;justify-content:space-between;padding:6px 8px;border-radius:6px;font-size:13px}
+.pos-card{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.01)}
+.bottom-nav{display:flex;gap:8px;padding:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);border-top:1px solid rgba(255,255,255,0.02)}
+.btn{padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
+.btn-primary{background:var(--accent-green);color:#001}
+.btn-danger{background:var(--accent-red);color:#001}
+.btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--white)}
+.pair-switch { display:flex; gap:8px; align-items:center; margin-right:8px; }
+.pair-btn { padding:6px 8px; border-radius:8px; background:#101216; border:1px solid rgba(255,255,255,0.02); cursor:pointer; color:var(--muted) }
+.pair-btn.active { color:var(--white); border-color:rgba(255,255,255,0.06); box-shadow:0 6px 18px rgba(0,0,0,0.6) }
 
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body {
-  margin: 0; padding: 0;
-  background: var(--bg); color: var(--white);
-  font-family: 'Inter', sans-serif;
-  overflow-x: hidden; /* Prevent horizontal scroll */
-}
-
-/* ————— LAYOUT ————— */
-.app {
+/* ————— [NEW] СТИЛИ ЗАГРУЗЧИКА ————— */
+#app-loader {
+  position: fixed;
+  top: 0; 
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  z-index: 9999;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  /* Support for iOS safe areas */
-  padding-bottom: env(safe-area-inset-bottom); 
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s ease, visibility 0.5s;
 }
 
-.header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 100;
-}
-.brand { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px; }
-
-/* Pair Switcher */
-.pair-switch { display: flex; background: #000; border-radius: 8px; padding: 2px; }
-.pair-btn {
-  padding: 6px 12px; font-size: 12px; font-weight: 600;
-  color: var(--muted); cursor: pointer; border-radius: 6px;
-  transition: all 0.2s;
-}
-.pair-btn.active { background: var(--panel); color: var(--white); box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-
-/* Main Grid */
-.container {
-  display: grid;
-  grid-template-columns: 1fr 340px; /* Desktop default */
-  gap: 12px;
-  padding: 12px;
-  flex: 1;
+#app-loader.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
-/* ————— CARDS ————— */
-.card {
-  background: var(--panel); border-radius: 12px;
-  padding: 12px; border: 1px solid var(--border);
+.loader-logo {
+  font-weight: 700;
+  font-size: 24px;
+  margin-bottom: 24px;
+  color: var(--white);
+  letter-spacing: -0.5px;
 }
 
-/* ————— CHART SECTION ————— */
-.chart-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; }
-.price-main { font-family: "Roboto Mono", monospace; font-size: 24px; font-weight: 700; }
-.chart-wrap {
-  width: 100%; height: 400px; /* Fixed height for consistency */
-  border-radius: 8px; overflow: hidden; position: relative;
+.loader-track {
+  width: 200px;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
 }
 
-/* ————— CONTROLS & LEVERAGE ————— */
-.controls-area { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
-
-.input-group { display: flex; gap: 10px; }
-.input-field {
-  flex: 1; background: var(--input-bg); border: 1px solid var(--border);
-  color: var(--white); padding: 12px; border-radius: 8px;
-  font-size: 14px; outline: none; transition: border 0.2s;
-}
-.input-field:focus { border-color: var(--accent-green); }
-
-/* Leverage Slider Styling */
-.leverage-container {
-  background: var(--glass); padding: 10px; border-radius: 8px; border: 1px solid var(--border);
-}
-.leverage-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
-.leverage-val { color: var(--accent-green); font-weight: 700; font-family: "Roboto Mono"; }
-
-.slider-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-input[type=range] {
-  -webkit-appearance: none; width: 100%; height: 4px; background: #333; border-radius: 2px; outline: none;
-}
-input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none;
-  width: 18px; height: 18px; border-radius: 50%;
-  background: var(--accent-green); cursor: pointer;
-  box-shadow: 0 0 10px rgba(14, 203, 129, 0.4);
+.loader-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0%; /* Будет меняться JS */
+  background: var(--accent-green);
+  transition: width 0.3s ease-out;
+  box-shadow: 0 0 10px rgba(14, 203, 129, 0.5);
 }
 
-.chips-row { display: flex; justify-content: space-between; gap: 4px; }
-.chip {
-  flex: 1; text-align: center; font-size: 11px; padding: 6px 0;
-  background: #252a30; border-radius: 4px; cursor: pointer; color: var(--muted);
-  border: 1px solid transparent; transition: all 0.2s;
-}
-.chip.active {
-  background: rgba(14, 203, 129, 0.15); color: var(--accent-green); border-color: var(--accent-green);
-}
-
-/* Action Buttons */
-.actions { display: flex; gap: 10px; }
-.btn {
-  flex: 1; padding: 14px; border: none; border-radius: 8px;
-  font-weight: 700; font-size: 14px; cursor: pointer; color: #fff;
-  transition: opacity 0.2s;
-}
-.btn:active { opacity: 0.8; }
-.btn-buy { background: var(--accent-green); color: #000; }
-.btn-sell { background: var(--accent-red); color: #fff; }
-
-/* ————— ORDER BOOK & TRADES ————— */
-.sidebar { display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
-.list-header { font-size: 13px; font-weight: 600; margin-bottom: 8px; display: flex; justify-content: space-between; }
-.ob-list, .trades-list {
-  font-size: 12px; font-family: "Roboto Mono", monospace;
-  display: flex; flex-direction: column; gap: 4px;
-}
-.row { display: flex; justify-content: space-between; padding: 2px 4px; }
-.row.buy .p { color: var(--accent-green); }
-.row.sell .p { color: var(--accent-red); }
-.row .s { color: var(--white); opacity: 0.8; }
-.row .t { color: var(--muted); }
-
-/* ————— POSITIONS ————— */
-.pos-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-.pos-card {
-  background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-  padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;
-}
-.pos-info h4 { margin: 0; font-size: 14px; display: flex; align-items: center; gap: 6px; }
-.pos-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
-.pnl-box { text-align: right; }
-.pnl-val { font-weight: 700; font-size: 14px; font-family: "Roboto Mono"; }
-.btn-close {
-  background: rgba(255,255,255,0.1); border: none; color: var(--white);
-  padding: 4px 10px; font-size: 11px; border-radius: 4px; margin-top: 4px; cursor: pointer;
-}
-
-/* ————— LOADER ————— */
-#loader {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: var(--bg); z-index: 999;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  transition: opacity 0.5s;
-}
-.loader-bar { width: 150px; height: 3px; background: #333; margin-top: 15px; border-radius: 3px; overflow: hidden; }
-.loader-progress { width: 0%; height: 100%; background: var(--accent-green); transition: width 0.3s; }
-
-/* ————— RESPONSIVE MEDIA QUERIES ————— */
-@media (max-width: 900px) {
-  .container {
-    grid-template-columns: 1fr; /* Stack vertically on mobile */
-    padding: 8px;
-    padding-bottom: 40px;
-  }
-  .chart-wrap { height: 320px; }
-  .sidebar {
-    /* On mobile, limit height of orderbook to avoid huge scroll */
-    max-height: 400px; 
-    overflow-y: auto;
-  }
+.loader-text {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  font-family: 'Roboto Mono', monospace;
 }
 </style>
 </head>
+
 <body>
 
-<div id="loader">
-  <div style="font-weight:700; font-size:20px;">⧉ TradeSim</div>
-  <div class="loader-bar"><div class="loader-progress" id="loadProg"></div></div>
-  <div style="font-size:12px; color:var(--muted); margin-top:8px" id="loadText">Loading...</div>
+<div id="app-loader">
+  <div class="loader-logo">⧉ TradeSim</div>
+  <div class="loader-track">
+    <div class="loader-bar" id="loaderBar"></div>
+  </div>
+  <div class="loader-text" id="loaderText">Loading assets...</div>
 </div>
 
 <div class="app">
-  <header class="header">
-    <div class="brand">
-      <span>⧉ TradeSim</span>
-    </div>
-    <div style="display:flex; gap:10px; align-items:center;">
-      <div class="pair-switch">
-        <div class="pair-btn active" data-pair="BTC-USD">BTC</div>
-        <div class="pair-btn" data-pair="ETH-USD">ETH</div>
-      </div>
-      <div style="text-align:right; font-size:12px;">
-        <div id="balanceDisplay" style="font-family:'Roboto Mono'; font-weight:700">0.00 VP</div>
-        <div id="usernameDisplay" style="color:var(--muted); font-size:10px">Guest</div>
-      </div>
-    </div>
-  </header>
 
-  <main class="container">
-    
-    <div class="main-col">
-      <div class="card">
-        <div class="chart-header">
-          <div>
-            <div id="pairTitle" style="font-weight:700; color:var(--muted); font-size:12px">BTC/USD Perpetual</div>
-            <div id="priceDisplay" class="price-main">0.00</div>
+<header class="header">
+  <div class="brand">
+    <div class="logo">⧉ TradeSim</div>
+    <div style="color:var(--muted);font-size:13px">BTC/ETH Futures demo</div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="pair-switch" id="pairSwitch">
+      <div class="pair-btn active" data-pair="BTC-USD">BTC</div>
+      <div class="pair-btn" data-pair="ETH-USD">ETH</div>
+    </div>
+
+    <div class="profile" id="profileArea">
+      <div class="avatar" id="avatarWrap"><img id="avatarImg" src=""></div>
+      <div class="profile-info">
+        <div class="profile-name" id="profileName">—</div>
+        <div class="profile-username" id="profileUsername">@—</div>
+        <div class="profile-balance" id="profileBalance">Баланс: 0 VP</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <section class="left-col">
+    <div class="card">
+      <div class="top-stats">
+        <div>
+          <div style="color:var(--muted);font-size:12px">Пара</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+            <div style="font-weight:700" id="pairLabel">BTC / USD</div>
+            <div id="marketTag" style="background:var(--glass);padding:4px 8px;border-radius:8px;color:var(--muted);font-size:12px">Perpetual (sim)</div>
           </div>
-          <div style="font-size:11px; color:var(--muted);">WS: <span id="wsStatus">connecting...</span></div>
         </div>
-        
-        <div id="chartContainer" class="chart-wrap"></div>
 
-        <div class="controls-area">
-          <div class="input-group">
-            <input type="number" id="marginInput" class="input-field" placeholder="Margin (VP)" value="100">
-          </div>
-
-          <div class="leverage-container">
-            <div class="leverage-header">
-              <span>Leverage</span>
-              <span class="leverage-val" id="leverageDisplay">20x</span>
-            </div>
-            
-            <div class="slider-wrap">
-              <span style="font-size:10px; color:var(--muted)">1x</span>
-              <input type="range" id="leverageSlider" min="1" max="50" step="1" value="20">
-              <span style="font-size:10px; color:var(--muted)">50x</span>
-            </div>
-
-            <div class="chips-row">
-              <div class="chip" data-v="5">5x</div>
-              <div class="chip" data-v="10">10x</div>
-              <div class="chip active" data-v="20">20x</div>
-              <div class="chip" data-v="50">50x</div>
-            </div>
-          </div>
-
-          <div class="actions">
-            <button id="btnLong" class="btn btn-buy">Buy / Long</button>
-            <button id="btnShort" class="btn btn-sell">Sell / Short</button>
-          </div>
+        <div style="text-align:right">
+          <div class="price" id="priceDisplay">—</div>
+          <div id="priceChange" class="price-change">—</div>
         </div>
       </div>
 
-      <div id="positionsArea" style="margin-top:12px;">
-        <div style="font-size:14px; font-weight:700; margin-bottom:8px">Open Positions</div>
-        <div id="positionsList" class="pos-list">
-          <div style="text-align:center; padding:20px; color:var(--muted); font-size:13px">No open positions</div>
+      <div class="chart-wrap card" id="chartCard">
+        <div id="chart" style="width:100%;height:100%;"></div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+        <div class="controls" style="flex:1">
+          <input id="sizeInput" type="number" placeholder="Сумма (VP)" value="100" />
+          <div class="segment" id="leverageSegment" style="align-items:center">
+            <div class="chip" data-value="1">x1</div>
+            <div class="chip" data-value="5">x5</div>
+            <div class="chip active" data-value="10">x10</div>
+            <div class="chip" data-value="20">x20</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-left:12px">
+          <button id="openLong" class="btn btn-primary">BUY / LONG</button>
+          <button id="openShort" class="btn btn-danger">SELL / SHORT</button>
         </div>
       </div>
     </div>
 
-    <aside class="sidebar">
-      <div class="card" style="flex:1; min-height:200px">
-        <div class="list-header"><span>Order Book</span> <span style="color:var(--muted)" id="obPair">BTC</span></div>
-        <div id="orderBook" class="ob-list"></div>
+    <div class="card" style="margin-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:700">Positions</div>
+        <div style="color:var(--muted);font-size:13px">live</div>
       </div>
-      
-      <div class="card" style="flex:1; min-height:200px">
-        <div class="list-header"><span>Recent Trades</span></div>
-        <div id="tradeHistory" class="trades-list"></div>
-      </div>
-    </aside>
+      <div id="positionsList" style="margin-top:10px"></div>
+    </div>
+  </section>
 
-  </main>
+  <aside class="right-col">
+    <div class="card side-section">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:700">Order Book</div>
+        <div style="color:var(--muted);font-size:13px" id="bookPairLabel">BTC-USD</div>
+      </div>
+      <div class="orderbook-list" id="orderBook"></div>
+    </div>
+
+    <div class="card side-section">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:700">Trade History</div>
+        <div style="color:var(--muted);font-size:13px" id="tradesPairLabel">BTC-USD</div>
+      </div>
+      <div class="trade-history" id="tradeHistory"></div>
+    </div>
+  </aside>
+</main>
+
+<div class="bottom-nav">
+  <button id="btnProfile" class="btn btn-ghost">Профиль</button>
+  <button id="btnFutures" class="btn btn-primary">Перейти в Фьючерсы</button>
+  <div style="flex:1"></div>
+  <div style="color:var(--muted);font-size:13px;padding:6px 8px">WS: <span id="wsStatus">—</span></div>
 </div>
 
-<script>
+</div> <script>
 (async function(){
-  // ——————————————————————————————————————
-  // 1. CONFIG & INIT
-  // ——————————————————————————————————————
+  // ==============================
+  // [NEW] LOADER LOGIC
+  // ==============================
+  const loaderEl = document.getElementById('app-loader');
+  const loaderBar = document.getElementById('loaderBar');
+  const loaderText = document.getElementById('loaderText');
+
+  function setProgress(percent, text) {
+    loaderBar.style.width = percent + '%';
+    if(text) loaderText.textContent = text;
+  }
+
+  // Начальное состояние
+  setProgress(10, "Connecting Telegram...");
+
+  // Обещание (Promise), которое разрешится, когда придет история графика
+  let historyResolve = null;
+  const historyPromise = new Promise(resolve => {
+    historyResolve = resolve;
+  });
+
+  // ==============================
+  // CONFIG
+  // ==============================
+  const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com";
   const API_BASE = "https://tradingbot-p9n8.onrender.com";
-  const WS_URL = "wss://tradingbot-backend-2yws.onrender.com";
-  
+  let currentUserId = null;
+
+  // ==============================
+  // TELEGRAM INIT
+  // ==============================
   const tg = window.Telegram?.WebApp;
-  if(tg) {
-    tg.ready();
-    tg.expand(); // Force full screen in Telegram
-    // Set header color to match app
-    tg.setHeaderColor('#1E2329'); 
-    tg.setBackgroundColor('#0B0E11');
+  tg?.ready();
+  tg?.expand();
+
+  let profile = { first_name:"Guest", username:"", photo_url:"", balance:0 };
+
+  function updateProfileUI(userObj){
+    const avatarImg = document.getElementById("avatarImg");
+    if (userObj.photo_url) {
+      avatarImg.src = userObj.photo_url;
+      avatarImg.style.display = "block";
+    } else {
+      avatarImg.src = "";
+      avatarImg.style.display = "none";
+    }
+    document.getElementById("profileName").textContent = userObj.first_name || "Guest";
+    document.getElementById("profileUsername").textContent = userObj.username ? "@" + userObj.username : "";
+    document.getElementById("profileBalance").textContent = "Баланс: " + (Number(userObj.balance || 0)).toFixed(2) + " VP";
   }
 
-  let state = {
-    pair: "BTC-USD",
-    price: 0,
-    userId: null,
-    balance: 0,
-    leverage: 20, // Default leverage
-    positions: []
-  };
+  async function initSession(){
+    try {
+      let initData = tg?.initData || "";
+      let response;
+      if (initData) {
+        response = await fetch(API_BASE + "/api/init", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ initData })
+        });
+      } else {
+        response = await fetch(API_BASE + "/api/init", { method: "POST", body: JSON.stringify({}) });
+      }
+      const data = await response.json();
 
-  // UI References
-  const els = {
-    loader: document.getElementById('loader'),
-    prog: document.getElementById('loadProg'),
-    text: document.getElementById('loadText'),
-    price: document.getElementById('priceDisplay'),
-    balance: document.getElementById('balanceDisplay'),
-    user: document.getElementById('usernameDisplay'),
-    slider: document.getElementById('leverageSlider'),
-    levDisplay: document.getElementById('leverageDisplay'),
-    chips: document.querySelectorAll('.chip'),
-    posList: document.getElementById('positionsList'),
-    chart: document.getElementById('chartContainer'),
-    ob: document.getElementById('orderBook'),
-    trades: document.getElementById('tradeHistory'),
-    ws: document.getElementById('wsStatus')
-  };
-
-  function setLoader(pct, msg) {
-    els.prog.style.width = pct + "%";
-    if(msg) els.text.textContent = msg;
+      if (data.ok && data.user) {
+        profile = {
+          first_name: data.user.first_name || "Guest",
+          username: data.user.username || "",
+          photo_url: data.user.photo_url || "",
+          balance: Number(data.user.balance || 0)
+        };
+        currentUserId = data.user.user_id; // сохраняем ID для ордеров
+        window._positions = data.positions || [];
+        renderPositions();
+        updateProfileUI(profile);
+      } else {
+        if (tg?.initDataUnsafe?.user) {
+          const u = tg.initDataUnsafe.user;
+          profile = {
+            first_name: u.first_name || "Guest",
+            username: u.username || "",
+            photo_url: u.photo_url || "",
+            balance: 0
+          };
+          updateProfileUI(profile);
+        }
+      }
+    } catch (err) {
+      console.error("initSession error:", err);
+      if (tg?.initDataUnsafe?.user) {
+        const u = tg.initDataUnsafe.user;
+        profile = {
+          first_name: u.first_name || "Guest",
+          username: u.username || "",
+          photo_url: u.photo_url || "",
+          balance: 0
+        };
+        updateProfileUI(profile);
+      }
+    }
   }
 
-  // ——————————————————————————————————————
-  // 2. CHART SETUP
-  // ——————————————————————————————————————
-  const chart = LightweightCharts.createChart(els.chart, {
-    layout: { background: { color: '#1E2329' }, textColor: '#848E9C' },
-    grid: { vertLines: { color: '#2B3139' }, horzLines: { color: '#2B3139' } },
-    timeScale: { borderColor: '#2B3139', timeVisible: true },
-    rightPriceScale: { borderColor: '#2B3139' },
-    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+  // ==============================
+  // CHART SETUP
+  // ==============================
+  const chartDiv = document.getElementById("chart");
+  const chart = LightweightCharts.createChart(chartDiv,{
+    width: chartDiv.clientWidth,
+    height: chartDiv.clientHeight,
+    layout:{ background:{color:getComputedStyle(document.body).getPropertyValue('--bg')}, textColor:'#D1D8DE' },
+    grid:{ horzLines:{color:'rgba(255,255,255,0.03)'}, vertLines:{color:'rgba(255,255,255,0.03)'} },
+    priceScale:{ borderVisible:false },
+    timeScale:{ borderVisible:false }
   });
 
-  let series = chart.addCandlestickSeries({
-    upColor: '#0ECB81', borderUpColor: '#0ECB81', wickUpColor: '#0ECB81',
-    downColor: '#F6465D', borderDownColor: '#F6465D', wickDownColor: '#F6465D',
+  let candleSeries = chart.addCandlestickSeries({
+    upColor:'rgba(14,190,131,1)',
+    borderUpColor:'rgba(14,190,131,1)',
+    wickUpColor:'rgba(14,190,131,1)',
+    downColor:'rgba(246,70,93,1)',
+    borderDownColor:'rgba(246,70,93,1)',
+    wickDownColor:'rgba(246,70,93,1)'
   });
 
-  // Resize Observer for Chart
-  new ResizeObserver(entries => {
-    if(entries.length === 0 || !entries[0].contentRect) return;
-    const { width, height } = entries[0].contentRect;
-    chart.applyOptions({ width, height });
-  }).observe(els.chart);
+  window.addEventListener("resize",()=>{
+    chart.applyOptions({ width:chartDiv.clientWidth, height:chartDiv.clientHeight });
+  });
 
-  let lastCandle = null;
+  // ==============================
+  // STATE
+  // ==============================
+  let selectedPair = "BTC-USD";
+  let currentPrice = 0;
+  let lastCandle = null; 
 
-  // ——————————————————————————————————————
-  // 3. LEVERAGE LOGIC (Sync Slider & Chips)
-  // ——————————————————————————————————————
-  function updateLeverage(val) {
-    state.leverage = parseInt(val);
-    
-    // Update Slider UI
-    els.slider.value = state.leverage;
-    // Update Text
-    els.levDisplay.textContent = state.leverage + "x";
-    
-    // Update Chips Highlight
-    els.chips.forEach(chip => {
-      const v = parseInt(chip.dataset.v);
-      if(v === state.leverage) chip.classList.add('active');
-      else chip.classList.remove('active');
+  const pairHistory = {
+    "BTC-USD": [],
+    "ETH-USD": []
+  };
+
+  document.getElementById("pairLabel").textContent = "BTC / USD";
+  document.getElementById("bookPairLabel").textContent = selectedPair;
+  document.getElementById("tradesPairLabel").textContent = selectedPair;
+
+  // ==============================
+  // WS CLIENT
+  // ==============================
+  let socket = null;
+  const wsStatus = document.getElementById("wsStatus");
+
+  function connectWS(){
+    socket = new WebSocket(WSS_PRICE_URL);
+    socket.onopen = () => {
+      wsStatus.textContent = "connected";
+      subscribePair(selectedPair);
+    };
+    socket.onclose = () => {
+      wsStatus.textContent = "closed";
+      setTimeout(connectWS, 1500);
+    };
+    socket.onerror = () => {
+      wsStatus.textContent = "error";
+    };
+    socket.onmessage = evt => {
+      try {
+        const msg = JSON.parse(evt.data);
+        handleWS(msg);
+      } catch(e){ console.error("WS parse error", e); }
+    };
+  }
+
+  function subscribePair(pair){
+    if (socket && socket.readyState === WebSocket.OPEN){
+      socket.send(JSON.stringify({ type:"subscribe", pair }));
+    }
+  }
+
+  function unsubscribePair(pair){
+    if (socket && socket.readyState === WebSocket.OPEN){
+      socket.send(JSON.stringify({ type:"unsubscribe", pair }));
+    }
+  }
+
+  // ==============================
+  // WS HANDLER
+  // ==============================
+  function handleWS(msg){
+    if (!msg.type) return;
+
+    // История закрытых свечей
+    if (msg.type === "history") {
+      if (!msg.pair) return;
+      pairHistory[msg.pair] = msg.data.map(c => ({
+        time: c.time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close
+      }));
+
+      if (msg.pair === selectedPair) {
+        const candles = pairHistory[msg.pair];
+        if (candles.length > 0) {
+          candleSeries.setData(candles);
+
+          const firstTime = candles[0].time;
+          const lastTime = candles[candles.length - 1].time;
+
+          try {
+            chart.timeScale().setVisibleRange({ from: firstTime, to: lastTime + 60 });
+          } catch(e) {
+            chart.timeScale().fitContent();
+          }
+
+          lastCandle = { ...candles[candles.length - 1] };
+          currentPrice = lastCandle.close;
+          updatePriceUI();
+        } else {
+          candleSeries.setData([]);
+          chart.timeScale().fitContent();
+          lastCandle = null;
+          currentPrice = 0;
+          updatePriceUI();
+        }
+
+        // [NEW] Разрешаем промис загрузки истории
+        if (historyResolve) {
+            historyResolve(); 
+            historyResolve = null; // Чтобы не вызывать повторно
+        }
+      }
+      return;
+    }
+
+    if (msg.type === "price" && msg.pair === selectedPair){
+      currentPrice = Number(msg.price);
+      if (!lastCandle) {
+        updatePriceUI();
+        return;
+      }
+      const now = Math.floor(Date.now() / 1000);
+      const currentMinute = now - (now % 60);
+
+      if (currentMinute === lastCandle.time) {
+        lastCandle.high = Math.max(lastCandle.high, currentPrice);
+        lastCandle.low = Math.min(lastCandle.low, currentPrice);
+        lastCandle.close = currentPrice;
+        candleSeries.update(lastCandle);
+      } else {
+        lastCandle = {
+          time: currentMinute,
+          open: lastCandle.close,
+          high: currentPrice,
+          low: currentPrice,
+          close: currentPrice
+        };
+        candleSeries.update(lastCandle);
+      }
+      updatePriceUI();
+    }
+
+    if (msg.type === "orderBook" && msg.pair === selectedPair){
+      renderOrderBook(msg.buy, msg.sell);
+    }
+    if (msg.type === "trades" && msg.pair === selectedPair){
+      renderTrades(msg.trades);
+    }
+  }
+
+  // ==============================
+  // UI RENDER & FUNCTIONS
+  // ==============================
+  window._positions = [];
+
+  function renderPositions() {
+    const el = document.getElementById("positionsList");
+    el.innerHTML = "";
+
+    if (!window._positions || window._positions.length === 0) {
+      el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:32px 0;font-size:14px">Нет открытых позиций</div>';
+      return;
+    }
+
+    window._positions.forEach(pos => {
+      const entryPrice = Number(pos.entry_price || pos.entryPrice || 0);
+      const size = Number(pos.size || 0);
+      const leverage = Number(pos.leverage || 1);
+      const margin = Number(pos.margin || 0);
+      const type = (pos.type || "LONG").toUpperCase();
+      
+      let pnl = 0;
+      if (currentPrice > 0 && entryPrice > 0) {
+        const priceChangePct = (currentPrice - entryPrice) / entryPrice;
+        pnl = priceChangePct * size;
+        if (type === "SHORT") {
+          pnl = -pnl;
+        }
+      }
+
+      let roePercent = "0.00";
+      if (margin > 0) {
+        roePercent = ((pnl / margin) * 100).toFixed(2);
+      }
+
+      const pnlColor = pnl >= 0 ? "var(--accent-green)" : "var(--accent-red)";
+      const sign = pnl >= 0 ? "+" : "";
+
+      const card = document.createElement("div");
+      card.className = "pos-card";
+      card.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:10px;margin-bottom:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);";
+
+      card.innerHTML = `
+        <div>
+          <div style="font-weight:700;font-size:15px;color:${pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">
+            ${type === "LONG" ? "🟢 LONG" : "🔴 SHORT"} ${selectedPair}
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">
+            Объем: ${size.toFixed(2)} VP | Плечо: x${leverage}
+          </div>
+          <div style="font-size:12px;color:var(--muted)">
+            Вход: $${entryPrice.toFixed(2)}
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:700;font-size:15px;color:${pnlColor}">
+            ${sign}${pnl.toFixed(2)} VP
+          </div>
+          <div style="font-size:12px;color:${pnlColor};margin-top:2px">
+            ROE: ${sign}${roePercent}%
+          </div>
+          <button class="btn btn-ghost" 
+                  style="margin-top:6px;padding:4px 10px;font-size:12px;border:1px solid rgba(255,255,255,0.1)"
+                  data-id="${pos.id || pos._id}">
+            Закрыть
+          </button>
+        </div>
+      `;
+      el.appendChild(card);
+    });
+
+    el.querySelectorAll("button[data-id]").forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        closePos(btn.dataset.id);
+      };
     });
   }
 
-  // Slider Event
-  els.slider.addEventListener('input', (e) => updateLeverage(e.target.value));
-
-  // Chips Event
-  els.chips.forEach(chip => {
-    chip.addEventListener('click', () => updateLeverage(chip.dataset.v));
-  });
-
-  // ——————————————————————————————————————
-  // 4. API & AUTH
-  // ——————————————————————————————————————
-  async function initAuth() {
+  async function closePos(id) {
+    if (!confirm("Закрыть позицию?")) return;
     try {
-      const initData = tg?.initData || "";
-      const res = await fetch(API_BASE + "/api/init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(initData ? { initData } : {})
-      });
-      const data = await res.json();
-      
-      if(data.ok && data.user) {
-        state.userId = data.user.user_id;
-        state.balance = Number(data.user.balance || 0);
-        state.positions = data.positions || [];
-        
-        els.user.textContent = "@" + (data.user.username || "User");
-        updateBalance();
-        renderPositions();
-      }
-    } catch(e) { console.error("Auth failed", e); }
-  }
-
-  function updateBalance() {
-    els.balance.textContent = state.balance.toFixed(2) + " VP";
-  }
-
-  // ——————————————————————————————————————
-  // 5. WEBSOCKET & DATA
-  // ——————————————————————————————————————
-  let socket;
-  let historyLoaded = false;
-
-  function connectWS() {
-    socket = new WebSocket(WS_URL);
-    socket.onopen = () => {
-      els.ws.textContent = "connected";
-      els.ws.style.color = "var(--accent-green)";
-      socket.send(JSON.stringify({ type:"subscribe", pair:state.pair }));
-    };
-    
-    socket.onmessage = (evt) => {
-      const msg = JSON.parse(evt.data);
-      if(msg.pair !== state.pair) return;
-
-      if(msg.type === "price") {
-        const p = Number(msg.price);
-        state.price = p;
-        els.price.textContent = p.toFixed(2);
-        
-        // Live Candle Update
-        if(lastCandle) {
-          const now = Math.floor(Date.now()/1000);
-          const minTime = now - (now % 60);
-          if(minTime === lastCandle.time) {
-            lastCandle.high = Math.max(lastCandle.high, p);
-            lastCandle.low = Math.min(lastCandle.low, p);
-            lastCandle.close = p;
-            series.update(lastCandle);
-          } else {
-            lastCandle = { time: minTime, open: lastCandle.close, high: p, low: p, close: p };
-            series.update(lastCandle);
-          }
-        }
-        updatePositionsPnL();
-      }
-
-      if(msg.type === "history") {
-        const data = msg.data.map(c => ({ 
-          time: c.time, open: c.open, high: c.high, low: c.low, close: c.close 
-        }));
-        if(data.length) {
-          series.setData(data);
-          lastCandle = data[data.length - 1];
-          chart.timeScale().fitContent();
-          state.price = lastCandle.close;
-          els.price.textContent = state.price.toFixed(2);
-          historyLoaded = true;
-        }
-      }
-
-      if(msg.type === "orderBook") renderOrderBook(msg.buy, msg.sell);
-      if(msg.type === "trades") renderTrades(msg.trades);
-    };
-
-    socket.onclose = () => {
-      els.ws.textContent = "closed";
-      els.ws.style.color = "var(--accent-red)";
-      setTimeout(connectWS, 2000);
-    };
-  }
-
-  // ——————————————————————————————————————
-  // 6. TRADING LOGIC
-  // ——————————————————————————————————————
-  async function sendOrder(type) {
-    const margin = parseFloat(document.getElementById('marginInput').value);
-    if(!margin || margin <= 0) return tg?.showAlert("Invalid margin");
-    
-    if(!state.userId) return tg?.showAlert("Login failed");
-
-    const size = margin * state.leverage;
-    
-    try {
-      const res = await fetch(API_BASE + "/api/order/open", {
+      const response = await fetch(API_BASE + "/api/order/close", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: state.userId,
-          pair: state.pair,
-          type: type,
-          size: size,
-          leverage: state.leverage,
-          entryPrice: state.price
+          userId: currentUserId,
+          positionId: id,
+          closePrice: currentPrice
         })
       });
-      const d = await res.json();
-      if(d.ok) {
-        state.positions.push(d.position);
-        if(d.newBalance !== undefined) { state.balance = d.newBalance; updateBalance(); }
+
+      const data = await response.json();
+      if (data.ok) {
+        window._positions = window._positions.filter(p => (p.id != id && p._id != id));
         renderPositions();
-        tg?.HapticFeedback.notificationOccurred('success');
+        if (data.newBalance) {
+          profile.balance = data.newBalance;
+          updateProfileUI(profile);
+        }
       } else {
-        tg?.showAlert(d.error || "Error");
+        alert("Ошибка: " + (data.error || "Не удалось закрыть"));
       }
-    } catch(e) { console.error(e); }
-  }
-
-  document.getElementById('btnLong').onclick = () => sendOrder("LONG");
-  document.getElementById('btnShort').onclick = () => sendOrder("SHORT");
-
-  async function closePos(id) {
-    if(!confirm("Close position?")) return;
-    try {
-      const res = await fetch(API_BASE + "/api/order/close", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ userId: state.userId, positionId: id, closePrice: state.price })
-      });
-      const d = await res.json();
-      if(d.ok) {
-        state.positions = state.positions.filter(p => (p.id!=id && p._id!=id));
-        if(d.newBalance !== undefined) { state.balance = d.newBalance; updateBalance(); }
-        renderPositions();
-        tg?.HapticFeedback.notificationOccurred('success');
-      }
-    } catch(e) { alert("Net Error"); }
-  }
-  window.closePos = closePos; // Expose for HTML onclick
-
-  // ——————————————————————————————————————
-  // 7. RENDERING
-  // ——————————————————————————————————————
-  function renderPositions() {
-    if(!state.positions.length) {
-      els.posList.innerHTML = '<div style="text-align:center; padding:15px; color:var(--muted); font-size:13px">No active positions</div>';
-      return;
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка сети");
     }
-    els.posList.innerHTML = state.positions.map(p => {
-      const isLong = (p.type||"LONG").toUpperCase() === "LONG";
-      const color = isLong ? "var(--accent-green)" : "var(--accent-red)";
-      const label = isLong ? "LONG" : "SHORT";
-      return `
-      <div class="pos-card">
-        <div class="pos-info">
-          <h4 style="color:${color}">● ${label} ${state.pair}</h4>
-          <div class="pos-meta">
-            Size: ${Number(p.size).toFixed(0)} VP (x${p.leverage})<br>
-            Entry: ${Number(p.entryPrice).toFixed(2)}
-          </div>
-        </div>
-        <div class="pnl-box">
-          <div class="pnl-val" id="pnl-${p.id||p._id}">0.00</div>
-          <button class="btn-close" onclick="closePos('${p.id||p._id}')">Close</button>
-        </div>
-      </div>`;
-    }).join("");
-    updatePositionsPnL();
   }
 
-  function updatePositionsPnL() {
-    state.positions.forEach(p => {
-      const el = document.getElementById(`pnl-${p.id||p._id}`);
-      if(!el) return;
-      const entry = Number(p.entryPrice);
-      const sz = Number(p.size);
-      const isLong = (p.type||"LONG").toUpperCase() === "LONG";
-      
-      let pnl = 0;
-      if(entry > 0) {
-        const pct = (state.price - entry) / entry;
-        pnl = pct * sz * (isLong ? 1 : -1);
+  function updatePriceUI(){
+    document.getElementById("priceDisplay").textContent = currentPrice ? currentPrice.toFixed(2) : "—";
+    renderPositions();
+  }
+
+  document.getElementById("openLong").addEventListener("click", openPosition("LONG"));
+  document.getElementById("openShort").addEventListener("click", openPosition("SHORT"));
+
+  function openPosition(side) {
+    return async () => {
+      const marginInput = Number(document.getElementById("sizeInput").value);
+      const leverageEl = document.querySelector("#leverageSegment .chip.active");
+      const leverage = Number(leverageEl?.dataset.value || 10);
+
+      if (!marginInput || marginInput <= 0) return alert("Введите корректную сумму маржи");
+
+      const positionSize = marginInput * leverage;
+
+      try {
+        const response = await fetch(API_BASE + "/api/order/open", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: currentUserId,
+            pair: selectedPair,
+            type: side,
+            size: positionSize,
+            leverage: leverage,
+            entryPrice: currentPrice
+          })
+        });
+
+        const data = await response.json();
+        
+        if (data.ok) {
+          window._positions.push(data.position);
+          renderPositions();
+          
+          if (data.newBalance !== undefined) {
+             profile.balance = data.newBalance;
+             updateProfileUI(profile);
+          }
+          alert(`Позиция ${side} открыта!\nМаржа: ${marginInput} VP\nОбъем позиции: ${positionSize} VP (x${leverage})`);
+        } else {
+          alert("Ошибка: " + (data.error || "Не удалось открыть ордер"));
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Ошибка соединения");
       }
-      
-      el.textContent = (pnl>0?"+":"") + pnl.toFixed(2) + " VP";
-      el.style.color = pnl >= 0 ? "var(--accent-green)" : "var(--accent-red)";
+    };
+  }
+
+  document.querySelectorAll("#leverageSegment .chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#leverageSegment .chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+    });
+  });
+
+  function renderOrderBook(buys, sells){
+    const el = document.getElementById("orderBook");
+    el.innerHTML = "";
+    sells.slice(0,20).forEach(s=>{
+      const r=document.createElement("div");
+      r.className="orderbook-row sell";
+      r.innerHTML=`<div class="price">${s.price.toFixed(2)}</div><div>${s.size.toFixed(4)}</div>`;
+      el.appendChild(r);
+    });
+    el.appendChild(Object.assign(document.createElement("div"),{style:"height:6px"}));
+    buys.slice(0,20).forEach(b=>{
+      const r=document.createElement("div");
+      r.className="orderbook-row buy";
+      r.innerHTML=`<div class="price">${b.price.toFixed(2)}</div><div>${b.size.toFixed(4)}</div>`;
+      el.appendChild(r);
     });
   }
 
-  function renderOrderBook(b, s) {
-    // Limit rows for performance
-    const rows = [];
-    s.slice(0, 8).reverse().forEach(x => rows.push(`<div class="row sell"><span class="p">${x.price.toFixed(1)}</span><span class="s">${x.size.toFixed(3)}</span></div>`));
-    b.slice(0, 8).forEach(x => rows.push(`<div class="row buy"><span class="p">${x.price.toFixed(1)}</span><span class="s">${x.size.toFixed(3)}</span></div>`));
-    els.ob.innerHTML = rows.join("");
+  function renderTrades(list){
+    const el=document.getElementById("tradeHistory");
+    el.innerHTML="";
+    (list||[]).slice().reverse().forEach(t=>{
+      const row=document.createElement("div");
+      row.className="trade-row";
+      const color = t.side==="buy" ? "var(--accent-green)" : "var(--accent-red)";
+      row.innerHTML = `
+        <div style="color:${color};font-family:Roboto Mono">${t.price.toFixed(2)}</div>
+        <div>${t.size.toFixed(3)}</div>
+        <div style="color:var(--muted);font-size:12px">${new Date(t.time).toLocaleTimeString()}</div>
+      `;
+      el.appendChild(row);
+    });
   }
 
-  function renderTrades(list) {
-    els.trades.innerHTML = list.slice().reverse().slice(0, 15).map(t => {
-      const c = t.side==="buy"?"var(--accent-green)":"var(--accent-red)";
-      return `<div class="row"><span style="color:${c}">${t.price.toFixed(1)}</span><span class="s">${t.size.toFixed(3)}</span><span class="t">${new Date(t.time).toLocaleTimeString().split(':').slice(0,2).join(':')}</span></div>`;
-    }).join("");
-  }
-
-  // Pair Switching
-  document.querySelectorAll('.pair-btn').forEach(btn => {
-    btn.onclick = () => {
-      document.querySelectorAll('.pair-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+  document.querySelectorAll(".pair-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      document.querySelectorAll(".pair-btn").forEach(x=>x.classList.remove("active"));
+      btn.classList.add("active");
       const newPair = btn.dataset.pair;
-      if(newPair === state.pair) return;
-      
-      // Reset Chart
-      state.pair = newPair;
-      series.setData([]);
+      if (newPair === selectedPair) return;
+
+      unsubscribePair(selectedPair);
+
+      chart.removeSeries(candleSeries);
+      const newSeries = chart.addCandlestickSeries({
+        upColor:'rgba(14,190,131,1)',
+        borderUpColor:'rgba(14,190,131,1)',
+        wickUpColor:'rgba(14,190,131,1)',
+        downColor:'rgba(246,70,93,1)',
+        borderDownColor:'rgba(246,70,93,1)',
+        wickDownColor:'rgba(246,70,93,1)'
+      });
+      candleSeries = newSeries;
+
       lastCandle = null;
-      document.getElementById('pairTitle').textContent = newPair.replace('-','/') + " Perpetual";
-      document.getElementById('obPair').textContent = newPair.split('-')[0];
-      
-      // Reconnect WS
-      socket.close(); // Will trigger auto-reconnect logic which reads new state.pair
-    };
+      currentPrice = 0;
+      updatePriceUI();
+      document.getElementById("orderBook").innerHTML="";
+      document.getElementById("tradeHistory").innerHTML="";
+
+      selectedPair = newPair;
+      document.getElementById("pairLabel").textContent = newPair.replace("-"," / ");
+      document.getElementById("bookPairLabel").textContent = newPair;
+      document.getElementById("tradesPairLabel").textContent = newPair;
+
+      if (pairHistory[selectedPair]?.length) {
+        candleSeries.setData(pairHistory[selectedPair]);
+        chart.timeScale().fitContent();
+
+        const lastHist = pairHistory[selectedPair].slice(-1)[0];
+        if (lastHist) {
+          lastCandle = { ...lastHist };
+          currentPrice = lastCandle.close;
+          updatePriceUI();
+        }
+      }
+
+      subscribePair(selectedPair);
+    });
   });
 
-  // ——————————————————————————————————————
-  // 8. BOOTSTRAP
-  // ——————————————————————————————————————
-  setLoader(30, "Authenticating...");
-  await initAuth();
+  // ==============================
+  // [NEW] START SEQUENCE
+  // ==============================
   
-  setLoader(60, "Connecting Markets...");
+  // 1. Грузим данные юзера
+  setProgress(30, "Loading User Data...");
+  await initSession();
+  
+  // 2. Подключаемся к сокету
+  setProgress(60, "Connecting to Market...");
   connectWS();
+
+  // 3. Ждем, пока сокет откроется и пришлет "history" (свечи для графика)
+  // Ставим таймаут 5 сек, чтобы не висело вечно, если сервер тупит
+  const timeoutPromise = new Promise(resolve => setTimeout(resolve, 5000));
+  await Promise.race([historyPromise, timeoutPromise]);
   
-  // Wait for history or timeout
-  let ticks = 0;
-  const waiter = setInterval(() => {
-    ticks++;
-    if(historyLoaded || ticks > 20) {
-      clearInterval(waiter);
-      setLoader(100, "Ready");
-      setTimeout(() => {
-        els.loader.style.opacity = 0;
-        setTimeout(()=>els.loader.style.display='none', 500);
-      }, 500);
-    }
-  }, 200);
+  // 4. Финал
+  setProgress(100, "Ready!");
+  
+  // Небольшая задержка перед исчезновением для красоты
+  setTimeout(() => {
+    loaderEl.classList.add('hidden');
+    // Удаляем из DOM полностью после анимации
+    setTimeout(() => {
+      loaderEl.style.display = 'none';
+    }, 500);
+  }, 500);
 
 })();
 </script>
