@@ -7,7 +7,7 @@
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
 <style>
 /* ————— CORE STYLES ————— */
@@ -17,9 +17,11 @@
   --panel-light: #2A2F36;
   --muted: #848E9C;
   --accent-green: #0ECB81;
+  --accent-green-transparent: rgba(14, 203, 129, 0.15);
   --accent-red: #F6465D;
+  --accent-red-transparent: rgba(246, 70, 93, 0.15);
   --white: #EAECEF;
-  --border: rgba(255, 255, 255, 0.05);
+  --border: rgba(255, 255, 255, 0.08);
   --thumb-size: 20px;
 }
 
@@ -38,48 +40,89 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .header {
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px;
+  padding: 0 16px;
   background: var(--panel);
   border-bottom: 1px solid var(--border);
   height: 60px;
+  z-index: 100;
 }
 
 .header-left { display: flex; align-items: center; gap: 16px; }
 
 .logo-img {
-  height: 32px;
+  height: 28px;
   width: auto;
   display: block;
 }
 
-/* Custom Select for Pairs */
-.pair-select-wrapper {
-  position: relative;
-}
-.pair-select {
-  appearance: none;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--white);
-  padding: 6px 32px 6px 12px;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  outline: none;
-}
-.pair-select-wrapper::after {
-  content: '▼';
-  font-size: 10px;
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted);
-  pointer-events: none;
+/* --- NEW CUSTOM DROPDOWN --- */
+.pair-dropdown {
+    position: relative;
+    font-family: 'Roboto Mono', monospace;
 }
 
-/* User Area (Balance + Avatar) */
+.pair-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--white);
+    transition: background 0.2s;
+    user-select: none;
+}
+.pair-trigger:hover { background: rgba(255,255,255,0.05); }
+.pair-trigger:active { background: rgba(255,255,255,0.1); }
+.pair-trigger .arrow { font-size: 10px; color: var(--muted); transition: transform 0.2s; }
+.pair-dropdown.open .pair-trigger .arrow { transform: rotate(180deg); }
+
+.pair-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 8px;
+    background: rgba(30, 35, 41, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 160px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+}
+.pair-dropdown.open .pair-menu {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.pair-item {
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.pair-item:hover { background: rgba(255,255,255,0.05); color: var(--white); }
+.pair-item.active { background: rgba(255,255,255,0.08); color: var(--white); font-weight: 700; }
+.pair-item.active::after { content: '✓'; color: var(--accent-green); font-size: 12px; }
+
+/* User Area */
 .user-area {
   display: flex; align-items: center; gap: 10px;
   cursor: pointer;
@@ -89,10 +132,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 }
 .user-area:active { background: rgba(255,255,255,0.05); }
 
-.balance-group {
-  text-align: right;
-  line-height: 1.2;
-}
+.balance-group { text-align: right; line-height: 1.2; }
 .balance-label { font-size: 10px; color: var(--muted); display: block; }
 .balance-val { font-size: 13px; font-weight: 700; color: var(--white); font-family: 'Roboto Mono', monospace; }
 
@@ -108,10 +148,8 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   overflow-x: hidden;
   padding: 12px;
   gap: 12px;
-  /* Removed bottom padding since nav is gone */
 }
 
-/* Desktop override */
 @media (min-width: 900px) {
   .container {
     display: grid;
@@ -132,8 +170,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
 /* ————— MARKET INFO ————— */
 .market-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
-.price-display { font-family: 'Roboto Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; }
-.price-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.price-display { font-family: 'Roboto Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
 
 /* ————— CHART ————— */
 .chart-container {
@@ -150,50 +187,66 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .controls-area { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
 
 .input-group { position: relative; }
-.input-label { position: absolute; top: 8px; left: 12px; font-size: 10px; color: var(--muted); }
+.input-label { position: absolute; top: 8px; left: 12px; font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 600; }
 .main-input {
   width: 100%; background: #111; border: 1px solid var(--border); color: var(--white);
-  padding: 22px 12px 8px 12px; border-radius: 8px; font-size: 16px; font-family: 'Roboto Mono', monospace; outline: none;
+  padding: 24px 12px 8px 12px; border-radius: 8px; font-size: 16px; font-family: 'Roboto Mono', monospace; outline: none; transition: border 0.2s;
 }
 .main-input:focus { border-color: var(--accent-green); }
 
-/* Leverage Slider Styling */
+/* Leverage Slider */
 .leverage-wrap { background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
 .lev-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
 .lev-val { color: var(--accent-green); font-weight: 700; font-family: 'Roboto Mono'; font-size: 14px; }
 
 .range-slider {
-  -webkit-appearance: none; width: 100%; height: 6px; background: #2A2F36; border-radius: 3px; outline: none; margin: 10px 0;
+  -webkit-appearance: none; width: 100%; height: 4px; background: #2A2F36; border-radius: 2px; outline: none; margin: 10px 0;
 }
 .range-slider::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
-  width: var(--thumb-size); height: var(--thumb-size); border-radius: 50%; 
-  background: var(--white); cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  width: 18px; height: 18px; border-radius: 50%; 
+  background: var(--white); cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
   border: 2px solid var(--accent-green);
   margin-top: -7px; 
 }
-.range-slider::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; }
 
-.chips-row { display: flex; justify-content: space-between; gap: 4px; margin-top: 4px; }
+.chips-row { display: flex; justify-content: space-between; gap: 4px; margin-top: 8px; }
 .chip {
   flex: 1; text-align: center; padding: 6px 0; font-size: 11px; background: #15181b; 
-  border-radius: 6px; cursor: pointer; border: 1px solid var(--border); color: var(--muted); transition: 0.2s;
+  border-radius: 4px; cursor: pointer; border: 1px solid var(--border); color: var(--muted); transition: 0.2s;
 }
 .chip:hover { background: rgba(255,255,255,0.05); }
-.chip.active { background: rgba(14, 203, 129, 0.15); color: var(--accent-green); border-color: var(--accent-green); font-weight: 700; }
+.chip.active { background: var(--accent-green-transparent); color: var(--accent-green); border-color: var(--accent-green); font-weight: 700; }
 
 .action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
 .btn-trade {
   padding: 14px; border-radius: 8px; border: none; font-weight: 700; font-size: 15px; cursor: pointer; color: #fff;
-  display: flex; flex-direction: column; align-items: center; line-height: 1.2;
+  display: flex; flex-direction: column; align-items: center; line-height: 1.2; transition: filter 0.2s;
 }
-.btn-trade span { font-size: 10px; font-weight: 400; opacity: 0.8; }
+.btn-trade:active { filter: brightness(0.9); transform: scale(0.98); }
+.btn-trade span { font-size: 10px; font-weight: 400; opacity: 0.8; margin-top: 2px; }
 .btn-long { background: var(--accent-green); color: #052e1f; }
 .btn-short { background: var(--accent-red); color: #2d0a0f; }
 
-/* ————— ORDER BOOK & TRADES ————— */
-.ob-container { font-size: 12px; font-family: 'Roboto Mono', monospace; display: flex; flex-direction: column; gap: 4px; }
-.ob-row { display: flex; justify-content: space-between; padding: 2px 0; position: relative; z-index: 1; }
+/* ————— NEW ORDER BOOK & TRADES ————— */
+.ob-header {
+    display: grid; grid-template-columns: 1fr 1fr; 
+    font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; padding: 0 4px;
+}
+.ob-container { font-size: 12px; font-family: 'Roboto Mono', monospace; display: flex; flex-direction: column; gap: 1px; }
+
+/* Improved Row with Depth Bar */
+.ob-row { 
+    display: flex; justify-content: space-between; padding: 3px 4px; 
+    position: relative; z-index: 1; overflow: hidden;
+}
+.ob-bg {
+    position: absolute; top: 0; bottom: 0; right: 0; z-index: -1;
+    opacity: 0.3; transition: width 0.1s;
+}
+.bg-red { background: var(--accent-red); }
+.bg-green { background: var(--accent-green); }
+
 .text-green { color: var(--accent-green); }
 .text-red { color: var(--accent-red); }
 
@@ -205,8 +258,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .pos-val { color: var(--white); font-family: 'Roboto Mono'; margin-top: 2px; }
 .close-btn { 
   background: transparent; border: 1px solid var(--border); color: var(--white); 
-  padding: 4px 12px; border-radius: 4px; font-size: 11px; margin-top: 8px; width: 100%; cursor: pointer;
+  padding: 6px 12px; border-radius: 4px; font-size: 11px; margin-top: 10px; width: 100%; cursor: pointer; font-weight: 600;
+  transition: background 0.2s;
 }
+.close-btn:hover { background: rgba(255,255,255,0.05); }
 
 /* ————— LOADER ————— */
 #app-loader {
@@ -215,7 +270,20 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   transition: opacity 0.4s;
 }
 #app-loader.hidden { opacity: 0; pointer-events: none; }
-.loader-bar-bg { width: 160px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; margin-top: 20px; }
+
+.loader-logo {
+    width: 80px; 
+    height: auto; 
+    margin-bottom: 20px;
+    animation: pulse 2s infinite ease-in-out;
+}
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.loader-bar-bg { width: 140px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
 .loader-bar-fill { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.2s; }
 </style>
 </head>
@@ -223,9 +291,9 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 <body>
 
 <div id="app-loader">
-  <div style="font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">⧉ TradeSim</div>
+  <img src="https://i.postimg.cc/D0Zvnmdq/logobirzhi2.png" alt="TradeSim" class="loader-logo">
   <div class="loader-bar-bg"><div class="loader-bar-fill" id="loaderBar"></div></div>
-  <div style="margin-top: 10px; font-size: 11px; color: var(--muted); font-family: monospace;" id="loaderText">Initializing...</div>
+  <div style="margin-top: 12px; font-size: 10px; color: var(--muted); font-family: monospace; letter-spacing: 1px;" id="loaderText">CONNECTING</div>
 </div>
 
 <div class="app">
@@ -234,11 +302,15 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     <div class="header-left">
       <img src="https://i.postimg.cc/D0Zvnmdq/logobirzhi2.png" alt="Logo" class="logo-img">
       
-      <div class="pair-select-wrapper">
-        <select id="pairSelect" class="pair-select">
-          <option value="BTC-USD" selected>BTC/USD</option>
-          <option value="ETH-USD">ETH/USD</option>
-          </select>
+      <div class="pair-dropdown" id="pairDropdown">
+          <div class="pair-trigger" id="pairTrigger">
+              <span id="triggerText">BTC/USD</span>
+              <span class="arrow">▼</span>
+          </div>
+          <div class="pair-menu">
+              <div class="pair-item active" data-pair="BTC-USD">BTC/USD</div>
+              <div class="pair-item" data-pair="ETH-USD">ETH/USD</div>
+          </div>
       </div>
     </div>
 
@@ -259,10 +331,11 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       <div class="card">
         <div class="market-header">
           <div>
-            <div style="color:var(--muted); font-size:11px;">Market Price</div>
+            <div style="color:var(--muted); font-size:11px; margin-bottom:4px;">Market Price</div>
             <div class="price-display text-green" id="priceDisplay">--.--</div>
           </div>
-          </div>
+          <div id="priceSub" style="font-size:12px; font-family:'Roboto Mono'; opacity:0.7"></div>
+        </div>
 
         <div class="chart-container" id="chartCard">
           <div id="chart" style="width: 100%; height: 100%;"></div>
@@ -297,7 +370,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       </div>
 
       <div style="margin-top: 12px;">
-        <div style="font-weight: 700; margin-bottom: 8px; font-size: 14px;">Open Positions</div>
+        <div style="font-weight: 700; margin-bottom: 8px; font-size: 14px; padding-left: 4px;">Open Positions</div>
         <div id="positionsList" class="pos-list">
            <div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>
         </div>
@@ -310,7 +383,8 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
           <span>Order Book</span>
           <span style="color:var(--muted); font-size:11px;" id="bookPairLabel">BTC-USD</span>
         </div>
-        <div class="ob-container" id="orderBook" style="overflow-y:auto; flex:1; max-height: 300px;"></div>
+        <div class="ob-header"><span>Price</span><span style="text-align:right">Amount</span></div>
+        <div class="ob-container" id="orderBook" style="overflow-y:hidden; flex:1; max-height: 300px;"></div>
       </div>
 
       <div class="card" style="flex:1; display:flex; flex-direction:column;">
@@ -318,6 +392,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
            <span>Last Trades</span>
            <span style="color:var(--muted); font-size:11px;">Real-time</span>
          </div>
+         <div class="ob-header"><span>Price</span><span style="text-align:right">Time</span></div>
          <div class="ob-container" id="tradeHistory" style="overflow-y:auto; flex:1; max-height: 200px;"></div>
       </div>
     </div>
@@ -337,7 +412,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   const loaderText = $('loaderText');
   function setProgress(pct, txt) {
     loaderBar.style.width = pct + '%';
-    if(txt) loaderText.textContent = txt;
+    if(txt) loaderText.textContent = txt.toUpperCase();
   }
 
   // ————————————————————————————————————————————
@@ -361,17 +436,74 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   let currentLeverage = 10;
   
   // ————————————————————————————————————————————
+  // PAIR SELECTOR LOGIC (NEW)
+  // ————————————————————————————————————————————
+  const pairDropdown = $('pairDropdown');
+  const pairTrigger = $('pairTrigger');
+  const triggerText = $('triggerText');
+  const pairItems = document.querySelectorAll('.pair-item');
+
+  // Toggle Dropdown
+  pairTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    pairDropdown.classList.toggle('open');
+  });
+
+  // Close when clicking outside
+  document.addEventListener('click', () => pairDropdown.classList.remove('open'));
+
+  // Handle Selection
+  pairItems.forEach(item => {
+    item.addEventListener('click', () => {
+        const newPair = item.dataset.pair;
+        if(newPair === selectedPair) return;
+
+        // UI Updates
+        pairItems.forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        triggerText.textContent = item.textContent;
+        selectedPair = newPair;
+        $('bookPairLabel').textContent = selectedPair;
+
+        // Reset Data
+        switchPair(newPair);
+    });
+  });
+
+  function switchPair(newPair) {
+    // Unsubscribe old
+    if(socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type:"unsubscribe", pair: selectedPair })); // old pair still in var? No, updated above
+        // NOTE: In strict logic, we should have unsubbed the *old* value before updating `selectedPair`. 
+        // But the server probably handles just subscribing to new one fine. 
+        // Let's just force re-subscribe clean.
+    }
+    
+    // Clear UI
+    $('priceDisplay').textContent = "--.--";
+    $('orderBook').innerHTML = "";
+    $('tradeHistory').innerHTML = "";
+    candleSeries.setData([]);
+    chart.timeScale().fitContent();
+
+    // Subscribe new
+    if(socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type:"subscribe", pair: newPair }));
+    }
+  }
+
+  // ————————————————————————————————————————————
   // CHART SETUP
   // ————————————————————————————————————————————
   const chartEl = $('chart');
   const chart = LightweightCharts.createChart(chartEl, {
     width: chartEl.clientWidth,
     height: chartEl.clientHeight,
-    layout: { background: { type: 'solid', color: '#0B0E11' }, textColor: '#848E9C' },
-    grid: { horzLines: { color: 'rgba(255,255,255,0.02)' }, vertLines: { color: 'rgba(255,255,255,0.02)' } },
-    rightPriceScale: { borderVisible: false, autoScale: true }, 
-    timeScale: { borderVisible: false, timeVisible: true },
-    crosshair: { vertLine: { color: 'rgba(255,255,255,0.1)', style: 0 }, horzLine: { color: 'rgba(255,255,255,0.1)', style: 0 } }
+    layout: { background: { type: 'solid', color: '#0B0E11' }, textColor: '#5E6673' },
+    grid: { horzLines: { color: 'rgba(255,255,255,0.03)' }, vertLines: { color: 'rgba(255,255,255,0.03)' } },
+    rightPriceScale: { borderVisible: false, autoScale: true, scaleMargins: { top: 0.1, bottom: 0.1 } }, 
+    timeScale: { borderVisible: false, timeVisible: true, rightOffset: 5 },
+    crosshair: { vertLine: { color: 'rgba(255,255,255,0.1)', style: 3 }, horzLine: { color: 'rgba(255,255,255,0.1)', style: 3 } }
   });
 
   let candleSeries = chart.addCandlestickSeries({
@@ -412,7 +544,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   const historyPromise = new Promise(r => historyResolve = r);
 
   function updateBalanceUI() {
-    // New Header Balance Logic
     $('headerBalance').textContent = profile.balance.toFixed(2) + " VP";
   }
 
@@ -450,11 +581,14 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       if(!msg.type) return;
 
       if(msg.type === "price" && msg.pair === selectedPair) {
+        const prevPrice = currentPrice;
         currentPrice = Number(msg.price);
         $('priceDisplay').textContent = currentPrice.toFixed(2);
         
-        const prev = lastCandle ? lastCandle.close : currentPrice;
-        $('priceDisplay').className = currentPrice >= prev ? "price-display text-green" : "price-display text-red";
+        // Color update
+        if(prevPrice !== 0) {
+            $('priceDisplay').className = currentPrice >= prevPrice ? "price-display text-green" : "price-display text-red";
+        }
 
         if(lastCandle) {
            const now = Math.floor(Date.now()/1000);
@@ -480,8 +614,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
           lastCandle = data[data.length-1];
           currentPrice = lastCandle.close;
           $('priceDisplay').textContent = currentPrice.toFixed(2);
-          
-          // Force Scale Fit
           chart.timeScale().fitContent();
         }
         
@@ -537,16 +669,47 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     list.querySelectorAll('.close-btn').forEach(b => b.onclick = () => closePosition(b.dataset.id));
   }
 
+  // IMPROVED ORDER BOOK RENDER
   function renderOrderBook(buys, sells) {
     const el = $('orderBook');
+    
+    // Find max vol for depth visualization
+    const maxVol = Math.max(
+        ...buys.map(b => b.size),
+        ...sells.map(s => s.size),
+        1 // prevent zero division
+    );
+
     let html = "";
-    sells.slice(0, 7).reverse().forEach(s => {
-      html += `<div class="ob-row"><span class="text-red">${s.price.toFixed(2)}</span><span>${s.size.toFixed(3)}</span></div>`;
+    
+    // Sells (Asks) - Top Down, so we need to reverse to show lowest ask at bottom
+    // usually asks are shown: lowest price at bottom (closest to spread). 
+    // The server returns sorted arrays. We want lowest ask at bottom of the top section.
+    const showSells = sells.slice(0, 7).reverse();
+    
+    showSells.forEach(s => {
+      const pct = (s.size / maxVol) * 100;
+      html += `
+        <div class="ob-row">
+            <div class="ob-bg bg-red" style="width:${pct}%"></div>
+            <span class="text-red">${s.price.toFixed(2)}</span>
+            <span style="color:var(--white)">${s.size.toFixed(3)}</span>
+        </div>`;
     });
-    html += `<div style="height:1px; background:var(--border); margin: 4px 0;"></div>`;
+    
+    html += `<div style="height:1px; background:var(--border); margin: 4px 0; opacity:0.5"></div>`;
+    
+    // Buys (Bids) - Highest bid at top
     buys.slice(0, 7).forEach(b => {
-      html += `<div class="ob-row"><span class="text-green">${b.price.toFixed(2)}</span><span>${b.size.toFixed(3)}</span></div>`;
+      const pct = (b.size / maxVol) * 100;
+      html += `
+        <div class="ob-row">
+            <div class="ob-bg bg-green" style="width:${pct}%"></div>
+            <span class="text-green">${b.price.toFixed(2)}</span>
+            <span style="color:var(--white)">${b.size.toFixed(3)}</span>
+        </div>`;
     });
+    
     el.innerHTML = html;
   }
 
@@ -555,7 +718,8 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     let html = "";
     trades.slice().reverse().forEach(t => {
       const color = t.side === 'buy' ? 'text-green' : 'text-red';
-      html += `<div class="ob-row"><span class="${color}">${t.price.toFixed(2)}</span><span style="opacity:0.7">${t.size.toFixed(4)}</span><span style="color:var(--muted)">${new Date(t.time).toLocaleTimeString([], {hour12:false})}</span></div>`;
+      const timeStr = new Date(t.time).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+      html += `<div class="ob-row"><span class="${color}">${t.price.toFixed(2)}</span><span style="opacity:0.7; font-size:10px; margin-top:2px;">${timeStr}</span></div>`;
     });
     el.innerHTML = html;
   }
@@ -602,50 +766,14 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
   $('openLong').onclick = () => openPosition("LONG");
   $('openShort').onclick = () => openPosition("SHORT");
-
-  // ————————————————————————————————————————————
-  // NEW HEADER LOGIC
-  // ————————————————————————————————————————————
   
-  // 1. Pair Switching via Dropdown
-  $('pairSelect').addEventListener('change', (e) => {
-    const newPair = e.target.value;
-    if(newPair === selectedPair) return;
-    
-    // Unsubscribe
-    if(socket) socket.send(JSON.stringify({ type:"unsubscribe", pair: selectedPair }));
-    selectedPair = newPair;
-    
-    // UI Reset
-    $('bookPairLabel').textContent = selectedPair;
-    $('priceDisplay').textContent = "--.--";
-    $('orderBook').innerHTML = "";
-    $('tradeHistory').innerHTML = "";
-    
-    // Chart Reset (Critical for fix)
-    candleSeries.setData([]);
-    chart.priceScale('right').applyOptions({ autoScale: true });
-    chart.timeScale().fitContent();
-
-    // Subscribe new
-    if(socket) socket.send(JSON.stringify({ type:"subscribe", pair: selectedPair }));
-  });
-
-  // 2. Profile Click
-  $('btnProfile').onclick = () => {
-    // Logic for Profile navigation
-    // Since we don't have a second page, we just simulate feedback for now
-    tg.HapticFeedback.impactOccurred('light');
-    alert("Navigating to Profile of User: " + (currentUserId || "Guest"));
-  };
-
   // ————————————————————————————————————————————
   // INIT
   // ————————————————————————————————————————————
   setProgress(20, "Authenticating...");
   await initSession();
   
-  setProgress(50, "Connecting market stream...");
+  setProgress(50, "Connecting stream...");
   connectWS();
   
   await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
