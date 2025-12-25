@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<title>TradeSim — BTC/ETH Futures</title>
+<title>TradeSim</title>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
@@ -34,17 +34,72 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 /* ————— LAYOUT ————— */
 .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
 
+/* HEADER REDESIGN */
 .header {
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 16px;
   background: var(--panel);
   border-bottom: 1px solid var(--border);
+  height: 60px;
 }
 
-.brand { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px; }
-.logo-icon { color: var(--accent-green); }
+.header-left { display: flex; align-items: center; gap: 16px; }
 
+.logo-img {
+  height: 32px;
+  width: auto;
+  display: block;
+}
+
+/* Custom Select for Pairs */
+.pair-select-wrapper {
+  position: relative;
+}
+.pair-select {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--white);
+  padding: 6px 32px 6px 12px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+}
+.pair-select-wrapper::after {
+  content: '▼';
+  font-size: 10px;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* User Area (Balance + Avatar) */
+.user-area {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+.user-area:active { background: rgba(255,255,255,0.05); }
+
+.balance-group {
+  text-align: right;
+  line-height: 1.2;
+}
+.balance-label { font-size: 10px; color: var(--muted); display: block; }
+.balance-val { font-size: 13px; font-weight: 700; color: var(--white); font-family: 'Roboto Mono', monospace; }
+
+.avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: #333; overflow: hidden; flex-shrink: 0; border: 1px solid var(--border); }
+.avatar-sm img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ————— MAIN CONTAINER ————— */
 .container {
   flex: 1;
   display: flex;
@@ -53,7 +108,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   overflow-x: hidden;
   padding: 12px;
   gap: 12px;
-  padding-bottom: 80px; /* Space for bottom nav */
+  /* Removed bottom padding since nav is gone */
 }
 
 /* Desktop override */
@@ -63,7 +118,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     grid-template-columns: 1fr 320px;
     height: calc(100vh - 60px);
     overflow: hidden;
-    padding-bottom: 12px;
   }
   .left-col { overflow-y: auto; padding-right: 4px; }
   .right-col { display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
@@ -76,22 +130,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   border: 1px solid var(--border);
 }
 
-/* ————— HEADER ELEMENTS ————— */
-.pair-switch { display: flex; background: #111; border-radius: 8px; padding: 2px; border: 1px solid var(--border); }
-.pair-btn { 
-  padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 6px; color: var(--muted); transition: 0.2s; 
-}
-.pair-btn.active { background: var(--panel-light); color: var(--white); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-
-.profile-sm { display: flex; align-items: center; gap: 8px; font-size: 12px; }
-.avatar-sm { width: 28px; height: 28px; border-radius: 50%; background: #333; overflow: hidden; }
-.avatar-sm img { width: 100%; height: 100%; object-fit: cover; }
-
 /* ————— MARKET INFO ————— */
 .market-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
 .price-display { font-family: 'Roboto Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; }
 .price-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
-.tag { font-size: 10px; background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
 
 /* ————— CHART ————— */
 .chart-container {
@@ -100,11 +142,11 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   border-radius: 8px; 
   overflow: hidden; 
   position: relative;
-  background: #111; /* fallback */
+  background: #111; 
 }
 @media (min-width: 900px) { .chart-container { height: 50vh; } }
 
-/* ————— TRADING CONTROLS (LEVERAGE REDESIGN) ————— */
+/* ————— TRADING CONTROLS ————— */
 .controls-area { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
 
 .input-group { position: relative; }
@@ -128,7 +170,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   width: var(--thumb-size); height: var(--thumb-size); border-radius: 50%; 
   background: var(--white); cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.5);
   border: 2px solid var(--accent-green);
-  margin-top: -7px; /* center thumb */
+  margin-top: -7px; 
 }
 .range-slider::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; }
 
@@ -166,19 +208,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   padding: 4px 12px; border-radius: 4px; font-size: 11px; margin-top: 8px; width: 100%; cursor: pointer;
 }
 
-/* ————— BOTTOM NAV ————— */
-.bottom-nav {
-  position: fixed; bottom: 0; left: 0; width: 100%;
-  background: rgba(30, 35, 41, 0.95); backdrop-filter: blur(10px);
-  border-top: 1px solid var(--border);
-  padding: 10px 16px;
-  padding-bottom: calc(10px + env(safe-area-inset-bottom));
-  display: flex; gap: 10px; z-index: 100;
-}
-.nav-btn { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; }
-.nav-primary { background: var(--white); color: #000; }
-.nav-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
-
 /* ————— LOADER ————— */
 #app-loader {
   position: fixed; inset: 0; background: var(--bg); z-index: 9999;
@@ -202,16 +231,24 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 <div class="app">
 
   <header class="header">
-    <div class="brand">
-      <span class="logo-icon">⧉</span> TradeSim <span class="tag">Simnet</span>
-    </div>
-    <div style="display: flex; gap: 12px;">
-      <div class="pair-switch">
-        <div class="pair-btn active" data-pair="BTC-USD">BTC</div>
-        <div class="pair-btn" data-pair="ETH-USD">ETH</div>
+    <div class="header-left">
+      <img src="https://i.ibb.co/h7n08bS/photo-2024-12-25-22-43-34.jpg" alt="Logo" class="logo-img">
+      
+      <div class="pair-select-wrapper">
+        <select id="pairSelect" class="pair-select">
+          <option value="BTC-USD" selected>BTC/USD</option>
+          <option value="ETH-USD">ETH/USD</option>
+          </select>
       </div>
-      <div class="profile-sm" id="profileArea">
-        <div class="avatar-sm"><img id="avatarImg" src="" style="display:none"></div>
+    </div>
+
+    <div class="user-area" id="btnProfile">
+      <div class="balance-group">
+        <span class="balance-label">Balance</span>
+        <span class="balance-val" id="headerBalance">0.00 VP</span>
+      </div>
+      <div class="avatar-sm">
+        <img id="avatarImg" src="" style="display:none">
       </div>
     </div>
   </header>
@@ -225,10 +262,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
             <div style="color:var(--muted); font-size:11px;">Market Price</div>
             <div class="price-display text-green" id="priceDisplay">--.--</div>
           </div>
-          <div style="text-align: right;">
-             <div style="font-size:11px; color:var(--muted);" id="balanceLabel">Balance: 0 VP</div>
           </div>
-        </div>
 
         <div class="chart-container" id="chartCard">
           <div id="chart" style="width: 100%; height: 100%;"></div>
@@ -289,13 +323,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     </div>
 
   </main>
-
-  <div class="bottom-nav">
-    <button class="nav-btn nav-ghost" id="btnProfile">Profile</button>
-    <button class="nav-btn nav-primary" id="btnRefresh">Refresh</button>
   </div>
-
-</div>
 
 <script>
 (async function(){
@@ -341,7 +369,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     height: chartEl.clientHeight,
     layout: { background: { type: 'solid', color: '#0B0E11' }, textColor: '#848E9C' },
     grid: { horzLines: { color: 'rgba(255,255,255,0.02)' }, vertLines: { color: 'rgba(255,255,255,0.02)' } },
-    rightPriceScale: { borderVisible: false, autoScale: true }, // Ensure autoScale is default
+    rightPriceScale: { borderVisible: false, autoScale: true }, 
     timeScale: { borderVisible: false, timeVisible: true },
     crosshair: { vertLine: { color: 'rgba(255,255,255,0.1)', style: 0 }, horzLine: { color: 'rgba(255,255,255,0.1)', style: 0 } }
   });
@@ -383,6 +411,11 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   let historyResolve = null;
   const historyPromise = new Promise(r => historyResolve = r);
 
+  function updateBalanceUI() {
+    // New Header Balance Logic
+    $('headerBalance').textContent = profile.balance.toFixed(2) + " VP";
+  }
+
   async function initSession() {
     try {
       let initData = tg?.initData || "";
@@ -396,7 +429,8 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         profile.balance = Number(data.user.balance || 0);
         window._positions = data.positions || [];
         if(data.user.photo_url) { $('avatarImg').src = data.user.photo_url; $('avatarImg').style.display = 'block'; }
-        $('balanceLabel').textContent = "Balance: " + profile.balance.toFixed(2) + " VP";
+        
+        updateBalanceUI();
         renderPositions();
       }
     } catch(e) { console.error(e); }
@@ -447,7 +481,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
           currentPrice = lastCandle.close;
           $('priceDisplay').textContent = currentPrice.toFixed(2);
           
-          // !!! FIX: Force chart to fit new data range immediately
+          // Force Scale Fit
           chart.timeScale().fitContent();
         }
         
@@ -542,7 +576,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       const data = await res.json();
       if(data.ok) {
         window._positions.push(data.position);
-        if(data.newBalance) { profile.balance = data.newBalance; $('balanceLabel').textContent = "Balance: " + profile.balance.toFixed(2) + " VP"; }
+        if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
         renderPositions();
         tg.HapticFeedback.notificationOccurred('success');
       } else { alert(data.error || "Error"); }
@@ -559,7 +593,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       const data = await res.json();
       if(data.ok) {
         window._positions = window._positions.filter(p => (p.id!=id && p._id!=id));
-        if(data.newBalance) { profile.balance = data.newBalance; $('balanceLabel').textContent = "Balance: " + profile.balance.toFixed(2) + " VP"; }
+        if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
         renderPositions();
         tg.HapticFeedback.notificationOccurred('success');
       }
@@ -569,38 +603,41 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   $('openLong').onclick = () => openPosition("LONG");
   $('openShort').onclick = () => openPosition("SHORT");
 
-  // !!! FIX: PAIR SWITCH LOGIC RESTORED
-  document.querySelectorAll('.pair-btn').forEach(btn => {
-    btn.onclick = () => {
-      document.querySelectorAll('.pair-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const newPair = btn.dataset.pair;
-      if(newPair === selectedPair) return;
-      
-      // 1. Unsubscribe old
-      if(socket) socket.send(JSON.stringify({ type:"unsubscribe", pair: selectedPair }));
-      selectedPair = newPair;
-      
-      // 2. Clear UI
-      $('bookPairLabel').textContent = selectedPair;
-      $('priceDisplay').textContent = "--.--";
-      $('orderBook').innerHTML = "";
-      $('tradeHistory').innerHTML = "";
-      
-      // 3. Reset Chart Logic (CRITICAL FIX)
-      // Clear data
-      candleSeries.setData([]);
-      // Reset vertical scale (fix for frozen price range)
-      chart.priceScale('right').applyOptions({ autoScale: true });
-      // Reset horizontal scale
-      chart.timeScale().fitContent();
+  // ————————————————————————————————————————————
+  // NEW HEADER LOGIC
+  // ————————————————————————————————————————————
+  
+  // 1. Pair Switching via Dropdown
+  $('pairSelect').addEventListener('change', (e) => {
+    const newPair = e.target.value;
+    if(newPair === selectedPair) return;
+    
+    // Unsubscribe
+    if(socket) socket.send(JSON.stringify({ type:"unsubscribe", pair: selectedPair }));
+    selectedPair = newPair;
+    
+    // UI Reset
+    $('bookPairLabel').textContent = selectedPair;
+    $('priceDisplay').textContent = "--.--";
+    $('orderBook').innerHTML = "";
+    $('tradeHistory').innerHTML = "";
+    
+    // Chart Reset (Critical for fix)
+    candleSeries.setData([]);
+    chart.priceScale('right').applyOptions({ autoScale: true });
+    chart.timeScale().fitContent();
 
-      // 4. Subscribe new
-      if(socket) socket.send(JSON.stringify({ type:"subscribe", pair: selectedPair }));
-    };
+    // Subscribe new
+    if(socket) socket.send(JSON.stringify({ type:"subscribe", pair: selectedPair }));
   });
 
-  $('btnRefresh').onclick = () => location.reload();
+  // 2. Profile Click
+  $('btnProfile').onclick = () => {
+    // Logic for Profile navigation
+    // Since we don't have a second page, we just simulate feedback for now
+    tg.HapticFeedback.impactOccurred('light');
+    alert("Navigating to Profile of User: " + (currentUserId || "Guest"));
+  };
 
   // ————————————————————————————————————————————
   // INIT
