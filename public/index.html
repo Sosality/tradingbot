@@ -22,7 +22,6 @@
   --accent-red-transparent: rgba(246, 70, 93, 0.15);
   --white: #EAECEF;
   --border: rgba(255, 255, 255, 0.08);
-  --thumb-size: 20px;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -36,7 +35,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 /* ————— LAYOUT ————— */
 .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
 
-/* HEADER REDESIGN */
+/* HEADER */
 .header {
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
@@ -48,144 +47,66 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 }
 
 .header-left { display: flex; align-items: center; gap: 16px; }
+.logo-img { height: 28px; width: auto; display: block; }
 
-.logo-img {
-  height: 28px;
-  width: auto;
-  display: block;
-}
-
-/* --- NEW CUSTOM DROPDOWN --- */
-.pair-dropdown {
-    position: relative;
-    font-family: 'Roboto Mono', monospace;
-}
-
+/* CUSTOM DROPDOWN */
+.pair-dropdown { position: relative; font-family: 'Roboto Mono', monospace; }
 .pair-trigger {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: transparent;
-    padding: 6px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 700;
-    font-size: 15px;
-    color: var(--white);
-    transition: background 0.2s;
-    user-select: none;
+    display: flex; align-items: center; gap: 8px;
+    background: transparent; padding: 6px 12px; border-radius: 6px;
+    cursor: pointer; font-weight: 700; font-size: 15px; color: var(--white);
+    transition: background 0.2s; user-select: none;
 }
 .pair-trigger:hover { background: rgba(255,255,255,0.05); }
-.pair-trigger:active { background: rgba(255,255,255,0.1); }
 .pair-trigger .arrow { font-size: 10px; color: var(--muted); transition: transform 0.2s; }
 .pair-dropdown.open .pair-trigger .arrow { transform: rotate(180deg); }
-
 .pair-menu {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 8px;
-    background: rgba(30, 35, 41, 0.95);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    width: 160px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(-10px);
-    transition: all 0.2s ease;
-    z-index: 200;
-    display: flex;
-    flex-direction: column;
-    padding: 4px;
+    position: absolute; top: 100%; left: 0; margin-top: 8px;
+    background: rgba(30, 35, 41, 0.95); backdrop-filter: blur(10px);
+    border: 1px solid var(--border); border-radius: 8px; width: 160px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5); opacity: 0; pointer-events: none;
+    transform: translateY(-10px); transition: all 0.2s ease; z-index: 200;
+    display: flex; flex-direction: column; padding: 4px;
 }
-.pair-dropdown.open .pair-menu {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateY(0);
-}
-
+.pair-dropdown.open .pair-menu { opacity: 1; pointer-events: auto; transform: translateY(0); }
 .pair-item {
-    padding: 10px 12px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--muted);
-    cursor: pointer;
-    border-radius: 4px;
-    transition: 0.2s;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    padding: 10px 12px; font-size: 14px; font-weight: 500; color: var(--muted);
+    cursor: pointer; border-radius: 4px; transition: 0.2s; display: flex; justify-content: space-between; align-items: center;
 }
 .pair-item:hover { background: rgba(255,255,255,0.05); color: var(--white); }
 .pair-item.active { background: rgba(255,255,255,0.08); color: var(--white); font-weight: 700; }
 .pair-item.active::after { content: '✓'; color: var(--accent-green); font-size: 12px; }
 
 /* User Area */
-.user-area {
-  display: flex; align-items: center; gap: 10px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
+.user-area { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px 8px; border-radius: 8px; transition: background 0.2s; }
 .user-area:active { background: rgba(255,255,255,0.05); }
-
 .balance-group { text-align: right; line-height: 1.2; }
 .balance-label { font-size: 10px; color: var(--muted); display: block; }
 .balance-val { font-size: 13px; font-weight: 700; color: var(--white); font-family: 'Roboto Mono', monospace; }
-
 .avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: #333; overflow: hidden; flex-shrink: 0; border: 1px solid var(--border); }
 .avatar-sm img { width: 100%; height: 100%; object-fit: cover; }
 
 /* ————— MAIN CONTAINER ————— */
 .container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 12px;
-  gap: 12px;
+  flex: 1; display: flex; flex-direction: column;
+  overflow-y: auto; overflow-x: hidden; padding: 12px; gap: 12px;
 }
-
 @media (min-width: 900px) {
-  .container {
-    display: grid;
-    grid-template-columns: 1fr 320px;
-    height: calc(100vh - 60px);
-    overflow: hidden;
-  }
+  .container { display: grid; grid-template-columns: 1fr 320px; height: calc(100vh - 60px); overflow: hidden; }
   .left-col { overflow-y: auto; padding-right: 4px; }
   .right-col { display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
 }
 
-.card {
-  background: var(--panel);
-  border-radius: 12px;
-  padding: 12px;
-  border: 1px solid var(--border);
-}
+.card { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
 
-/* ————— MARKET INFO ————— */
+/* MARKET INFO & CHART */
 .market-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
 .price-display { font-family: 'Roboto Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
-
-/* ————— CHART ————— */
-.chart-container {
-  height: 350px; 
-  width: 100%; 
-  border-radius: 8px; 
-  overflow: hidden; 
-  position: relative;
-  background: #111; 
-}
+.chart-container { height: 350px; width: 100%; border-radius: 8px; overflow: hidden; position: relative; background: #111; }
 @media (min-width: 900px) { .chart-container { height: 50vh; } }
 
-/* ————— TRADING CONTROLS ————— */
+/* CONTROLS */
 .controls-area { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
-
 .input-group { position: relative; }
 .input-label { position: absolute; top: 8px; left: 12px; font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 600; }
 .main-input {
@@ -194,28 +115,16 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 }
 .main-input:focus { border-color: var(--accent-green); }
 
-/* Leverage Slider */
 .leverage-wrap { background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
 .lev-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
 .lev-val { color: var(--accent-green); font-weight: 700; font-family: 'Roboto Mono'; font-size: 14px; }
-
-.range-slider {
-  -webkit-appearance: none; width: 100%; height: 4px; background: #2A2F36; border-radius: 2px; outline: none; margin: 10px 0;
-}
+.range-slider { -webkit-appearance: none; width: 100%; height: 4px; background: #2A2F36; border-radius: 2px; outline: none; margin: 10px 0; }
 .range-slider::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none;
-  width: 18px; height: 18px; border-radius: 50%; 
-  background: var(--white); cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-  border: 2px solid var(--accent-green);
-  margin-top: -7px; 
+  -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; 
+  background: var(--white); cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); border: 2px solid var(--accent-green); margin-top: -7px; 
 }
-
 .chips-row { display: flex; justify-content: space-between; gap: 4px; margin-top: 8px; }
-.chip {
-  flex: 1; text-align: center; padding: 6px 0; font-size: 11px; background: #15181b; 
-  border-radius: 4px; cursor: pointer; border: 1px solid var(--border); color: var(--muted); transition: 0.2s;
-}
-.chip:hover { background: rgba(255,255,255,0.05); }
+.chip { flex: 1; text-align: center; padding: 6px 0; font-size: 11px; background: #15181b; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); color: var(--muted); transition: 0.2s; }
 .chip.active { background: var(--accent-green-transparent); color: var(--accent-green); border-color: var(--accent-green); font-weight: 700; }
 
 .action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
@@ -228,21 +137,27 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .btn-long { background: var(--accent-green); color: #052e1f; }
 .btn-short { background: var(--accent-red); color: #2d0a0f; }
 
-/* ————— NEW ORDER BOOK & TRADES ————— */
+/* ————— ORDER BOOK & TRADES (FIXED) ————— */
 .ob-header {
     display: grid; grid-template-columns: 1fr 1fr; 
-    font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; padding: 0 4px;
+    font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; padding: 0 4px;
 }
-.ob-container { font-size: 12px; font-family: 'Roboto Mono', monospace; display: flex; flex-direction: column; gap: 1px; }
+.ob-container { 
+    font-size: 12px; font-family: 'Roboto Mono', monospace; 
+    display: flex; flex-direction: column; gap: 2px; 
+    overflow: hidden; /* Fix for overflow */
+}
 
-/* Improved Row with Depth Bar */
+/* Row Styling */
 .ob-row { 
-    display: flex; justify-content: space-between; padding: 3px 4px; 
-    position: relative; z-index: 1; overflow: hidden;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 3px 4px; height: 20px;
+    position: relative; z-index: 1; 
+    white-space: nowrap; /* Fix for wrapping */
 }
 .ob-bg {
     position: absolute; top: 0; bottom: 0; right: 0; z-index: -1;
-    opacity: 0.3; transition: width 0.1s;
+    opacity: 0.2; transition: width 0.2s;
 }
 .bg-red { background: var(--accent-red); }
 .bg-green { background: var(--accent-green); }
@@ -259,9 +174,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .close-btn { 
   background: transparent; border: 1px solid var(--border); color: var(--white); 
   padding: 6px 12px; border-radius: 4px; font-size: 11px; margin-top: 10px; width: 100%; cursor: pointer; font-weight: 600;
-  transition: background 0.2s;
 }
-.close-btn:hover { background: rgba(255,255,255,0.05); }
 
 /* ————— LOADER ————— */
 #app-loader {
@@ -270,19 +183,8 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   transition: opacity 0.4s;
 }
 #app-loader.hidden { opacity: 0; pointer-events: none; }
-
-.loader-logo {
-    width: 80px; 
-    height: auto; 
-    margin-bottom: 20px;
-    animation: pulse 2s infinite ease-in-out;
-}
-@keyframes pulse {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.05); opacity: 0.8; }
-    100% { transform: scale(1); opacity: 1; }
-}
-
+.loader-logo { width: 80px; height: auto; margin-bottom: 20px; animation: pulse 2s infinite ease-in-out; }
+@keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
 .loader-bar-bg { width: 140px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
 .loader-bar-fill { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.2s; }
 </style>
@@ -297,7 +199,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 </div>
 
 <div class="app">
-
   <header class="header">
     <div class="header-left">
       <img src="https://i.postimg.cc/D0Zvnmdq/logobirzhi2.png" alt="Logo" class="logo-img">
@@ -313,20 +214,16 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
           </div>
       </div>
     </div>
-
     <div class="user-area" id="btnProfile">
       <div class="balance-group">
         <span class="balance-label">Balance</span>
         <span class="balance-val" id="headerBalance">0.00 VP</span>
       </div>
-      <div class="avatar-sm">
-        <img id="avatarImg" src="" style="display:none">
-      </div>
+      <div class="avatar-sm"><img id="avatarImg" src="" style="display:none"></div>
     </div>
   </header>
 
   <main class="container">
-    
     <div class="left-col">
       <div class="card">
         <div class="market-header">
@@ -334,24 +231,15 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
             <div style="color:var(--muted); font-size:11px; margin-bottom:4px;">Market Price</div>
             <div class="price-display text-green" id="priceDisplay">--.--</div>
           </div>
-          <div id="priceSub" style="font-size:12px; font-family:'Roboto Mono'; opacity:0.7"></div>
         </div>
-
-        <div class="chart-container" id="chartCard">
-          <div id="chart" style="width: 100%; height: 100%;"></div>
-        </div>
-
+        <div class="chart-container" id="chartCard"><div id="chart" style="width: 100%; height: 100%;"></div></div>
         <div class="controls-area">
           <div class="input-group">
             <span class="input-label">Margin (VP)</span>
             <input type="number" id="sizeInput" class="main-input" value="100" placeholder="10-10000" />
           </div>
-
           <div class="leverage-wrap">
-            <div class="lev-header">
-              <span>Leverage</span>
-              <span class="lev-val" id="leverageValText">10x</span>
-            </div>
+            <div class="lev-header"><span>Leverage</span><span class="lev-val" id="leverageValText">10x</span></div>
             <input type="range" class="range-slider" id="leverageSlider" min="1" max="50" step="1" value="10">
             <div class="chips-row" id="leverageChips">
               <div class="chip" data-v="1">1x</div>
@@ -361,44 +249,41 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
               <div class="chip" data-v="50">50x</div>
             </div>
           </div>
-
           <div class="action-btns">
             <button id="openLong" class="btn-trade btn-long">Buy / Long <span>Up</span></button>
             <button id="openShort" class="btn-trade btn-short">Sell / Short <span>Down</span></button>
           </div>
         </div>
       </div>
-
       <div style="margin-top: 12px;">
         <div style="font-weight: 700; margin-bottom: 8px; font-size: 14px; padding-left: 4px;">Open Positions</div>
-        <div id="positionsList" class="pos-list">
-           <div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>
-        </div>
+        <div id="positionsList" class="pos-list"><div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div></div>
       </div>
     </div>
 
     <div class="right-col">
-      <div class="card" style="flex:1; display:flex; flex-direction:column;">
+      <div class="card" style="flex:1; display:flex; flex-direction:column; min-height: 300px;">
         <div style="font-weight: 700; margin-bottom: 10px; font-size: 14px; display:flex; justify-content:space-between;">
           <span>Order Book</span>
           <span style="color:var(--muted); font-size:11px;" id="bookPairLabel">BTC-USD</span>
         </div>
         <div class="ob-header"><span>Price</span><span style="text-align:right">Amount</span></div>
-        <div class="ob-container" id="orderBook" style="overflow-y:hidden; flex:1; max-height: 300px;"></div>
+        <div class="ob-container" id="orderBook" style="flex:1;">
+           <div style="text-align:center; color:var(--muted); margin-top:20px;">Loading...</div>
+        </div>
       </div>
 
-      <div class="card" style="flex:1; display:flex; flex-direction:column;">
+      <div class="card" style="flex:1; display:flex; flex-direction:column; min-height: 250px;">
          <div style="font-weight: 700; margin-bottom: 10px; font-size: 14px; display:flex; justify-content:space-between;">
            <span>Last Trades</span>
            <span style="color:var(--muted); font-size:11px;">Real-time</span>
          </div>
          <div class="ob-header"><span>Price</span><span style="text-align:right">Time</span></div>
-         <div class="ob-container" id="tradeHistory" style="overflow-y:auto; flex:1; max-height: 200px;"></div>
+         <div class="ob-container" id="tradeHistory" style="flex:1;"></div>
       </div>
     </div>
-
   </main>
-  </div>
+</div>
 
 <script>
 (async function(){
@@ -436,57 +321,40 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   let currentLeverage = 10;
   
   // ————————————————————————————————————————————
-  // PAIR SELECTOR LOGIC (NEW)
+  // PAIR SELECTOR
   // ————————————————————————————————————————————
   const pairDropdown = $('pairDropdown');
   const pairTrigger = $('pairTrigger');
   const triggerText = $('triggerText');
   const pairItems = document.querySelectorAll('.pair-item');
 
-  // Toggle Dropdown
-  pairTrigger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    pairDropdown.classList.toggle('open');
-  });
-
-  // Close when clicking outside
+  pairTrigger.addEventListener('click', (e) => { e.stopPropagation(); pairDropdown.classList.toggle('open'); });
   document.addEventListener('click', () => pairDropdown.classList.remove('open'));
 
-  // Handle Selection
   pairItems.forEach(item => {
     item.addEventListener('click', () => {
         const newPair = item.dataset.pair;
         if(newPair === selectedPair) return;
-
-        // UI Updates
+        
         pairItems.forEach(i => i.classList.remove('active'));
         item.classList.add('active');
         triggerText.textContent = item.textContent;
         selectedPair = newPair;
         $('bookPairLabel').textContent = selectedPair;
-
-        // Reset Data
         switchPair(newPair);
     });
   });
 
   function switchPair(newPair) {
-    // Unsubscribe old
-    if(socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type:"unsubscribe", pair: selectedPair })); // old pair still in var? No, updated above
-        // NOTE: In strict logic, we should have unsubbed the *old* value before updating `selectedPair`. 
-        // But the server probably handles just subscribing to new one fine. 
-        // Let's just force re-subscribe clean.
-    }
-    
-    // Clear UI
+    // Clear old data
     $('priceDisplay').textContent = "--.--";
-    $('orderBook').innerHTML = "";
+    $('orderBook').innerHTML = '<div style="text-align:center; color:var(--muted); margin-top:20px;">Loading...</div>';
     $('tradeHistory').innerHTML = "";
+    
+    // CHART RESET FIX: Clear data AND Reset Scale Mode
     candleSeries.setData([]);
-    chart.timeScale().fitContent();
-
-    // Subscribe new
+    chart.priceScale('right').applyOptions({ autoScale: true }); 
+    
     if(socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type:"subscribe", pair: newPair }));
     }
@@ -518,7 +386,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   }).observe(chartEl);
 
   // ————————————————————————————————————————————
-  // LEVERAGE LOGIC
+  // LOGIC
   // ————————————————————————————————————————————
   const slider = $('leverageSlider');
   const levDisplay = $('leverageValText');
@@ -529,17 +397,13 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     slider.value = currentLeverage;
     levDisplay.textContent = currentLeverage + 'x';
     levChips.forEach(chip => {
-      const chipVal = parseInt(chip.dataset.v);
-      chip.classList.toggle('active', chipVal === currentLeverage);
+      chip.classList.toggle('active', parseInt(chip.dataset.v) === currentLeverage);
     });
   }
   slider.addEventListener('input', (e) => updateLeverageUI(e.target.value));
   levChips.forEach(chip => chip.addEventListener('click', () => updateLeverageUI(chip.dataset.v)));
   updateLeverageUI(10);
 
-  // ————————————————————————————————————————————
-  // DATA LOGIC
-  // ————————————————————————————————————————————
   let historyResolve = null;
   const historyPromise = new Promise(r => historyResolve = r);
 
@@ -560,14 +424,12 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         profile.balance = Number(data.user.balance || 0);
         window._positions = data.positions || [];
         if(data.user.photo_url) { $('avatarImg').src = data.user.photo_url; $('avatarImg').style.display = 'block'; }
-        
         updateBalanceUI();
         renderPositions();
       }
     } catch(e) { console.error(e); }
   }
 
-  // Socket
   let socket = null;
   let lastCandle = null;
 
@@ -585,7 +447,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         currentPrice = Number(msg.price);
         $('priceDisplay').textContent = currentPrice.toFixed(2);
         
-        // Color update
         if(prevPrice !== 0) {
             $('priceDisplay').className = currentPrice >= prevPrice ? "price-display text-green" : "price-display text-red";
         }
@@ -610,13 +471,14 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
         candleSeries.setData(data);
         
+        // FIX: Force scale reset on new history
+        chart.timeScale().fitContent();
+        
         if(data.length) {
           lastCandle = data[data.length-1];
           currentPrice = lastCandle.close;
           $('priceDisplay').textContent = currentPrice.toFixed(2);
-          chart.timeScale().fitContent();
         }
-        
         if(historyResolve) { historyResolve(); historyResolve = null; }
       }
 
@@ -641,7 +503,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       const size = Number(pos.size);
       const type = (pos.type || "LONG").toUpperCase();
       const lev = Number(pos.leverage || 1);
-      
       let pnl = 0;
       if(currentPrice > 0) {
         const diff = (currentPrice - entry) / entry;
@@ -669,44 +530,41 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     list.querySelectorAll('.close-btn').forEach(b => b.onclick = () => closePosition(b.dataset.id));
   }
 
-  // IMPROVED ORDER BOOK RENDER
   function renderOrderBook(buys, sells) {
     const el = $('orderBook');
+    // Basic validation
+    if(!Array.isArray(buys) || !Array.isArray(sells)) return;
     
-    // Find max vol for depth visualization
+    // Max vol calc
     const maxVol = Math.max(
         ...buys.map(b => b.size),
         ...sells.map(s => s.size),
-        1 // prevent zero division
+        1 
     );
 
     let html = "";
-    
-    // Sells (Asks) - Top Down, so we need to reverse to show lowest ask at bottom
-    // usually asks are shown: lowest price at bottom (closest to spread). 
-    // The server returns sorted arrays. We want lowest ask at bottom of the top section.
+    // Sells: Reverse needed to show lowest Ask at the bottom
     const showSells = sells.slice(0, 7).reverse();
-    
     showSells.forEach(s => {
-      const pct = (s.size / maxVol) * 100;
+      const pct = Math.min((s.size / maxVol) * 100, 100);
       html += `
         <div class="ob-row">
             <div class="ob-bg bg-red" style="width:${pct}%"></div>
             <span class="text-red">${s.price.toFixed(2)}</span>
-            <span style="color:var(--white)">${s.size.toFixed(3)}</span>
+            <span style="color:var(--white); position:relative; z-index:2;">${s.size.toFixed(3)}</span>
         </div>`;
     });
     
-    html += `<div style="height:1px; background:var(--border); margin: 4px 0; opacity:0.5"></div>`;
+    html += `<div style="height:1px; background:var(--border); margin: 2px 0; opacity:0.3"></div>`;
     
-    // Buys (Bids) - Highest bid at top
+    // Buys
     buys.slice(0, 7).forEach(b => {
-      const pct = (b.size / maxVol) * 100;
+      const pct = Math.min((b.size / maxVol) * 100, 100);
       html += `
         <div class="ob-row">
             <div class="ob-bg bg-green" style="width:${pct}%"></div>
             <span class="text-green">${b.price.toFixed(2)}</span>
-            <span style="color:var(--white)">${b.size.toFixed(3)}</span>
+            <span style="color:var(--white); position:relative; z-index:2;">${b.size.toFixed(3)}</span>
         </div>`;
     });
     
@@ -715,11 +573,18 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
   function renderTrades(trades) {
     const el = $('tradeHistory');
+    if(!Array.isArray(trades)) return;
+    
     let html = "";
-    trades.slice().reverse().forEach(t => {
+    // FIX: Limit trade count to prevent overflow (last 15)
+    trades.slice().reverse().slice(0, 15).forEach(t => {
       const color = t.side === 'buy' ? 'text-green' : 'text-red';
       const timeStr = new Date(t.time).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
-      html += `<div class="ob-row"><span class="${color}">${t.price.toFixed(2)}</span><span style="opacity:0.7; font-size:10px; margin-top:2px;">${timeStr}</span></div>`;
+      html += `
+        <div class="ob-row">
+            <span class="${color}">${t.price.toFixed(2)}</span>
+            <span style="opacity:0.7; font-size:10px;">${timeStr}</span>
+        </div>`;
     });
     el.innerHTML = html;
   }
@@ -731,7 +596,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     const margin = Number($('sizeInput').value);
     if(!margin || margin <= 0) return alert("Please enter valid margin");
     const size = margin * currentLeverage; 
-    
     try {
       const res = await fetch(API_BASE + "/api/order/open", {
         method:"POST", headers:{"Content-Type":"application/json"},
