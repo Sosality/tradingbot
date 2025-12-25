@@ -152,7 +152,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 /* ————— ORDER BOOK & TRADES ————— */
 .ob-container { font-size: 12px; font-family: 'Roboto Mono', monospace; display: flex; flex-direction: column; gap: 4px; }
 .ob-row { display: flex; justify-content: space-between; padding: 2px 0; position: relative; z-index: 1; }
-/* Background bar visualization for order book depth could go here */
 .text-green { color: var(--accent-green); }
 .text-red { color: var(--accent-red); }
 
@@ -277,8 +276,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
           <span>Order Book</span>
           <span style="color:var(--muted); font-size:11px;" id="bookPairLabel">BTC-USD</span>
         </div>
-        <div class="ob-container" id="orderBook" style="overflow-y:auto; flex:1; max-height: 300px;">
-           </div>
+        <div class="ob-container" id="orderBook" style="overflow-y:auto; flex:1; max-height: 300px;"></div>
       </div>
 
       <div class="card" style="flex:1; display:flex; flex-direction:column;">
@@ -286,8 +284,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
            <span>Last Trades</span>
            <span style="color:var(--muted); font-size:11px;">Real-time</span>
          </div>
-         <div class="ob-container" id="tradeHistory" style="overflow-y:auto; flex:1; max-height: 200px;">
-            </div>
+         <div class="ob-container" id="tradeHistory" style="overflow-y:auto; flex:1; max-height: 200px;"></div>
       </div>
     </div>
 
@@ -302,15 +299,14 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
 <script>
 (async function(){
-  // ————————————————————————————————————————————
-  // UTILS & LOADER
-  // ————————————————————————————————————————————
   const $ = (id) => document.getElementById(id);
   
+  // ————————————————————————————————————————————
+  // LOADER
+  // ————————————————————————————————————————————
   const loaderEl = $('app-loader');
   const loaderBar = $('loaderBar');
   const loaderText = $('loaderText');
-  
   function setProgress(pct, txt) {
     loaderBar.style.width = pct + '%';
     if(txt) loaderText.textContent = txt;
@@ -323,17 +319,14 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   const API_BASE = "https://tradingbot-p9n8.onrender.com";
   let currentUserId = null;
 
-  // Telegram Init
   const tg = window.Telegram?.WebApp;
   if(tg) {
     tg.ready();
     try { tg.expand(); } catch(e){}
-    // Set theme colors to match app
     tg.setHeaderColor('#1E2329');
     tg.setBackgroundColor('#0B0E11');
   }
 
-  // State
   let selectedPair = "BTC-USD";
   let currentPrice = 0;
   let profile = { balance: 0 };
@@ -348,7 +341,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     height: chartEl.clientHeight,
     layout: { background: { type: 'solid', color: '#0B0E11' }, textColor: '#848E9C' },
     grid: { horzLines: { color: 'rgba(255,255,255,0.02)' }, vertLines: { color: 'rgba(255,255,255,0.02)' } },
-    rightPriceScale: { borderVisible: false },
+    rightPriceScale: { borderVisible: false, autoScale: true }, // Ensure autoScale is default
     timeScale: { borderVisible: false, timeVisible: true },
     crosshair: { vertLine: { color: 'rgba(255,255,255,0.1)', style: 0 }, horzLine: { color: 'rgba(255,255,255,0.1)', style: 0 } }
   });
@@ -358,7 +351,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     downColor: '#F6465D', borderDownColor: '#F6465D', wickDownColor: '#F6465D'
   });
 
-  // Responsive Chart
   new ResizeObserver(entries => {
     if (entries.length === 0 || entries[0].target !== chartEl) { return; }
     const newRect = entries[0].contentRect;
@@ -366,7 +358,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   }).observe(chartEl);
 
   // ————————————————————————————————————————————
-  // LEVERAGE LOGIC (NEW)
+  // LEVERAGE LOGIC
   // ————————————————————————————————————————————
   const slider = $('leverageSlider');
   const levDisplay = $('leverageValText');
@@ -376,38 +368,18 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     currentLeverage = parseInt(val);
     slider.value = currentLeverage;
     levDisplay.textContent = currentLeverage + 'x';
-    
-    // Update Chips
     levChips.forEach(chip => {
       const chipVal = parseInt(chip.dataset.v);
-      if (chipVal === currentLeverage) {
-        chip.classList.add('active');
-      } else {
-        chip.classList.remove('active');
-      }
+      chip.classList.toggle('active', chipVal === currentLeverage);
     });
   }
-
-  // Slider Event
-  slider.addEventListener('input', (e) => {
-    updateLeverageUI(e.target.value);
-  });
-
-  // Chips Event
-  levChips.forEach(chip => {
-    chip.addEventListener('click', () => {
-      updateLeverageUI(chip.dataset.v);
-    });
-  });
-
-  // Initialize
+  slider.addEventListener('input', (e) => updateLeverageUI(e.target.value));
+  levChips.forEach(chip => chip.addEventListener('click', () => updateLeverageUI(chip.dataset.v)));
   updateLeverageUI(10);
-
 
   // ————————————————————————————————————————————
   // DATA LOGIC
   // ————————————————————————————————————————————
-  
   let historyResolve = null;
   const historyPromise = new Promise(r => historyResolve = r);
 
@@ -419,17 +391,11 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         body: JSON.stringify(initData ? {initData} : {})
       });
       let data = await res.json();
-      
       if(data.ok && data.user) {
         currentUserId = data.user.user_id;
         profile.balance = Number(data.user.balance || 0);
         window._positions = data.positions || [];
-        
-        // Update Profile UI
-        if(data.user.photo_url) {
-          $('avatarImg').src = data.user.photo_url;
-          $('avatarImg').style.display = 'block';
-        }
+        if(data.user.photo_url) { $('avatarImg').src = data.user.photo_url; $('avatarImg').style.display = 'block'; }
         $('balanceLabel').textContent = "Balance: " + profile.balance.toFixed(2) + " VP";
         renderPositions();
       }
@@ -449,16 +415,13 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       const msg = JSON.parse(evt.data);
       if(!msg.type) return;
 
-      // Price update
       if(msg.type === "price" && msg.pair === selectedPair) {
         currentPrice = Number(msg.price);
         $('priceDisplay').textContent = currentPrice.toFixed(2);
         
-        // Colorize price
         const prev = lastCandle ? lastCandle.close : currentPrice;
         $('priceDisplay').className = currentPrice >= prev ? "price-display text-green" : "price-display text-red";
 
-        // Update realtime candle
         if(lastCandle) {
            const now = Math.floor(Date.now()/1000);
            const minTime = now - (now % 60);
@@ -472,46 +435,40 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
              candleSeries.update(lastCandle);
            }
         }
-        renderPositions(); // Update PnL
+        renderPositions();
       }
 
-      // History
       if(msg.type === "history" && msg.pair === selectedPair) {
         const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
         candleSeries.setData(data);
+        
         if(data.length) {
           lastCandle = data[data.length-1];
           currentPrice = lastCandle.close;
           $('priceDisplay').textContent = currentPrice.toFixed(2);
+          
+          // !!! FIX: Force chart to fit new data range immediately
           chart.timeScale().fitContent();
         }
+        
         if(historyResolve) { historyResolve(); historyResolve = null; }
       }
 
-      // Orderbook
-      if(msg.type === "orderBook" && msg.pair === selectedPair) {
-        renderOrderBook(msg.buy, msg.sell);
-      }
-      
-      // Trades
-      if(msg.type === "trades" && msg.pair === selectedPair) {
-        renderTrades(msg.trades);
-      }
+      if(msg.type === "orderBook" && msg.pair === selectedPair) renderOrderBook(msg.buy, msg.sell);
+      if(msg.type === "trades" && msg.pair === selectedPair) renderTrades(msg.trades);
     };
     socket.onclose = () => setTimeout(connectWS, 2000);
   }
 
   // ————————————————————————————————————————————
-  // RENDERING
+  // UI RENDERERS
   // ————————————————————————————————————————————
-  
   function renderPositions() {
     const list = $('positionsList');
     if(!window._positions || window._positions.length === 0) {
       list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
       return;
     }
-    
     list.innerHTML = "";
     window._positions.forEach(pos => {
       const entry = Number(pos.entry_price || pos.entryPrice);
@@ -543,21 +500,16 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       `;
       list.appendChild(div);
     });
-
-    list.querySelectorAll('.close-btn').forEach(b => {
-      b.onclick = () => closePosition(b.dataset.id);
-    });
+    list.querySelectorAll('.close-btn').forEach(b => b.onclick = () => closePosition(b.dataset.id));
   }
 
   function renderOrderBook(buys, sells) {
     const el = $('orderBook');
     let html = "";
-    // Show top 7 sells (reversed)
     sells.slice(0, 7).reverse().forEach(s => {
       html += `<div class="ob-row"><span class="text-red">${s.price.toFixed(2)}</span><span>${s.size.toFixed(3)}</span></div>`;
     });
     html += `<div style="height:1px; background:var(--border); margin: 4px 0;"></div>`;
-    // Show top 7 buys
     buys.slice(0, 7).forEach(b => {
       html += `<div class="ob-row"><span class="text-green">${b.price.toFixed(2)}</span><span>${b.size.toFixed(3)}</span></div>`;
     });
@@ -569,12 +521,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     let html = "";
     trades.slice().reverse().forEach(t => {
       const color = t.side === 'buy' ? 'text-green' : 'text-red';
-      html += `
-        <div class="ob-row">
-          <span class="${color}">${t.price.toFixed(2)}</span>
-          <span style="opacity:0.7">${t.size.toFixed(4)}</span>
-          <span style="color:var(--muted)">${new Date(t.time).toLocaleTimeString([], {hour12:false})}</span>
-        </div>`;
+      html += `<div class="ob-row"><span class="${color}">${t.price.toFixed(2)}</span><span style="opacity:0.7">${t.size.toFixed(4)}</span><span style="color:var(--muted)">${new Date(t.time).toLocaleTimeString([], {hour12:false})}</span></div>`;
     });
     el.innerHTML = html;
   }
@@ -582,34 +529,23 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   // ————————————————————————————————————————————
   // ACTIONS
   // ————————————————————————————————————————————
-  
   async function openPosition(type) {
     const margin = Number($('sizeInput').value);
     if(!margin || margin <= 0) return alert("Please enter valid margin");
-    
-    // Use the dynamic slider variable
     const size = margin * currentLeverage; 
     
     try {
       const res = await fetch(API_BASE + "/api/order/open", {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          userId: currentUserId, pair: selectedPair, type, size, 
-          leverage: currentLeverage, entryPrice: currentPrice
-        })
+        body: JSON.stringify({ userId: currentUserId, pair: selectedPair, type, size, leverage: currentLeverage, entryPrice: currentPrice })
       });
       const data = await res.json();
       if(data.ok) {
         window._positions.push(data.position);
-        if(data.newBalance) {
-           profile.balance = data.newBalance;
-           $('balanceLabel').textContent = "Balance: " + profile.balance.toFixed(2) + " VP";
-        }
+        if(data.newBalance) { profile.balance = data.newBalance; $('balanceLabel').textContent = "Balance: " + profile.balance.toFixed(2) + " VP"; }
         renderPositions();
         tg.HapticFeedback.notificationOccurred('success');
-      } else {
-        alert(data.error || "Error");
-      }
+      } else { alert(data.error || "Error"); }
     } catch(e) { console.error(e); }
   }
 
@@ -623,10 +559,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       const data = await res.json();
       if(data.ok) {
         window._positions = window._positions.filter(p => (p.id!=id && p._id!=id));
-        if(data.newBalance) {
-           profile.balance = data.newBalance;
-           $('balanceLabel').textContent = "Balance: " + profile.balance.toFixed(2) + " VP";
-        }
+        if(data.newBalance) { profile.balance = data.newBalance; $('balanceLabel').textContent = "Balance: " + profile.balance.toFixed(2) + " VP"; }
         renderPositions();
         tg.HapticFeedback.notificationOccurred('success');
       }
@@ -636,7 +569,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   $('openLong').onclick = () => openPosition("LONG");
   $('openShort').onclick = () => openPosition("SHORT");
 
-  // Pair Switching
+  // !!! FIX: PAIR SWITCH LOGIC RESTORED
   document.querySelectorAll('.pair-btn').forEach(btn => {
     btn.onclick = () => {
       document.querySelectorAll('.pair-btn').forEach(b => b.classList.remove('active'));
@@ -644,18 +577,29 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       const newPair = btn.dataset.pair;
       if(newPair === selectedPair) return;
       
-      // Reset
+      // 1. Unsubscribe old
       if(socket) socket.send(JSON.stringify({ type:"unsubscribe", pair: selectedPair }));
       selectedPair = newPair;
+      
+      // 2. Clear UI
       $('bookPairLabel').textContent = selectedPair;
       $('priceDisplay').textContent = "--.--";
-      candleSeries.setData([]);
+      $('orderBook').innerHTML = "";
+      $('tradeHistory').innerHTML = "";
       
+      // 3. Reset Chart Logic (CRITICAL FIX)
+      // Clear data
+      candleSeries.setData([]);
+      // Reset vertical scale (fix for frozen price range)
+      chart.priceScale('right').applyOptions({ autoScale: true });
+      // Reset horizontal scale
+      chart.timeScale().fitContent();
+
+      // 4. Subscribe new
       if(socket) socket.send(JSON.stringify({ type:"subscribe", pair: selectedPair }));
     };
   });
 
-  // Reload button
   $('btnRefresh').onclick = () => location.reload();
 
   // ————————————————————————————————————————————
