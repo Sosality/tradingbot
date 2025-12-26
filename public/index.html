@@ -507,7 +507,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       }
 
       if(msg.type === "orderBook" && msg.pair === selectedPair) {
-          renderOrderBook(msg.buy || msg.bids || [], msg.sell || msg.asks || []);
+        renderOrderBook(msg.buy || msg.bids || [], msg.sell || msg.asks || []);
       }
       
       if(msg.type === "trades" && msg.pair === selectedPair) {
