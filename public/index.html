@@ -137,7 +137,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .btn-long { background: var(--accent-green); color: #052e1f; }
 .btn-short { background: var(--accent-red); color: #2d0a0f; }
 
-/* ————— ORDER BOOK & TRADES (FIXED) ————— */
+/* ————— ORDER BOOK & TRADES ————— */
 .ob-header {
     display: grid; grid-template-columns: 1fr 1fr; 
     font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; padding: 0 4px;
@@ -145,15 +145,13 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .ob-container { 
     font-size: 12px; font-family: 'Roboto Mono', monospace; 
     display: flex; flex-direction: column; gap: 2px; 
-    overflow: hidden; /* Fix for overflow */
+    overflow: hidden; 
 }
-
-/* Row Styling */
 .ob-row { 
     display: flex; justify-content: space-between; align-items: center;
     padding: 3px 4px; height: 20px;
     position: relative; z-index: 1; 
-    white-space: nowrap; /* Fix for wrapping */
+    white-space: nowrap; 
 }
 .ob-bg {
     position: absolute; top: 0; bottom: 0; right: 0; z-index: -1;
@@ -321,6 +319,18 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   let currentLeverage = 10;
   
   // ————————————————————————————————————————————
+  // UTILS
+  // ————————————————————————————————————————————
+  // Функция для красивого отображения цены с разным кол-вом знаков
+  function formatPrice(val) {
+      const num = Number(val);
+      if(isNaN(num)) return "--.--";
+      if(num < 1) return num.toFixed(5);
+      if(num < 10) return num.toFixed(4);
+      return num.toFixed(2);
+  }
+
+  // ————————————————————————————————————————————
   // PAIR SELECTOR
   // ————————————————————————————————————————————
   const pairDropdown = $('pairDropdown');
@@ -351,9 +361,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     $('orderBook').innerHTML = '<div style="text-align:center; color:var(--muted); margin-top:20px;">Loading...</div>';
     $('tradeHistory').innerHTML = "";
     
-    // CHART RESET FIX: Clear data AND Reset Scale Mode
+    // CHART RESET
     candleSeries.setData([]);
     chart.priceScale('right').applyOptions({ autoScale: true }); 
+    lastCandle = null;
     
     if(socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type:"subscribe", pair: newPair }));
@@ -383,7 +394,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     if (entries.length === 0 || entries[0].target !== chartEl) { return; }
     const newRect = entries[0].contentRect;
     chart.applyOptions({ width: newRect.width, height: newRect.height });
-  }).observe(chartEl);
+   }).observe(chartEl);
 
   // ————————————————————————————————————————————
   // LOGIC
@@ -414,6 +425,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   async function initSession() {
     try {
       let initData = tg?.initData || "";
+      // Используем простую проверку, если бэкенд требует user_id для тестов
       let res = await fetch(API_BASE + "/api/init", {
         method: "POST", headers: {"Content-Type":"application/json"},
         body: JSON.stringify(initData ? {initData} : {})
@@ -435,22 +447,27 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
   function connectWS() {
     socket = new WebSocket(WSS_PRICE_URL);
+    
     socket.onopen = () => {
       socket.send(JSON.stringify({ type:"subscribe", pair: selectedPair }));
     };
+    
     socket.onmessage = (evt) => {
       const msg = JSON.parse(evt.data);
       if(!msg.type) return;
 
+      // ОБРАБОТКА ЦЕНЫ
       if(msg.type === "price" && msg.pair === selectedPair) {
         const prevPrice = currentPrice;
         currentPrice = Number(msg.price);
-        $('priceDisplay').textContent = currentPrice.toFixed(2);
+        
+        $('priceDisplay').textContent = formatPrice(currentPrice);
         
         if(prevPrice !== 0) {
             $('priceDisplay').className = currentPrice >= prevPrice ? "price-display text-green" : "price-display text-red";
         }
 
+        // CANDLE UPDATE logic
         if(lastCandle) {
            const now = Math.floor(Date.now()/1000);
            const minTime = now - (now % 60);
@@ -460,31 +477,41 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
              lastCandle.close = currentPrice;
              candleSeries.update(lastCandle);
            } else {
+             // New candle
              lastCandle = { time: minTime, open: lastCandle.close, high: currentPrice, low: currentPrice, close: currentPrice };
              candleSeries.update(lastCandle);
            }
         }
+        // Обновляем PNL открытых позиций при каждом тике
         renderPositions();
       }
 
+      // ИСТОРИЯ СВЕЧЕЙ
       if(msg.type === "history" && msg.pair === selectedPair) {
         const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
         candleSeries.setData(data);
-        
-        // FIX: Force scale reset on new history
         chart.timeScale().fitContent();
         
         if(data.length) {
           lastCandle = data[data.length-1];
           currentPrice = lastCandle.close;
-          $('priceDisplay').textContent = currentPrice.toFixed(2);
+          $('priceDisplay').textContent = formatPrice(currentPrice);
         }
         if(historyResolve) { historyResolve(); historyResolve = null; }
       }
 
-      if(msg.type === "orderBook" && msg.pair === selectedPair) renderOrderBook(msg.buy, msg.sell);
-      if(msg.type === "trades" && msg.pair === selectedPair) renderTrades(msg.trades);
+      // СТАКАН (Order Book)
+      if(msg.type === "orderBook" && msg.pair === selectedPair) {
+          // Защита от пустых данных
+          renderOrderBook(msg.buy || msg.bids || [], msg.sell || msg.asks || []);
+      }
+      
+      // ПОСЛЕДНИЕ СДЕЛКИ
+      if(msg.type === "trades" && msg.pair === selectedPair) {
+          renderTrades(msg.trades || []);
+      }
     };
+    
     socket.onclose = () => setTimeout(connectWS, 2000);
   }
 
@@ -498,13 +525,17 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       return;
     }
     list.innerHTML = "";
-    window._positions.forEach(pos => {
+    
+    // Перебираем позиции в обратном порядке (новые сверху)
+    [...window._positions].reverse().forEach(pos => {
       const entry = Number(pos.entry_price || pos.entryPrice);
       const size = Number(pos.size);
       const type = (pos.type || "LONG").toUpperCase();
       const lev = Number(pos.leverage || 1);
+      
       let pnl = 0;
       if(currentPrice > 0) {
+        // Формула PnL: ((Price - Entry) / Entry) * Size * Side
         const diff = (currentPrice - entry) / entry;
         pnl = diff * size * (type==="SHORT"? -1 : 1);
       }
@@ -518,8 +549,8 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
            <span class="${pnlClass}">${pnl>0?'+':''}${pnl.toFixed(2)} VP</span>
         </div>
         <div class="pos-details">
-           <div>Entry <div class="pos-val">${entry.toFixed(2)}</div></div>
-           <div>Mark <div class="pos-val">${currentPrice.toFixed(2)}</div></div>
+           <div>Entry <div class="pos-val">${formatPrice(entry)}</div></div>
+           <div>Mark <div class="pos-val">${formatPrice(currentPrice)}</div></div>
            <div>Size <div class="pos-val">${size.toFixed(0)}</div></div>
            <div>Margin <div class="pos-val">${(size/lev).toFixed(2)}</div></div>
         </div>
@@ -543,14 +574,14 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     );
 
     let html = "";
-    // Sells: Reverse needed to show lowest Ask at the bottom
+    // Sells: Reverse needed to show lowest Ask at the bottom (closer to center price)
     const showSells = sells.slice(0, 7).reverse();
     showSells.forEach(s => {
       const pct = Math.min((s.size / maxVol) * 100, 100);
       html += `
         <div class="ob-row">
             <div class="ob-bg bg-red" style="width:${pct}%"></div>
-            <span class="text-red">${s.price.toFixed(2)}</span>
+            <span class="text-red">${formatPrice(s.price)}</span>
             <span style="color:var(--white); position:relative; z-index:2;">${s.size.toFixed(3)}</span>
         </div>`;
     });
@@ -563,7 +594,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       html += `
         <div class="ob-row">
             <div class="ob-bg bg-green" style="width:${pct}%"></div>
-            <span class="text-green">${b.price.toFixed(2)}</span>
+            <span class="text-green">${formatPrice(b.price)}</span>
             <span style="color:var(--white); position:relative; z-index:2;">${b.size.toFixed(3)}</span>
         </div>`;
     });
@@ -576,13 +607,13 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     if(!Array.isArray(trades)) return;
     
     let html = "";
-    // FIX: Limit trade count to prevent overflow (last 15)
+    // Limit trade count to prevent overflow (last 15)
     trades.slice().reverse().slice(0, 15).forEach(t => {
       const color = t.side === 'buy' ? 'text-green' : 'text-red';
       const timeStr = new Date(t.time).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
       html += `
         <div class="ob-row">
-            <span class="${color}">${t.price.toFixed(2)}</span>
+            <span class="${color}">${formatPrice(t.price)}</span>
             <span style="opacity:0.7; font-size:10px;">${timeStr}</span>
         </div>`;
     });
@@ -595,19 +626,34 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   async function openPosition(type) {
     const margin = Number($('sizeInput').value);
     if(!margin || margin <= 0) return alert("Please enter valid margin");
+    
     const size = margin * currentLeverage; 
+    
+    // Haptic
+    if(tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+
     try {
       const res = await fetch(API_BASE + "/api/order/open", {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ userId: currentUserId, pair: selectedPair, type, size, leverage: currentLeverage, entryPrice: currentPrice })
+        body: JSON.stringify({ 
+            userId: currentUserId, 
+            pair: selectedPair, 
+            type, 
+            size, 
+            leverage: currentLeverage, 
+            entryPrice: currentPrice 
+        })
       });
       const data = await res.json();
       if(data.ok) {
         window._positions.push(data.position);
         if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
         renderPositions();
-        tg.HapticFeedback.notificationOccurred('success');
-      } else { alert(data.error || "Error"); }
+        if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      } else { 
+          alert(data.error || "Error opening position"); 
+          if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+      }
     } catch(e) { console.error(e); }
   }
 
@@ -623,7 +669,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         window._positions = window._positions.filter(p => (p.id!=id && p._id!=id));
         if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
         renderPositions();
-        tg.HapticFeedback.notificationOccurred('success');
+        if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       }
     } catch(e) { console.error(e); }
   }
@@ -640,6 +686,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   setProgress(50, "Connecting stream...");
   connectWS();
   
+  // Wait a bit for history or timeout
   await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
   setProgress(100, "Ready");
   
