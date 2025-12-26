@@ -562,36 +562,44 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     list.querySelectorAll('.close-btn').forEach(b => b.onclick = () => closePosition(b.dataset.id));
   }
 
-  function renderOrderBook(buys, sells) {
+function renderOrderBook(buys, sells) {
     const el = $('orderBook');
+    // Если данные не пришли или пустые
     if(!Array.isArray(buys) || !Array.isArray(sells)) return;
     
+    // Собираем все объемы, чтобы найти максимальный для рисования бара
     const allSizes = [...buys, ...sells].map(x => Number(x.size));
-    const maxVol = Math.max(...allSizes, 1);
+    // Math.max(..., 0.0001) предотвращает деление на ноль
+    const maxVol = Math.max(...allSizes, 0.0001);
 
     let html = "";
-    // Sells (Reverse)
-    const showSells = sells.slice(0, 7).reverse();
+    
+    // ASKS (Продавцы - Красные)
+    // Разворачиваем reverse(), чтобы самые дешевые (близкие к цене) были внизу блока
+    const showSells = sells.slice(0, 7).reverse(); 
     showSells.forEach(s => {
-      const pct = Math.min((s.size / maxVol) * 100, 100);
+      const vol = Number(s.size);
+      const pct = Math.min((vol / maxVol) * 100, 100);
       html += `
         <div class="ob-row">
             <div class="ob-bg bg-red" style="width:${pct}%"></div>
             <span class="text-red">${formatPrice(s.price)}</span>
-            <span style="position:relative; z-index:1; color:var(--white);">${Number(s.size).toFixed(3)}</span>
+            <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(4)}</span>
         </div>`;
     });
     
+    // Разделитель (Спред)
     html += `<div style="height:1px; background:var(--border); margin: 2px 0; opacity:0.3"></div>`;
     
-    // Buys
+    // BIDS (Покупатели - Зеленые)
     buys.slice(0, 7).forEach(b => {
-      const pct = Math.min((b.size / maxVol) * 100, 100);
+      const vol = Number(b.size);
+      const pct = Math.min((vol / maxVol) * 100, 100);
       html += `
         <div class="ob-row">
             <div class="ob-bg bg-green" style="width:${pct}%"></div>
             <span class="text-green">${formatPrice(b.price)}</span>
-            <span style="position:relative; z-index:1; color:var(--white);">${Number(b.size).toFixed(3)}</span>
+            <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(4)}</span>
         </div>`;
     });
     
