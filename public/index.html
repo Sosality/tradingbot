@@ -91,10 +91,16 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   flex: 1; display: flex; flex-direction: column;
   overflow-y: auto; overflow-x: hidden; padding: 12px; gap: 12px;
 }
+
+/* [ИСПРАВЛЕНИЕ 1] Явно задаем Flex для колонок, чтобы работали отступы (gap) и flex:1 */
+.left-col { display: flex; flex-direction: column; gap: 12px; }
+.right-col { display: flex; flex-direction: column; gap: 12px; }
+
 @media (min-width: 900px) {
   .container { display: grid; grid-template-columns: 1fr 320px; height: calc(100vh - 60px); overflow: hidden; }
   .left-col { overflow-y: auto; padding-right: 4px; }
-  .right-col { display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+  /* На десктопе правая колонка не скроллится вся, скроллятся блоки внутри */
+  .right-col { overflow: hidden; }
 }
 
 .card { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
@@ -137,7 +143,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .btn-long { background: var(--accent-green); color: #052e1f; }
 .btn-short { background: var(--accent-red); color: #2d0a0f; }
 
-/* ————— ORDER BOOK & TRADES ————— */
+/* ————— ORDER BOOK & TRADES (ИСПРАВЛЕНО) ————— */
 .ob-header {
     display: grid; grid-template-columns: 1fr 1fr; 
     font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; padding: 0 4px;
@@ -150,16 +156,24 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .ob-row { 
     display: flex; justify-content: space-between; align-items: center;
     padding: 3px 4px; height: 20px;
-    position: relative; z-index: 1; 
+    position: relative; 
     white-space: nowrap; 
 }
+
+/* [ИСПРАВЛЕНИЕ 2] z-index: 0 вместо -1, чтобы бары были видны над фоном карточки */
 .ob-bg {
-    position: absolute; top: 0; bottom: 0; right: 0; z-index: -1;
+    position: absolute; top: 0; bottom: 0; right: 0; 
     opacity: 0.2; transition: width 0.2s;
+    z-index: 0; 
 }
+/* Текст поднимаем выше бара */
+.ob-row span {
+    position: relative; 
+    z-index: 1;
+}
+
 .bg-red { background: var(--accent-red); }
 .bg-green { background: var(--accent-green); }
-
 .text-green { color: var(--accent-green); }
 .text-red { color: var(--accent-red); }
 
@@ -260,7 +274,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     </div>
 
     <div class="right-col">
-      <div class="card" style="flex:1; display:flex; flex-direction:column; min-height: 300px;">
+      <div class="card" style="display:flex; flex-direction:column; min-height: 300px;">
         <div style="font-weight: 700; margin-bottom: 10px; font-size: 14px; display:flex; justify-content:space-between;">
           <span>Order Book</span>
           <span style="color:var(--muted); font-size:11px;" id="bookPairLabel">BTC-USD</span>
@@ -271,7 +285,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         </div>
       </div>
 
-      <div class="card" style="flex:1; display:flex; flex-direction:column; min-height: 250px;">
+      <div class="card" style="display:flex; flex-direction:column; min-height: 250px;">
          <div style="font-weight: 700; margin-bottom: 10px; font-size: 14px; display:flex; justify-content:space-between;">
            <span>Last Trades</span>
            <span style="color:var(--muted); font-size:11px;">Real-time</span>
@@ -321,7 +335,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   // ————————————————————————————————————————————
   // UTILS
   // ————————————————————————————————————————————
-  // Функция для красивого отображения цены с разным кол-вом знаков
   function formatPrice(val) {
       const num = Number(val);
       if(isNaN(num)) return "--.--";
@@ -356,7 +369,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   });
 
   function switchPair(newPair) {
-    // Clear old data
     $('priceDisplay').textContent = "--.--";
     $('orderBook').innerHTML = '<div style="text-align:center; color:var(--muted); margin-top:20px;">Loading...</div>';
     $('tradeHistory').innerHTML = "";
@@ -425,7 +437,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   async function initSession() {
     try {
       let initData = tg?.initData || "";
-      // Используем простую проверку, если бэкенд требует user_id для тестов
       let res = await fetch(API_BASE + "/api/init", {
         method: "POST", headers: {"Content-Type":"application/json"},
         body: JSON.stringify(initData ? {initData} : {})
@@ -456,7 +467,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       const msg = JSON.parse(evt.data);
       if(!msg.type) return;
 
-      // ОБРАБОТКА ЦЕНЫ
       if(msg.type === "price" && msg.pair === selectedPair) {
         const prevPrice = currentPrice;
         currentPrice = Number(msg.price);
@@ -467,7 +477,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
             $('priceDisplay').className = currentPrice >= prevPrice ? "price-display text-green" : "price-display text-red";
         }
 
-        // CANDLE UPDATE logic
         if(lastCandle) {
            const now = Math.floor(Date.now()/1000);
            const minTime = now - (now % 60);
@@ -477,16 +486,13 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
              lastCandle.close = currentPrice;
              candleSeries.update(lastCandle);
            } else {
-             // New candle
              lastCandle = { time: minTime, open: lastCandle.close, high: currentPrice, low: currentPrice, close: currentPrice };
              candleSeries.update(lastCandle);
            }
         }
-        // Обновляем PNL открытых позиций при каждом тике
         renderPositions();
       }
 
-      // ИСТОРИЯ СВЕЧЕЙ
       if(msg.type === "history" && msg.pair === selectedPair) {
         const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
         candleSeries.setData(data);
@@ -500,13 +506,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         if(historyResolve) { historyResolve(); historyResolve = null; }
       }
 
-      // СТАКАН (Order Book)
       if(msg.type === "orderBook" && msg.pair === selectedPair) {
-          // Защита от пустых данных
           renderOrderBook(msg.buy || msg.bids || [], msg.sell || msg.asks || []);
       }
       
-      // ПОСЛЕДНИЕ СДЕЛКИ
       if(msg.type === "trades" && msg.pair === selectedPair) {
           renderTrades(msg.trades || []);
       }
@@ -526,7 +529,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     }
     list.innerHTML = "";
     
-    // Перебираем позиции в обратном порядке (новые сверху)
     [...window._positions].reverse().forEach(pos => {
       const entry = Number(pos.entry_price || pos.entryPrice);
       const size = Number(pos.size);
@@ -535,7 +537,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       
       let pnl = 0;
       if(currentPrice > 0) {
-        // Формула PnL: ((Price - Entry) / Entry) * Size * Side
         const diff = (currentPrice - entry) / entry;
         pnl = diff * size * (type==="SHORT"? -1 : 1);
       }
@@ -563,18 +564,13 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
   function renderOrderBook(buys, sells) {
     const el = $('orderBook');
-    // Basic validation
     if(!Array.isArray(buys) || !Array.isArray(sells)) return;
     
-    // Max vol calc
-    const maxVol = Math.max(
-        ...buys.map(b => b.size),
-        ...sells.map(s => s.size),
-        1 
-    );
+    const allSizes = [...buys, ...sells].map(x => Number(x.size));
+    const maxVol = Math.max(...allSizes, 1);
 
     let html = "";
-    // Sells: Reverse needed to show lowest Ask at the bottom (closer to center price)
+    // Sells (Reverse)
     const showSells = sells.slice(0, 7).reverse();
     showSells.forEach(s => {
       const pct = Math.min((s.size / maxVol) * 100, 100);
@@ -582,7 +578,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         <div class="ob-row">
             <div class="ob-bg bg-red" style="width:${pct}%"></div>
             <span class="text-red">${formatPrice(s.price)}</span>
-            <span style="color:var(--white); position:relative; z-index:2;">${s.size.toFixed(3)}</span>
+            <span style="position:relative; z-index:1; color:var(--white);">${Number(s.size).toFixed(3)}</span>
         </div>`;
     });
     
@@ -595,7 +591,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         <div class="ob-row">
             <div class="ob-bg bg-green" style="width:${pct}%"></div>
             <span class="text-green">${formatPrice(b.price)}</span>
-            <span style="color:var(--white); position:relative; z-index:2;">${b.size.toFixed(3)}</span>
+            <span style="position:relative; z-index:1; color:var(--white);">${Number(b.size).toFixed(3)}</span>
         </div>`;
     });
     
@@ -607,7 +603,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     if(!Array.isArray(trades)) return;
     
     let html = "";
-    // Limit trade count to prevent overflow (last 15)
     trades.slice().reverse().slice(0, 15).forEach(t => {
       const color = t.side === 'buy' ? 'text-green' : 'text-red';
       const timeStr = new Date(t.time).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
@@ -629,7 +624,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     
     const size = margin * currentLeverage; 
     
-    // Haptic
     if(tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
 
     try {
@@ -686,7 +680,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   setProgress(50, "Connecting stream...");
   connectWS();
   
-  // Wait a bit for history or timeout
   await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
   setProgress(100, "Ready");
   
