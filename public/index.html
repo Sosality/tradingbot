@@ -4,11 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>TradeSim</title>
-
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-
 <style>
 /* ————— CORE STYLES ————— */
 :root {
@@ -23,18 +21,14 @@
   --white: #EAECEF;
   --border: rgba(255, 255, 255, 0.08);
 }
-
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white); font-family: 'Inter', system-ui, sans-serif; overflow: hidden; }
-
 /* Scrollbar styling */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-
 /* ————— LAYOUT ————— */
 .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
-
 /* HEADER */
 .header {
   flex-shrink: 0;
@@ -45,10 +39,8 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   height: 60px;
   z-index: 100;
 }
-
 .header-left { display: flex; align-items: center; gap: 16px; }
 .logo-img { height: 28px; width: auto; display: block; }
-
 /* CUSTOM DROPDOWN */
 .pair-dropdown { position: relative; font-family: 'Roboto Mono', monospace; }
 .pair-trigger {
@@ -76,7 +68,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .pair-item:hover { background: rgba(255,255,255,0.05); color: var(--white); }
 .pair-item.active { background: rgba(255,255,255,0.08); color: var(--white); font-weight: 700; }
 .pair-item.active::after { content: '✓'; color: var(--accent-green); font-size: 12px; }
-
 /* User Area */
 .user-area { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px 8px; border-radius: 8px; transition: background 0.2s; }
 .user-area:active { background: rgba(255,255,255,0.05); }
@@ -85,32 +76,24 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .balance-val { font-size: 13px; font-weight: 700; color: var(--white); font-family: 'Roboto Mono', monospace; }
 .avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: #333; overflow: hidden; flex-shrink: 0; border: 1px solid var(--border); }
 .avatar-sm img { width: 100%; height: 100%; object-fit: cover; }
-
 /* ————— MAIN CONTAINER ————— */
 .container {
   flex: 1; display: flex; flex-direction: column;
   overflow-y: auto; overflow-x: hidden; padding: 12px; gap: 12px;
 }
-
-/* [ИСПРАВЛЕНИЕ 1] Явно задаем Flex для колонок, чтобы работали отступы (gap) и flex:1 */
 .left-col { display: flex; flex-direction: column; gap: 12px; }
 .right-col { display: flex; flex-direction: column; gap: 12px; }
-
 @media (min-width: 900px) {
   .container { display: grid; grid-template-columns: 1fr 320px; height: calc(100vh - 60px); overflow: hidden; }
   .left-col { overflow-y: auto; padding-right: 4px; }
-  /* На десктопе правая колонка не скроллится вся, скроллятся блоки внутри */
   .right-col { overflow: hidden; }
 }
-
 .card { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
-
 /* MARKET INFO & CHART */
 .market-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
 .price-display { font-family: 'Roboto Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
 .chart-container { height: 350px; width: 100%; border-radius: 8px; overflow: hidden; position: relative; background: #111; }
 @media (min-width: 900px) { .chart-container { height: 50vh; } }
-
 /* CONTROLS */
 .controls-area { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
 .input-group { position: relative; }
@@ -120,19 +103,17 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   padding: 24px 12px 8px 12px; border-radius: 8px; font-size: 16px; font-family: 'Roboto Mono', monospace; outline: none; transition: border 0.2s;
 }
 .main-input:focus { border-color: var(--accent-green); }
-
 .leverage-wrap { background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
 .lev-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
 .lev-val { color: var(--accent-green); font-weight: 700; font-family: 'Roboto Mono'; font-size: 14px; }
 .range-slider { -webkit-appearance: none; width: 100%; height: 4px; background: #2A2F36; border-radius: 2px; outline: none; margin: 10px 0; }
 .range-slider::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; 
-  background: var(--white); cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); border: 2px solid var(--accent-green); margin-top: -7px; 
+  -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--white); cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); border: 2px solid var(--accent-green); margin-top: -7px;
 }
 .chips-row { display: flex; justify-content: space-between; gap: 4px; margin-top: 8px; }
 .chip { flex: 1; text-align: center; padding: 6px 0; font-size: 11px; background: #15181b; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); color: var(--muted); transition: 0.2s; }
 .chip.active { background: var(--accent-green-transparent); color: var(--accent-green); border-color: var(--accent-green); font-weight: 700; }
-
 .action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
 .btn-trade {
   padding: 14px; border-radius: 8px; border: none; font-weight: 700; font-size: 15px; cursor: pointer; color: #fff;
@@ -142,61 +123,54 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .btn-trade span { font-size: 10px; font-weight: 400; opacity: 0.8; margin-top: 2px; }
 .btn-long { background: var(--accent-green); color: #052e1f; }
 .btn-short { background: var(--accent-red); color: #2d0a0f; }
-
-/* ————— ORDER BOOK & TRADES (ИСПРАВЛЕНО) ————— */
+/* ————— ORDER BOOK (BINANCE-STYLE SMART UPDATE) ————— */
 .ob-header {
-    display: grid; grid-template-columns: 1fr 1fr; 
+    display: grid; grid-template-columns: 1fr 1fr;
     font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; padding: 0 4px;
 }
-.ob-container { 
-    font-size: 12px; font-family: 'Roboto Mono', monospace; 
-    display: flex; flex-direction: column; gap: 2px; 
-    overflow: hidden; 
+.ob-container {
+    font-size: 12px; font-family: 'Roboto Mono', monospace;
+    display: flex; flex-direction: column; gap: 2px;
+    overflow: hidden;
 }
-.ob-row { 
+.ob-row {
     display: flex; justify-content: space-between; align-items: center;
     padding: 3px 4px; height: 20px;
-    position: relative; 
-    white-space: nowrap; 
+    position: relative;
+    white-space: nowrap;
+    transition: background 0.3s;
 }
-
-/* [ИСПРАВЛЕНИЕ 2] z-index: 0 вместо -1, чтобы бары были видны над фоном карточки */
+.ob-row.flash {
+  animation: flashRow 0.6s ease;
+}
+@keyframes flashRow {
+  0% { background: transparent; }
+  30% { background: rgba(14,203,129,0.2); }
+  100% { background: transparent; }
+}
 .ob-bg {
-    position: absolute; top: 0; bottom: 0; right: 0; 
-    opacity: 0.2; transition: width 0.2s;
-    z-index: 0; 
+    position: absolute; top: 0; bottom: 0; right: 0;
+    opacity: 0.2; transition: width 0.3s ease;
+    z-index: 0;
 }
-/* Текст поднимаем выше бара */
 .ob-row span {
-    position: relative; 
+    position: relative;
     z-index: 1;
 }
-
 .bg-red { background: var(--accent-red); }
 .bg-green { background: var(--accent-green); }
 .text-green { color: var(--accent-green); }
 .text-red { color: var(--accent-red); }
-
 /* ————— POSITIONS ————— */
 .pos-list { display: flex; flex-direction: column; gap: 8px; }
 .pos-item { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
 .pos-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; font-weight: 700; }
 .pos-details { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: var(--muted); }
 .pos-val { color: var(--white); font-family: 'Roboto Mono'; margin-top: 2px; }
-.close-btn { 
-  background: transparent; border: 1px solid var(--border); color: var(--white); 
+.close-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--white);
   padding: 6px 12px; border-radius: 4px; font-size: 11px; margin-top: 10px; width: 100%; cursor: pointer; font-weight: 600;
 }
-
-.ob-container.flash {
-  animation: obFlash 0.35s ease;
-}
-@keyframes obFlash {
-  0%   { box-shadow: 0 0 0 0 rgba(14,203,129,0); }
-  30%  { box-shadow: 0 0 10px 4px rgba(14,203,129,0.06); }
-  100% { box-shadow: none; }
-}
-
 /* ————— LOADER ————— */
 #app-loader {
   position: fixed; inset: 0; background: var(--bg); z-index: 9999;
@@ -210,20 +184,17 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .loader-bar-fill { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.2s; }
 </style>
 </head>
-
 <body>
-
 <div id="app-loader">
   <img src="https://i.postimg.cc/D0Zvnmdq/logobirzhi2.png" alt="TradeSim" class="loader-logo">
   <div class="loader-bar-bg"><div class="loader-bar-fill" id="loaderBar"></div></div>
   <div style="margin-top: 12px; font-size: 10px; color: var(--muted); font-family: monospace; letter-spacing: 1px;" id="loaderText">CONNECTING</div>
 </div>
-
 <div class="app">
   <header class="header">
     <div class="header-left">
       <img src="https://i.postimg.cc/D0Zvnmdq/logobirzhi2.png" alt="Logo" class="logo-img">
-      
+     
       <div class="pair-dropdown" id="pairDropdown">
           <div class="pair-trigger" id="pairTrigger">
               <span id="triggerText">BTC/USD</span>
@@ -243,7 +214,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       <div class="avatar-sm"><img id="avatarImg" src="" style="display:none"></div>
     </div>
   </header>
-
   <main class="container">
     <div class="left-col">
       <div class="card">
@@ -281,7 +251,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         <div id="positionsList" class="pos-list"><div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div></div>
       </div>
     </div>
-
     <div class="right-col">
       <div class="card" style="display:flex; flex-direction:column; min-height: 300px;">
         <div style="font-weight: 700; margin-bottom: 10px; font-size: 14px; display:flex; justify-content:space-between; align-items:center;">
@@ -292,11 +261,8 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
           </div>
         </div>
         <div class="ob-header"><span>Price</span><span style="text-align:right">Amount</span></div>
-        <div class="ob-container" id="orderBook" style="flex:1;">
-           <div style="text-align:center; color:var(--muted); margin-top:20px;">Loading...</div>
-        </div>
+        <div class="ob-container" id="orderBook" style="flex:1;"></div>
       </div>
-
       <div class="card" style="display:flex; flex-direction:column; min-height: 250px;">
          <div style="font-weight: 700; margin-bottom: 10px; font-size: 14px; display:flex; justify-content:space-between;">
            <span>Last Trades</span>
@@ -308,11 +274,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     </div>
   </main>
 </div>
-
 <script>
 (async function(){
   const $ = (id) => document.getElementById(id);
-  
+ 
   // ————————————————————————————————————————————
   // LOADER
   // ————————————————————————————————————————————
@@ -323,14 +288,12 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     loaderBar.style.width = pct + '%';
     if(txt) loaderText.textContent = txt.toUpperCase();
   }
-
   // ————————————————————————————————————————————
   // CONFIG
   // ————————————————————————————————————————————
   const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com";
   const API_BASE = "https://tradingbot-p9n8.onrender.com";
   let currentUserId = null;
-
   const tg = window.Telegram?.WebApp;
   if(tg) {
     tg.ready();
@@ -338,12 +301,11 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     tg.setHeaderColor('#1E2329');
     tg.setBackgroundColor('#0B0E11');
   }
-
   let selectedPair = "BTC-USD";
   let currentPrice = 0;
   let profile = { balance: 0 };
   let currentLeverage = 10;
-  
+ 
   // ————————————————————————————————————————————
   // UTILS
   // ————————————————————————————————————————————
@@ -354,12 +316,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       if(num < 10) return num.toFixed(4);
       return num.toFixed(2);
   }
-
-  function normalizePair(p) {
-    if (!p) return "";
-    return String(p).trim().replace("/", "-").toUpperCase();
-  }
-
   // ————————————————————————————————————————————
   // PAIR SELECTOR
   // ————————————————————————————————————————————
@@ -367,15 +323,13 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   const pairTrigger = $('pairTrigger');
   const triggerText = $('triggerText');
   const pairItems = document.querySelectorAll('.pair-item');
-
   pairTrigger.addEventListener('click', (e) => { e.stopPropagation(); pairDropdown.classList.toggle('open'); });
   document.addEventListener('click', () => pairDropdown.classList.remove('open'));
-
   pairItems.forEach(item => {
     item.addEventListener('click', () => {
         const newPair = item.dataset.pair;
         if(newPair === selectedPair) return;
-        
+       
         pairItems.forEach(i => i.classList.remove('active'));
         item.classList.add('active');
         triggerText.textContent = item.textContent;
@@ -384,34 +338,24 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         switchPair(newPair);
     });
   });
-  
   let previousPair = selectedPair;
-
   function switchPair(newPair) {
-    // Отписываемся от старой пары на сервере (если есть открытое соединение)
     if (socket && socket.readyState === WebSocket.OPEN && previousPair) {
       try { socket.send(JSON.stringify({ type: "unsubscribe", pair: previousPair })); }
       catch (e) { /* ignore */ }
     }
-
     previousPair = newPair;
     selectedPair = newPair;
-
     $('priceDisplay').textContent = "--.--";
-    $('orderBook').innerHTML = '<div style="text-align:center; color:var(--muted); margin-top:20px;">Loading...</div>';
+    $('orderBook').innerHTML = '';
     $('tradeHistory').innerHTML = "";
-
-    // CHART RESET
     candleSeries.setData([]);
-    chart.priceScale('right').applyOptions({ autoScale: true });
+    chart.timeScale().fitContent();
     lastCandle = null;
-
-    // Подписываемся на новую пару
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ type: "subscribe", pair: newPair }));
     }
   }
-
   // ————————————————————————————————————————————
   // CHART SETUP
   // ————————————————————————————————————————————
@@ -421,29 +365,25 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     height: chartEl.clientHeight,
     layout: { background: { type: 'solid', color: '#0B0E11' }, textColor: '#5E6673' },
     grid: { horzLines: { color: 'rgba(255,255,255,0.03)' }, vertLines: { color: 'rgba(255,255,255,0.03)' } },
-    rightPriceScale: { borderVisible: false, autoScale: true, scaleMargins: { top: 0.1, bottom: 0.1 } }, 
+    rightPriceScale: { borderVisible: false, autoScale: true, scaleMargins: { top: 0.1, bottom: 0.1 } },
     timeScale: { borderVisible: false, timeVisible: true, rightOffset: 5 },
     crosshair: { vertLine: { color: 'rgba(255,255,255,0.1)', style: 3 }, horzLine: { color: 'rgba(255,255,255,0.1)', style: 3 } }
   });
-
   let candleSeries = chart.addCandlestickSeries({
     upColor: '#0ECB81', borderUpColor: '#0ECB81', wickUpColor: '#0ECB81',
     downColor: '#F6465D', borderDownColor: '#F6465D', wickDownColor: '#F6465D'
   });
-
   new ResizeObserver(entries => {
     if (entries.length === 0 || entries[0].target !== chartEl) { return; }
     const newRect = entries[0].contentRect;
     chart.applyOptions({ width: newRect.width, height: newRect.height });
    }).observe(chartEl);
-
   // ————————————————————————————————————————————
   // LOGIC
   // ————————————————————————————————————————————
   const slider = $('leverageSlider');
   const levDisplay = $('leverageValText');
   const levChips = document.querySelectorAll('.chip');
-
   function updateLeverageUI(val) {
     currentLeverage = parseInt(val);
     slider.value = currentLeverage;
@@ -455,14 +395,11 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   slider.addEventListener('input', (e) => updateLeverageUI(e.target.value));
   levChips.forEach(chip => chip.addEventListener('click', () => updateLeverageUI(chip.dataset.v)));
   updateLeverageUI(10);
-
   let historyResolve = null;
   const historyPromise = new Promise(r => historyResolve = r);
-
   function updateBalanceUI() {
     $('headerBalance').textContent = profile.balance.toFixed(2) + " VP";
   }
-
   async function initSession() {
     try {
       let initData = tg?.initData || "";
@@ -481,20 +418,16 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       }
     } catch(e) { console.error(e); }
   }
-
   let socket = null;
   let lastCandle = null;
-
   function connectWS() {
     socket = new WebSocket(WSS_PRICE_URL);
-
     socket.onopen = () => {
       console.log("Client WS opened, subscribing to", selectedPair);
-      try {
-        socket.send(JSON.stringify({ type: "subscribe", pair: selectedPair }));
-      } catch (e) { console.error("Subscribe send error:", e); }
+      socket.send(JSON.stringify({ type: "subscribe", pair: selectedPair }));
+      $('orderBook').innerHTML = '';
+      $('tradeHistory').innerHTML = '';
     };
-
     socket.onmessage = (evt) => {
       let msg;
       try {
@@ -504,29 +437,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         return;
       }
       if (!msg || !msg.type) return;
-
-      // Нормализованная пара для сравнения
-      const msgPairNorm = normalizePair(msg.pair);
-      const selPairNorm = normalizePair(selectedPair);
-
-      // Логируем приход orderBook и первые 5 записей (всегда — чтобы видеть данные)
-      if (msg.type === "orderBook") {
-        const buysPreview = (msg.buy || msg.bids || []).slice(0, 5);
-        const sellsPreview = (msg.sell || msg.asks || []).slice(0, 5);
-        console.log("OrderBook update received:", msg.pair, (msg.buy||msg.bids||[]).length, "bids,", (msg.sell||msg.asks||[]).length, "asks");
-        console.log("OrderBook preview buys[0..4]:", buysPreview);
-        console.log("OrderBook preview sells[0..4]:", sellsPreview);
-
-        // Если пара в сообщении совпадает с выбранной — рендерим. Если msg.pair отсутствует — тоже рендерим.
-        if (!msg.pair || msgPairNorm === selPairNorm) {
-          renderOrderBook(msg.buy || msg.bids || [], msg.sell || msg.asks || []);
-        } else {
-          console.log("OrderBook ignored for pair:", msg.pair, "selected:", selectedPair);
-        }
-        return;
-      }
-
-      if (msg.type === "price" && msgPairNorm === selPairNorm) {
+      if (msg.type === "price" && msg.pair === selectedPair) {
         const prevPrice = currentPrice;
         currentPrice = Number(msg.price);
         $('priceDisplay').textContent = formatPrice(currentPrice);
@@ -549,12 +460,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         renderPositions();
         return;
       }
-
-      if (msg.type === "history" && msgPairNorm === selPairNorm) {
+      if (msg.type === "history" && msg.pair === selectedPair) {
         const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
         candleSeries.setData(data);
         chart.timeScale().fitContent();
-
         if (data.length) {
           lastCandle = data[data.length-1];
           currentPrice = lastCandle.close;
@@ -563,26 +472,161 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         if (historyResolve) { historyResolve(); historyResolve = null; }
         return;
       }
-
-      if (msg.type === "trades" && msgPairNorm === selPairNorm) {
+      if (msg.type === "orderBook" && msg.pair === selectedPair) {
+        smartUpdateOrderBook(msg.buy || [], msg.sell || []);
+        return;
+      }
+      if (msg.type === "trades" && msg.pair === selectedPair) {
         renderTrades(msg.trades || []);
         return;
       }
     };
-
     socket.onclose = () => {
       console.warn("Client WS closed — reconnecting in 2s");
       setTimeout(connectWS, 2000);
     };
+  }
+  // ————————————————————————————————————————————
+  // SMART ORDER BOOK UPDATE (BINANCE STYLE)
+  // ————————————————————————————————————————————
+  function smartUpdateOrderBook(buys, sells) {
+    const container = $('orderBook');
+    const maxLevels = 7;
 
-    socket.onerror = (e) => {
-      console.error("Client WS error:", e);
-    };
+    // Нормализация данных
+    const bidMap = new Map();
+    (buys || []).forEach(l => bidMap.set(String(l.price), Number(l.size || 0)));
+    const askMap = new Map();
+    (sells || []).forEach(l => askMap.set(String(l.price), Number(l.size || 0)));
+
+    // Все текущие строки
+    const existingRows = container.querySelectorAll('.ob-row[data-price]');
+    const existingPrices = new Set(Array.from(existingRows).map(row => row.dataset.price));
+
+    // Вычисляем максимальный объём для баров
+    const allSizes = [...bidMap.values(), ...askMap.values()];
+    const maxVol = Math.max(...allSizes, 0.0001);
+
+    // Обновляем/добавляем/удаляем строки
+    let changedRows = [];
+
+    // ASKS (сверху вниз — от низкой цены к высокой)
+    const sortedAsks = Array.from(askMap.entries())
+      .sort((a, b) => Number(a[0]) - Number(b[0]))
+      .slice(0, maxLevels);
+
+    sortedAsks.forEach(([priceStr, size]) => {
+      if (size <= 0) return;
+      const row = container.querySelector(`.ob-row[data-price="${priceStr}"]`) || createOrderBookRow(priceStr, size, 'sell', maxVol);
+      updateOrderBookRow(row, size, 'sell', maxVol);
+      if (!existingPrices.has(priceStr)) {
+        container.insertBefore(row, container.firstChild); // добавляем в начало
+        changedRows.push(row);
+      } else {
+        changedRows.push(row);
+      }
+      existingPrices.delete(priceStr);
+    });
+
+    // Спред
+    let spreadRow = container.querySelector('.ob-spread');
+    if (!spreadRow) {
+      spreadRow = document.createElement('div');
+      spreadRow.className = 'ob-spread';
+      spreadRow.style.height = '1px';
+      spreadRow.style.background = 'var(--border)';
+      spreadRow.style.margin = '2px 0';
+      spreadRow.style.opacity = '0.3';
+    }
+
+    // BIDS (снизу вверх — от высокой цены к низкой)
+    const sortedBids = Array.from(bidMap.entries())
+      .sort((a, b) => Number(b[0]) - Number(a[0]))
+      .slice(0, maxLevels);
+
+    sortedBids.forEach(([priceStr, size]) => {
+      if (size <= 0) return;
+      const row = container.querySelector(`.ob-row[data-price="${priceStr}"]`) || createOrderBookRow(priceStr, size, 'buy', maxVol);
+      updateOrderBookRow(row, size, 'buy', maxVol);
+      if (!existingPrices.has(priceStr)) {
+        container.appendChild(row);
+        changedRows.push(row);
+      } else {
+        changedRows.push(row);
+      }
+      existingPrices.delete(priceStr);
+    });
+
+    // Удаляем исчезнувшие уровни
+    existingPrices.forEach(price => {
+      const row = container.querySelector(`.ob-row[data-price="${price}"]`);
+      if (row) row.remove();
+    });
+
+    // Обновляем спред и таймстамп
+    if (sortedAsks.length && sortedBids.length) {
+      const bestAsk = Number(sortedAsks[0][0]);
+      const bestBid = Number(sortedBids[0][0]);
+      const spread = ((bestAsk - bestBid) / bestBid * 100).toFixed(3);
+      $('bookUpdated').textContent = `Spread ${spread}%`;
+    } else {
+      $('bookUpdated').textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+    }
+
+    // Подсветка изменённых строк
+    changedRows.forEach(row => {
+      row.classList.remove('flash');
+      void row.offsetWidth; // reflow
+      row.classList.add('flash');
+    });
   }
 
+  function createOrderBookRow(priceStr, size, side, maxVol) {
+    const row = document.createElement('div');
+    row.className = 'ob-row';
+    row.dataset.price = priceStr;
+
+    const price = Number(priceStr);
+    const pct = Math.min((size / maxVol) * 100, 100);
+
+    row.innerHTML = `
+      <div class="ob-bg ${side === 'buy' ? 'bg-green' : 'bg-red'}" style="width:${pct}%"></div>
+      <span class="${side === 'buy' ? 'text-green' : 'text-red'}">${formatPrice(price)}</span>
+      <span style="position:relative; z-index:1; color:var(--white);">${size.toFixed(6)}</span>
+    `;
+
+    return row;
+  }
+
+  function updateOrderBookRow(row, size, side, maxVol) {
+    const pct = Math.min((size / maxVol) * 100, 100);
+    const bg = row.querySelector('.ob-bg');
+    if (bg) bg.style.width = `${pct}%`;
+
+    const sizeSpan = row.querySelector('span:nth-child(2)');
+    if (sizeSpan) sizeSpan.textContent = size.toFixed(6);
+  }
+
+  function renderTrades(trades) {
+    const el = $('tradeHistory');
+    if(!Array.isArray(trades)) return;
+   
+    let html = "";
+    trades.slice().reverse().slice(0, 15).forEach(t => {
+      const color = t.side === 'buy' ? 'text-green' : 'text-red';
+      const timeStr = new Date(t.time).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+      html += `
+        <div class="ob-row">
+            <span class="${color}">${formatPrice(t.price)}</span>
+            <span style="opacity:0.7; font-size:10px;">${timeStr}</span>
+        </div>`;
+    });
+    el.innerHTML = html;
+  }
   // ————————————————————————————————————————————
-  // UI RENDERERS
+  // POSITIONS & ACTIONS (без изменений)
   // ————————————————————————————————————————————
+  // ... (твой код renderPositions, openPosition, closePosition остаётся тем же)
   function renderPositions() {
     const list = $('positionsList');
     if(!window._positions || window._positions.length === 0) {
@@ -590,20 +634,20 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       return;
     }
     list.innerHTML = "";
-    
+   
     [...window._positions].reverse().forEach(pos => {
       const entry = Number(pos.entry_price || pos.entryPrice);
       const size = Number(pos.size);
       const type = (pos.type || "LONG").toUpperCase();
       const lev = Number(pos.leverage || 1);
-      
+     
       let pnl = 0;
       if(currentPrice > 0) {
         const diff = (currentPrice - entry) / entry;
         pnl = diff * size * (type==="SHORT"? -1 : 1);
       }
       const pnlClass = pnl >= 0 ? "text-green" : "text-red";
-      
+     
       const div = document.createElement('div');
       div.className = "pos-item";
       div.innerHTML = `
@@ -623,131 +667,23 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     });
     list.querySelectorAll('.close-btn').forEach(b => b.onclick = () => closePosition(b.dataset.id));
   }
-
-  function renderOrderBook(buys, sells) {
-    const el = $('orderBook');
-
-    // гарантируем, что у нас массивы
-    buys = Array.isArray(buys) ? buys : [];
-    sells = Array.isArray(sells) ? sells : [];
-
-    // Лог в начале функции — первые 5 элементов (всегда видно)
-    console.log('renderOrderBook called — top buys:', buys.slice(0,5));
-    console.log('renderOrderBook called — top sells:', sells.slice(0,5));
-
-    // Если оба массива пустые — показываем сообщение
-    if (buys.length === 0 && sells.length === 0) {
-      el.innerHTML = '<div id="orderBookInner" style="text-align:center; color:var(--muted); margin-top:18px;">No liquidity</div>';
-      const updEl = $('bookUpdated');
-      if (updEl) updEl.textContent = '—';
-      return;
-    }
-
-    // вычисляем максимальный объём для нормировки полос
-    const allSizes = [...buys, ...sells].map(x => Number(x.size) || 0);
-    const maxVol = Math.max(...allSizes, 0.000001);
-
-    let html = '<div id="orderBookInner">';
-
-    // ASKS (Продавцы) — показываем ближе к рынку вверху
-    const showSells = sells
-      .slice()
-      .sort((a,b) => b.price - a.price)
-      .slice(0,7);
-    showSells.forEach((s, idx) => {
-      const price = Number(s.price);
-      const vol = Number(s.size) || 0;
-      const pct = Math.min((vol / maxVol) * 100, 100);
-      const dataAttr = idx === 0 ? ` data-top-ask-price="${price}" data-top-ask-vol="${vol}"` : '';
-      html += `
-        <div class="ob-row"${dataAttr}>
-          <div class="ob-bg bg-red" style="width:${pct}%"></div>
-          <span class="text-red">${formatPrice(price)}</span>
-          <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(6)}</span>
-        </div>`;
-    });
-
-    // разделитель (спред)
-    html += `<div style="height:1px; background:var(--border); margin: 2px 0; opacity:0.3"></div>`;
-
-    // BIDS (Покупатели)
-    buys
-      .slice()
-      .sort((a,b) => b.price - a.price)
-      .slice(0,7)
-      .forEach((b, idx) => {
-      const price = Number(b.price);
-      const vol = Number(b.size) || 0;
-      const pct = Math.min((vol / maxVol) * 100, 100);
-      const dataAttr = idx === 0 ? ` data-top-bid-price="${price}" data-top-bid-vol="${vol}"` : '';
-      html += `
-        <div class="ob-row"${dataAttr}>
-          <div class="ob-bg bg-green" style="width:${pct}%"></div>
-          <span class="text-green">${formatPrice(price)}</span>
-          <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(6)}</span>
-        </div>`;
-    });
-
-    html += '</div>'; // закрываем orderBookInner
-
-    // перезаписываем DOM
-    el.innerHTML = html;
-
-    // обновляем таймстамп рядом с парой
-    const updEl = $('bookUpdated');
-    if (updEl) updEl.textContent = new Date().toLocaleTimeString();
-
-    // краткая подсветка карточки стакана (flash)
-    el.classList.remove('flash');
-    // форсируем reflow, чтобы анимация сработала при быстрых обновлениях
-    void el.offsetWidth;
-    el.classList.add('flash');
-
-    // Явный лог содержимого DOM (для быстрой проверки в консоли)
-    try {
-      const inner = document.getElementById('orderBookInner');
-      console.log('orderBookInner HTML snippet:', inner ? inner.innerHTML.slice(0, 400) : '(no inner)');
-    } catch (e) { /* ignore */ }
-  }
-
-  function renderTrades(trades) {
-    const el = $('tradeHistory');
-    if(!Array.isArray(trades)) return;
-    
-    let html = "";
-    trades.slice().reverse().slice(0, 15).forEach(t => {
-      const color = t.side === 'buy' ? 'text-green' : 'text-red';
-      const timeStr = new Date(t.time).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
-      html += `
-        <div class="ob-row">
-            <span class="${color}">${formatPrice(t.price)}</span>
-            <span style="opacity:0.7; font-size:10px;">${timeStr}</span>
-        </div>`;
-    });
-    el.innerHTML = html;
-  }
-
-  // ————————————————————————————————————————————
-  // ACTIONS
-  // ————————————————————————————————————————————
   async function openPosition(type) {
     const margin = Number($('sizeInput').value);
     if(!margin || margin <= 0) return alert("Please enter valid margin");
-    
-    const size = margin * currentLeverage; 
-    
+   
+    const size = margin * currentLeverage;
+   
     if(tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-
     try {
       const res = await fetch(API_BASE + "/api/order/open", {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ 
-            userId: currentUserId, 
-            pair: selectedPair, 
-            type, 
-            size, 
-            leverage: currentLeverage, 
-            entryPrice: currentPrice 
+        body: JSON.stringify({
+            userId: currentUserId,
+            pair: selectedPair,
+            type,
+            size,
+            leverage: currentLeverage,
+            entryPrice: currentPrice
         })
       });
       const data = await res.json();
@@ -756,13 +692,12 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
         renderPositions();
         if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      } else { 
-          alert(data.error || "Error opening position"); 
+      } else {
+          alert(data.error || "Error opening position");
           if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
       }
     } catch(e) { console.error(e); }
   }
-
   async function closePosition(id) {
     if(!confirm("Close this position?")) return;
     try {
@@ -779,27 +714,25 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       }
     } catch(e) { console.error(e); }
   }
-
   $('openLong').onclick = () => openPosition("LONG");
   $('openShort').onclick = () => openPosition("SHORT");
-  
+ 
   // ————————————————————————————————————————————
   // INIT
   // ————————————————————————————————————————————
   setProgress(20, "Authenticating...");
   await initSession();
-  
+ 
   setProgress(50, "Connecting stream...");
   connectWS();
-  
+ 
   await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
   setProgress(100, "Ready");
-  
+ 
   setTimeout(() => {
     loaderEl.classList.add('hidden');
     setTimeout(() => loaderEl.style.display = 'none', 400);
   }, 500);
-
 })();
 </script>
 </body>
