@@ -475,65 +475,92 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
   function connectWS() {
     socket = new WebSocket(WSS_PRICE_URL);
-    
-    socket.onopen = () => {
-      socket.send(JSON.stringify({ type:"subscribe", pair: selectedPair }));
-    };
-    
-    socket.onmessage = (evt) => {
-      const msg = JSON.parse(evt.data);
-      if(!msg.type) return;
 
-      if(msg.type === "price" && msg.pair === selectedPair) {
+    socket.onopen = () => {
+      console.log("Client WS opened, subscribing to", selectedPair);
+      try {
+        socket.send(JSON.stringify({ type: "subscribe", pair: selectedPair }));
+      } catch (e) { console.error("Subscribe send error:", e); }
+    };
+
+    socket.onmessage = (evt) => {
+      let msg;
+      try {
+        msg = JSON.parse(evt.data);
+      } catch (e) {
+        console.error("Failed to parse WS message:", e, evt.data);
+        return;
+      }
+      if (!msg || !msg.type) return;
+
+      // Нормализованная пара для сравнения
+      const msgPairNorm = normalizePair(msg.pair);
+      const selPairNorm = normalizePair(selectedPair);
+
+      // Логи (полезно при отладке)
+      // console.debug("WS msg:", msg.type, msgPairNorm);
+
+      if (msg.type === "price" && msgPairNorm === selPairNorm) {
         const prevPrice = currentPrice;
         currentPrice = Number(msg.price);
-        
         $('priceDisplay').textContent = formatPrice(currentPrice);
-        
-        if(prevPrice !== 0) {
-            $('priceDisplay').className = currentPrice >= prevPrice ? "price-display text-green" : "price-display text-red";
+        if (prevPrice !== 0) {
+          $('priceDisplay').className = currentPrice >= prevPrice ? "price-display text-green" : "price-display text-red";
         }
-
-        if(lastCandle) {
-           const now = Math.floor(Date.now()/1000);
-           const minTime = now - (now % 60);
-           if(minTime === lastCandle.time) {
-             lastCandle.high = Math.max(lastCandle.high, currentPrice);
-             lastCandle.low = Math.min(lastCandle.low, currentPrice);
-             lastCandle.close = currentPrice;
-             candleSeries.update(lastCandle);
-           } else {
-             lastCandle = { time: minTime, open: lastCandle.close, high: currentPrice, low: currentPrice, close: currentPrice };
-             candleSeries.update(lastCandle);
-           }
+        if (lastCandle) {
+          const now = Math.floor(Date.now()/1000);
+          const minTime = now - (now % 60);
+          if (minTime === lastCandle.time) {
+            lastCandle.high = Math.max(lastCandle.high, currentPrice);
+            lastCandle.low = Math.min(lastCandle.low, currentPrice);
+            lastCandle.close = currentPrice;
+            candleSeries.update(lastCandle);
+          } else {
+            lastCandle = { time: minTime, open: lastCandle.close, high: currentPrice, low: currentPrice, close: currentPrice };
+            candleSeries.update(lastCandle);
+          }
         }
         renderPositions();
+        return;
       }
 
-      if(msg.type === "history" && msg.pair === selectedPair) {
+      if (msg.type === "history" && msgPairNorm === selPairNorm) {
         const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
         candleSeries.setData(data);
         chart.timeScale().fitContent();
-        
-        if(data.length) {
+
+        if (data.length) {
           lastCandle = data[data.length-1];
           currentPrice = lastCandle.close;
           $('priceDisplay').textContent = formatPrice(currentPrice);
         }
-        if(historyResolve) { historyResolve(); historyResolve = null; }
+        if (historyResolve) { historyResolve(); historyResolve = null; }
+        return;
       }
 
-      if(msg.type === "orderBook" && msg.pair === selectedPair) {
-        console.log("OrderBook update received:", msg.buy.length, "bids,", msg.sell.length, "asks");
-        renderOrderBook(msg.buy || msg.bids || [], msg.sell || msg.asks || []);
+      if (msg.type === "orderBook") {
+        // лог для проверки прихода стакана
+        console.log("OrderBook update received:", msg.pair, (msg.buy||msg.bids||[]).length, "bids,", (msg.sell||msg.asks||[]).length, "asks");
+        if (msgPairNorm === selPairNorm) {
+          renderOrderBook(msg.buy || msg.bids || [], msg.sell || msg.asks || []);
+        }
+        return;
       }
-      
-      if(msg.type === "trades" && msg.pair === selectedPair) {
-          renderTrades(msg.trades || []);
+
+      if (msg.type === "trades" && msgPairNorm === selPairNorm) {
+        renderTrades(msg.trades || []);
+        return;
       }
     };
-    
-    socket.onclose = () => setTimeout(connectWS, 2000);
+
+    socket.onclose = () => {
+      console.warn("Client WS closed — reconnecting in 2s");
+      setTimeout(connectWS, 2000);
+    };
+
+    socket.onerror = (e) => {
+      console.error("Client WS error:", e);
+    };
   }
 
   // ————————————————————————————————————————————
