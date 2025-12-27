@@ -491,7 +491,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       try {
         msg = JSON.parse(evt.data);
       } catch (e) {
-        console.error("Failed to parse WS message:", e, evt.data);
         return;
       }
       if (!msg || !msg.type) return;
@@ -499,13 +498,17 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       const msgPairNorm = normalizePair(msg.pair);
       const selPairNorm = normalizePair(selectedPair);
 
+      // СТАКАН (ORDERBOOK)
       if (msg.type === "orderBook") {
         if (!msg.pair || msgPairNorm === selPairNorm) {
-          renderOrderBook(msg.buy || msg.bids || [], msg.sell || msg.asks || []);
+          // Сервер присылает данные уже в нужном формате, 
+          // buys (bids) и sells (asks) в полях "buy" и "sell"
+          renderOrderBook(msg.buy || msg.bids, msg.sell || msg.asks);
         }
         return;
       }
 
+      // ЦЕНА (PRICE)
       if (msg.type === "price" && msgPairNorm === selPairNorm) {
         const prevPrice = currentPrice;
         currentPrice = Number(msg.price);
@@ -530,6 +533,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         return;
       }
 
+      // ИСТОРИЯ (HISTORY)
       if (msg.type === "history" && msgPairNorm === selPairNorm) {
         const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
         candleSeries.setData(data);
@@ -544,6 +548,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         return;
       }
 
+      // СДЕЛКИ (TRADES)
       if (msg.type === "trades" && msgPairNorm === selPairNorm) {
         renderTrades(msg.trades || []);
         return;
@@ -606,6 +611,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
   function renderOrderBook(buys, sells) {
     const el = $('orderBook');
+    // Гарантируем массивы
     buys = Array.isArray(buys) ? buys : [];
     sells = Array.isArray(sells) ? sells : [];
 
@@ -621,21 +627,15 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
     let html = '<div id="orderBookInner">';
 
-    // ИСПРАВЛЕННАЯ ЛОГИКА СОРТИРОВКИ ДЛЯ ПРОДАВЦОВ (ASKS)
-    // 1. Сортируем ASC (от дешевых к дорогим), чтобы найти лучшие цены
-    // 2. Берем 7 штук
-    // 3. Сортируем DESC (от дорогих к дешевым), чтобы визуально дешевые были внизу (у спреда)
-    const showSells = sells
-      .slice()
-      .sort((a,b) => Number(a.price) - Number(b.price)) 
-      .slice(0,7)
-      .sort((a,b) => Number(b.price) - Number(a.price)); 
+    // ASKS (Продавцы). 
+    // Ваш сервер присылает их отсортированными по возрастанию (Cheap -> Expensive).
+    // Берем первые 7 (самые дешевые), затем переворачиваем reverse(), чтобы самые дорогие были вверху, а дешевые - у спреда.
+    const showSells = sells.slice(0,7).reverse();
 
     showSells.forEach((s) => {
       const price = Number(s.price);
       const vol = Number(s.size) || 0;
       const pct = Math.min((vol / maxVol) * 100, 100);
-      // Добавлено .toFixed(2) для чистого HTML
       html += `
         <div class="ob-row">
           <div class="ob-bg bg-red" style="width:${pct.toFixed(2)}%"></div>
@@ -646,12 +646,12 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
     html += `<div style="height:1px; background:var(--border); margin: 2px 0; opacity:0.3"></div>`;
 
-    // ПОКУПАТЕЛИ (BIDS) - тут логика была верной (дорогие вверху)
-    buys
-      .slice()
-      .sort((a,b) => Number(b.price) - Number(a.price))
-      .slice(0,7)
-      .forEach((b) => {
+    // BIDS (Покупатели).
+    // Ваш сервер присылает их отсортированными по убыванию (Expensive -> Cheap).
+    // Это ровно то, что нужно. Берем топ 7 и выводим.
+    const showBuys = buys.slice(0,7);
+
+    showBuys.forEach((b) => {
       const price = Number(b.price);
       const vol = Number(b.size) || 0;
       const pct = Math.min((vol / maxVol) * 100, 100);
