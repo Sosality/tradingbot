@@ -607,47 +607,55 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     list.querySelectorAll('.close-btn').forEach(b => b.onclick = () => closePosition(b.dataset.id));
   }
 
-function renderOrderBook(buys, sells) {
+  function renderOrderBook(buys, sells) {
     const el = $('orderBook');
-    // Если данные не пришли или пустые
-    if(!Array.isArray(buys) || !Array.isArray(sells)) return;
-    
+
+    // приводим к массивам, даже если сервер пришлёт undefined
+    buys = Array.isArray(buys) ? buys : [];
+    sells = Array.isArray(sells) ? sells : [];
+
+    // Если оба массива пустые — очищаем и показываем сообщение
+    if (buys.length === 0 && sells.length === 0) {
+      el.innerHTML = '<div style="text-align:center; color:var(--muted); margin-top:18px;">No liquidity</div>';
+      return;
+    }
+
     // Собираем все объемы, чтобы найти максимальный для рисования бара
-    const allSizes = [...buys, ...sells].map(x => Number(x.size));
-    // Math.max(..., 0.0001) предотвращает деление на ноль
+    const allSizes = [...buys, ...sells].map(x => Number(x.size) || 0);
     const maxVol = Math.max(...allSizes, 0.0001);
 
     let html = "";
-    
-    // ASKS (Продавцы - Красные)
-    // Разворачиваем reverse(), чтобы самые дешевые (близкие к цене) были внизу блока
-    const showSells = sells.slice(0, 7).reverse(); 
+
+    // ASKS (Продавцы - Красные) — показываем ближе к рынку вверху
+    const showSells = sells.slice(0, 7).reverse();
     showSells.forEach(s => {
-      const vol = Number(s.size);
+      const price = Number(s.price);
+      const vol = Number(s.size) || 0;
       const pct = Math.min((vol / maxVol) * 100, 100);
       html += `
         <div class="ob-row">
-            <div class="ob-bg bg-red" style="width:${pct}%"></div>
-            <span class="text-red">${formatPrice(s.price)}</span>
-            <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(4)}</span>
+          <div class="ob-bg bg-red" style="width:${pct}%"></div>
+          <span class="text-red">${formatPrice(price)}</span>
+          <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(4)}</span>
         </div>`;
     });
-    
-    // Разделитель (Спред)
+
     html += `<div style="height:1px; background:var(--border); margin: 2px 0; opacity:0.3"></div>`;
-    
+
     // BIDS (Покупатели - Зеленые)
     buys.slice(0, 7).forEach(b => {
-      const vol = Number(b.size);
+      const price = Number(b.price);
+      const vol = Number(b.size) || 0;
       const pct = Math.min((vol / maxVol) * 100, 100);
       html += `
         <div class="ob-row">
-            <div class="ob-bg bg-green" style="width:${pct}%"></div>
-            <span class="text-green">${formatPrice(b.price)}</span>
-            <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(4)}</span>
+          <div class="ob-bg bg-green" style="width:${pct}%"></div>
+          <span class="text-green">${formatPrice(price)}</span>
+          <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(4)}</span>
         </div>`;
     });
-    
+
+    // ПЕРЕЗАПИСЫВАЕМ DOM (явно, даже если содержимое такое же — браузер сам оптимизирует)
     el.innerHTML = html;
   }
 
