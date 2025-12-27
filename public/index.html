@@ -650,7 +650,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     let html = '<div id="orderBookInner">';
 
     // ASKS (Продавцы) — показываем ближе к рынку вверху
-    const showSells = sells.slice(0, 7).reverse();
+    const showSells = sells
+      .slice()
+      .sort((a,b) => b.price - a.price)
+      .slice(0,7);
     showSells.forEach((s, idx) => {
       const price = Number(s.price);
       const vol = Number(s.size) || 0;
