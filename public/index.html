@@ -92,15 +92,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   overflow-y: auto; overflow-x: hidden; padding: 12px; gap: 12px;
 }
 
-/* [ИСПРАВЛЕНИЕ 1] Явно задаем Flex для колонок, чтобы работали отступы (gap) и flex:1 */
-.left-col { display: flex; flex-direction: column; gap: 12px; }
-.right-col { display: flex; flex-direction: column; gap: 12px; }
-
 @media (min-width: 900px) {
   .container { display: grid; grid-template-columns: 1fr 320px; height: calc(100vh - 60px); overflow: hidden; }
   .left-col { overflow-y: auto; padding-right: 4px; }
-  /* На десктопе правая колонка не скроллится вся, скроллятся блоки внутри */
-  .right-col { overflow: hidden; }
+  .right-col { display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
 }
 
 .card { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
@@ -143,7 +138,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .btn-long { background: var(--accent-green); color: #052e1f; }
 .btn-short { background: var(--accent-red); color: #2d0a0f; }
 
-/* ————— ORDER BOOK & TRADES (ИСПРАВЛЕНО) ————— */
+/* ————— ORDER BOOK & TRADES ————— */
 .ob-header {
     display: grid; grid-template-columns: 1fr 1fr; 
     font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; padding: 0 4px;
@@ -160,13 +155,11 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     white-space: nowrap; 
 }
 
-/* [ИСПРАВЛЕНИЕ 2] z-index: 0 вместо -1, чтобы бары были видны над фоном карточки */
 .ob-bg {
     position: absolute; top: 0; bottom: 0; right: 0; 
     opacity: 0.2; transition: width 0.2s;
     z-index: 0; 
 }
-/* Текст поднимаем выше бара */
 .ob-row span {
     position: relative; 
     z-index: 1;
@@ -388,7 +381,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   let previousPair = selectedPair;
 
   function switchPair(newPair) {
-    // Отписываемся от старой пары на сервере (если есть открытое соединение)
     if (socket && socket.readyState === WebSocket.OPEN && previousPair) {
       try { socket.send(JSON.stringify({ type: "unsubscribe", pair: previousPair })); }
       catch (e) { /* ignore */ }
@@ -406,7 +398,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     chart.priceScale('right').applyOptions({ autoScale: true });
     lastCandle = null;
 
-    // Подписываемся на новую пару
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ type: "subscribe", pair: newPair }));
     }
@@ -505,23 +496,12 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       }
       if (!msg || !msg.type) return;
 
-      // Нормализованная пара для сравнения
       const msgPairNorm = normalizePair(msg.pair);
       const selPairNorm = normalizePair(selectedPair);
 
-      // Логируем приход orderBook и первые 5 записей (всегда — чтобы видеть данные)
       if (msg.type === "orderBook") {
-        const buysPreview = (msg.buy || msg.bids || []).slice(0, 5);
-        const sellsPreview = (msg.sell || msg.asks || []).slice(0, 5);
-        console.log("OrderBook update received:", msg.pair, (msg.buy||msg.bids||[]).length, "bids,", (msg.sell||msg.asks||[]).length, "asks");
-        console.log("OrderBook preview buys[0..4]:", buysPreview);
-        console.log("OrderBook preview sells[0..4]:", sellsPreview);
-
-        // Если пара в сообщении совпадает с выбранной — рендерим. Если msg.pair отсутствует — тоже рендерим.
         if (!msg.pair || msgPairNorm === selPairNorm) {
           renderOrderBook(msg.buy || msg.bids || [], msg.sell || msg.asks || []);
-        } else {
-          console.log("OrderBook ignored for pair:", msg.pair, "selected:", selectedPair);
         }
         return;
       }
@@ -626,16 +606,9 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
   function renderOrderBook(buys, sells) {
     const el = $('orderBook');
-
-    // гарантируем, что у нас массивы
     buys = Array.isArray(buys) ? buys : [];
     sells = Array.isArray(sells) ? sells : [];
 
-    // Лог в начале функции — первые 5 элементов (всегда видно)
-    console.log('renderOrderBook called — top buys:', buys.slice(0,5));
-    console.log('renderOrderBook called — top sells:', sells.slice(0,5));
-
-    // Если оба массива пустые — показываем сообщение
     if (buys.length === 0 && sells.length === 0) {
       el.innerHTML = '<div id="orderBookInner" style="text-align:center; color:var(--muted); margin-top:18px;">No liquidity</div>';
       const updEl = $('bookUpdated');
@@ -643,71 +616,62 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       return;
     }
 
-    // вычисляем максимальный объём для нормировки полос
     const allSizes = [...buys, ...sells].map(x => Number(x.size) || 0);
     const maxVol = Math.max(...allSizes, 0.000001);
 
     let html = '<div id="orderBookInner">';
 
-    // ASKS (Продавцы) — показываем ближе к рынку вверху
+    // ИСПРАВЛЕННАЯ ЛОГИКА СОРТИРОВКИ ДЛЯ ПРОДАВЦОВ (ASKS)
+    // 1. Сортируем ASC (от дешевых к дорогим), чтобы найти лучшие цены
+    // 2. Берем 7 штук
+    // 3. Сортируем DESC (от дорогих к дешевым), чтобы визуально дешевые были внизу (у спреда)
     const showSells = sells
       .slice()
-      .sort((a,b) => b.price - a.price)
-      .slice(0,7);
-    showSells.forEach((s, idx) => {
+      .sort((a,b) => Number(a.price) - Number(b.price)) 
+      .slice(0,7)
+      .sort((a,b) => Number(b.price) - Number(a.price)); 
+
+    showSells.forEach((s) => {
       const price = Number(s.price);
       const vol = Number(s.size) || 0;
       const pct = Math.min((vol / maxVol) * 100, 100);
-      const dataAttr = idx === 0 ? ` data-top-ask-price="${price}" data-top-ask-vol="${vol}"` : '';
+      // Добавлено .toFixed(2) для чистого HTML
       html += `
-        <div class="ob-row"${dataAttr}>
-          <div class="ob-bg bg-red" style="width:${pct}%"></div>
+        <div class="ob-row">
+          <div class="ob-bg bg-red" style="width:${pct.toFixed(2)}%"></div>
           <span class="text-red">${formatPrice(price)}</span>
           <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(6)}</span>
         </div>`;
     });
 
-    // разделитель (спред)
     html += `<div style="height:1px; background:var(--border); margin: 2px 0; opacity:0.3"></div>`;
 
-    // BIDS (Покупатели)
+    // ПОКУПАТЕЛИ (BIDS) - тут логика была верной (дорогие вверху)
     buys
       .slice()
-      .sort((a,b) => b.price - a.price)
+      .sort((a,b) => Number(b.price) - Number(a.price))
       .slice(0,7)
-      .forEach((b, idx) => {
+      .forEach((b) => {
       const price = Number(b.price);
       const vol = Number(b.size) || 0;
       const pct = Math.min((vol / maxVol) * 100, 100);
-      const dataAttr = idx === 0 ? ` data-top-bid-price="${price}" data-top-bid-vol="${vol}"` : '';
       html += `
-        <div class="ob-row"${dataAttr}>
-          <div class="ob-bg bg-green" style="width:${pct}%"></div>
+        <div class="ob-row">
+          <div class="ob-bg bg-green" style="width:${pct.toFixed(2)}%"></div>
           <span class="text-green">${formatPrice(price)}</span>
           <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(6)}</span>
         </div>`;
     });
 
-    html += '</div>'; // закрываем orderBookInner
-
-    // перезаписываем DOM
+    html += '</div>'; 
     el.innerHTML = html;
 
-    // обновляем таймстамп рядом с парой
     const updEl = $('bookUpdated');
     if (updEl) updEl.textContent = new Date().toLocaleTimeString();
 
-    // краткая подсветка карточки стакана (flash)
     el.classList.remove('flash');
-    // форсируем reflow, чтобы анимация сработала при быстрых обновлениях
     void el.offsetWidth;
     el.classList.add('flash');
-
-    // Явный лог содержимого DOM (для быстрой проверки в консоли)
-    try {
-      const inner = document.getElementById('orderBookInner');
-      console.log('orderBookInner HTML snippet:', inner ? inner.innerHTML.slice(0, 400) : '(no inner)');
-    } catch (e) { /* ignore */ }
   }
 
   function renderTrades(trades) {
