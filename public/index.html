@@ -275,9 +275,12 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
     <div class="right-col">
       <div class="card" style="display:flex; flex-direction:column; min-height: 300px;">
-        <div style="font-weight: 700; margin-bottom: 10px; font-size: 14px; display:flex; justify-content:space-between;">
+        <div style="font-weight: 700; margin-bottom: 10px; font-size: 14px; display:flex; justify-content:space-between; align-items:center;">
           <span>Order Book</span>
-          <span style="color:var(--muted); font-size:11px;" id="bookPairLabel">BTC-USD</span>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span id="bookPairLabel" style="color:var(--muted); font-size:11px;">BTC-USD</span>
+            <span id="bookUpdated" style="color:var(--muted); font-size:11px;">—</span>
+          </div>
         </div>
         <div class="ob-header"><span>Price</span><span style="text-align:right">Amount</span></div>
         <div class="ob-container" id="orderBook" style="flex:1;">
