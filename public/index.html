@@ -372,19 +372,31 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         switchPair(newPair);
     });
   });
+  
+  let previousPair = selectedPair;
 
   function switchPair(newPair) {
+    // Отписываемся от старой пары на сервере (если есть открытое соединение)
+    if (socket && socket.readyState === WebSocket.OPEN && previousPair) {
+      try { socket.send(JSON.stringify({ type: "unsubscribe", pair: previousPair })); }
+      catch (e) { /* ignore */ }
+    }
+
+    previousPair = newPair;
+    selectedPair = newPair;
+
     $('priceDisplay').textContent = "--.--";
     $('orderBook').innerHTML = '<div style="text-align:center; color:var(--muted); margin-top:20px;">Loading...</div>';
     $('tradeHistory').innerHTML = "";
-    
+
     // CHART RESET
     candleSeries.setData([]);
-    chart.priceScale('right').applyOptions({ autoScale: true }); 
+    chart.priceScale('right').applyOptions({ autoScale: true });
     lastCandle = null;
-    
-    if(socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type:"subscribe", pair: newPair }));
+
+    // Подписываемся на новую пару
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "subscribe", pair: newPair }));
     }
   }
 
