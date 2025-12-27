@@ -509,8 +509,22 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       const msgPairNorm = normalizePair(msg.pair);
       const selPairNorm = normalizePair(selectedPair);
 
-      // Логи (полезно при отладке)
-      // console.debug("WS msg:", msg.type, msgPairNorm);
+      // Логируем приход orderBook и первые 5 записей (всегда — чтобы видеть данные)
+      if (msg.type === "orderBook") {
+        const buysPreview = (msg.buy || msg.bids || []).slice(0, 5);
+        const sellsPreview = (msg.sell || msg.asks || []).slice(0, 5);
+        console.log("OrderBook update received:", msg.pair, (msg.buy||msg.bids||[]).length, "bids,", (msg.sell||msg.asks||[]).length, "asks");
+        console.log("OrderBook preview buys[0..4]:", buysPreview);
+        console.log("OrderBook preview sells[0..4]:", sellsPreview);
+
+        // Если пара в сообщении совпадает с выбранной — рендерим. Если msg.pair отсутствует — тоже рендерим.
+        if (!msg.pair || msgPairNorm === selPairNorm) {
+          renderOrderBook(msg.buy || msg.bids || [], msg.sell || msg.asks || []);
+        } else {
+          console.log("OrderBook ignored for pair:", msg.pair, "selected:", selectedPair);
+        }
+        return;
+      }
 
       if (msg.type === "price" && msgPairNorm === selPairNorm) {
         const prevPrice = currentPrice;
@@ -547,15 +561,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
           $('priceDisplay').textContent = formatPrice(currentPrice);
         }
         if (historyResolve) { historyResolve(); historyResolve = null; }
-        return;
-      }
-
-      if (msg.type === "orderBook") {
-        // лог для проверки прихода стакана
-        console.log("OrderBook update received:", msg.pair, (msg.buy||msg.bids||[]).length, "bids,", (msg.sell||msg.asks||[]).length, "asks");
-        if (msgPairNorm === selPairNorm) {
-          renderOrderBook(msg.buy || msg.bids || [], msg.sell || msg.asks || []);
-        }
         return;
       }
 
