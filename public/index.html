@@ -631,9 +631,13 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     buys = Array.isArray(buys) ? buys : [];
     sells = Array.isArray(sells) ? sells : [];
 
+    // Лог в начале функции — первые 5 элементов (всегда видно)
+    console.log('renderOrderBook called — top buys:', buys.slice(0,5));
+    console.log('renderOrderBook called — top sells:', sells.slice(0,5));
+
     // Если оба массива пустые — показываем сообщение
     if (buys.length === 0 && sells.length === 0) {
-      el.innerHTML = '<div style="text-align:center; color:var(--muted); margin-top:18px;">No liquidity</div>';
+      el.innerHTML = '<div id="orderBookInner" style="text-align:center; color:var(--muted); margin-top:18px;">No liquidity</div>';
       const updEl = $('bookUpdated');
       if (updEl) updEl.textContent = '—';
       return;
@@ -643,16 +647,17 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     const allSizes = [...buys, ...sells].map(x => Number(x.size) || 0);
     const maxVol = Math.max(...allSizes, 0.000001);
 
-    let html = '';
+    let html = '<div id="orderBookInner">';
 
     // ASKS (Продавцы) — показываем ближе к рынку вверху
     const showSells = sells.slice(0, 7).reverse();
-    showSells.forEach(s => {
+    showSells.forEach((s, idx) => {
       const price = Number(s.price);
       const vol = Number(s.size) || 0;
       const pct = Math.min((vol / maxVol) * 100, 100);
+      const dataAttr = idx === 0 ? ` data-top-ask-price="${price}" data-top-ask-vol="${vol}"` : '';
       html += `
-        <div class="ob-row">
+        <div class="ob-row"${dataAttr}>
           <div class="ob-bg bg-red" style="width:${pct}%"></div>
           <span class="text-red">${formatPrice(price)}</span>
           <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(6)}</span>
@@ -663,17 +668,20 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     html += `<div style="height:1px; background:var(--border); margin: 2px 0; opacity:0.3"></div>`;
 
     // BIDS (Покупатели)
-    buys.slice(0, 7).forEach(b => {
+    buys.slice(0, 7).forEach((b, idx) => {
       const price = Number(b.price);
       const vol = Number(b.size) || 0;
       const pct = Math.min((vol / maxVol) * 100, 100);
+      const dataAttr = idx === 0 ? ` data-top-bid-price="${price}" data-top-bid-vol="${vol}"` : '';
       html += `
-        <div class="ob-row">
+        <div class="ob-row"${dataAttr}>
           <div class="ob-bg bg-green" style="width:${pct}%"></div>
           <span class="text-green">${formatPrice(price)}</span>
           <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(6)}</span>
         </div>`;
     });
+
+    html += '</div>'; // закрываем orderBookInner
 
     // перезаписываем DOM
     el.innerHTML = html;
@@ -685,14 +693,13 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     // краткая подсветка карточки стакана (flash)
     el.classList.remove('flash');
     // форсируем reflow, чтобы анимация сработала при быстрых обновлениях
-    // eslint-disable-next-line no-unused-expressions
     void el.offsetWidth;
     el.classList.add('flash');
 
-    // Отладка — первые 3 уровня
+    // Явный лог содержимого DOM (для быстрой проверки в консоли)
     try {
-      console.debug('renderOrderBook top bids:', buys.slice(0,3));
-      console.debug('renderOrderBook top asks:', sells.slice(0,3));
+      const inner = document.getElementById('orderBookInner');
+      console.log('orderBookInner HTML snippet:', inner ? inner.innerHTML.slice(0, 400) : '(no inner)');
     } catch (e) { /* ignore */ }
   }
 
