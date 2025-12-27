@@ -622,23 +622,25 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   function renderOrderBook(buys, sells) {
     const el = $('orderBook');
 
-    // приводим к массивам, даже если сервер пришлёт undefined
+    // гарантируем, что у нас массивы
     buys = Array.isArray(buys) ? buys : [];
     sells = Array.isArray(sells) ? sells : [];
 
-    // Если оба массива пустые — очищаем и показываем сообщение
+    // Если оба массива пустые — показываем сообщение
     if (buys.length === 0 && sells.length === 0) {
       el.innerHTML = '<div style="text-align:center; color:var(--muted); margin-top:18px;">No liquidity</div>';
+      const updEl = $('bookUpdated');
+      if (updEl) updEl.textContent = '—';
       return;
     }
 
-    // Собираем все объемы, чтобы найти максимальный для рисования бара
+    // вычисляем максимальный объём для нормировки полос
     const allSizes = [...buys, ...sells].map(x => Number(x.size) || 0);
-    const maxVol = Math.max(...allSizes, 0.0001);
+    const maxVol = Math.max(...allSizes, 0.000001);
 
-    let html = "";
+    let html = '';
 
-    // ASKS (Продавцы - Красные) — показываем ближе к рынку вверху
+    // ASKS (Продавцы) — показываем ближе к рынку вверху
     const showSells = sells.slice(0, 7).reverse();
     showSells.forEach(s => {
       const price = Number(s.price);
@@ -648,13 +650,14 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         <div class="ob-row">
           <div class="ob-bg bg-red" style="width:${pct}%"></div>
           <span class="text-red">${formatPrice(price)}</span>
-          <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(4)}</span>
+          <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(6)}</span>
         </div>`;
     });
 
+    // разделитель (спред)
     html += `<div style="height:1px; background:var(--border); margin: 2px 0; opacity:0.3"></div>`;
 
-    // BIDS (Покупатели - Зеленые)
+    // BIDS (Покупатели)
     buys.slice(0, 7).forEach(b => {
       const price = Number(b.price);
       const vol = Number(b.size) || 0;
@@ -663,12 +666,29 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         <div class="ob-row">
           <div class="ob-bg bg-green" style="width:${pct}%"></div>
           <span class="text-green">${formatPrice(price)}</span>
-          <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(4)}</span>
+          <span style="position:relative; z-index:1; color:var(--white);">${vol.toFixed(6)}</span>
         </div>`;
     });
 
-    // ПЕРЕЗАПИСЫВАЕМ DOM (явно, даже если содержимое такое же — браузер сам оптимизирует)
+    // перезаписываем DOM
     el.innerHTML = html;
+
+    // обновляем таймстамп рядом с парой
+    const updEl = $('bookUpdated');
+    if (updEl) updEl.textContent = new Date().toLocaleTimeString();
+
+    // краткая подсветка карточки стакана (flash)
+    el.classList.remove('flash');
+    // форсируем reflow, чтобы анимация сработала при быстрых обновлениях
+    // eslint-disable-next-line no-unused-expressions
+    void el.offsetWidth;
+    el.classList.add('flash');
+
+    // Отладка — первые 3 уровня
+    try {
+      console.debug('renderOrderBook top bids:', buys.slice(0,3));
+      console.debug('renderOrderBook top asks:', sells.slice(0,3));
+    } catch (e) { /* ignore */ }
   }
 
   function renderTrades(trades) {
