@@ -675,7 +675,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       .slice()
       .sort((a,b) => b.price - a.price)
       .slice(0,7)
-      .forEach(b => {
+      .forEach((b, idx) => {
       const price = Number(b.price);
       const vol = Number(b.size) || 0;
       const pct = Math.min((vol / maxVol) * 100, 100);
