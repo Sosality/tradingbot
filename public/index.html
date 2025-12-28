@@ -388,11 +388,11 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   let previousPair = selectedPair;
 
   function switchPair(newPair) {
-    // [FIX] Safe Unsubscribe: Check if socket is actually OPEN before sending
+    // безопасная отписка
     if (socket && socket.readyState === WebSocket.OPEN && previousPair) {
-      try { 
-          socket.send(JSON.stringify({ type: "unsubscribe", pair: previousPair })); 
-          console.log("[WS] Unsubscribed from", previousPair);
+      try {
+        socket.send(JSON.stringify({ type: "unsubscribe", pair: previousPair }));
+        console.log("[WS] Unsubscribed from", previousPair);
       } catch (e) { console.warn("[WS] Unsubscribe failed:", e); }
     }
 
@@ -405,12 +405,14 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
     // CHART RESET
     candleSeries.setData([]);
-    chart.priceScale('right').applyOptions({ autoScale: true });
+    chart.timeScale().fitContent();
     lastCandle = null;
 
     if (socket && socket.readyState === WebSocket.OPEN) {
-      console.log("[WS] Subscribing to", newPair);
-      socket.send(JSON.stringify({ type: "subscribe", pair: newPair }));
+      try {
+        socket.send(JSON.stringify({ type: "subscribe", pair: newPair }));
+        console.log("[WS] Subscribing to", newPair);
+      } catch(e) { console.warn("[WS] Subscribe failed:", e); }
     }
   }
 
