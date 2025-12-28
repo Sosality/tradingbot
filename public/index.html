@@ -95,8 +95,12 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 @media (min-width: 900px) {
   .container { display: grid; grid-template-columns: 1fr 320px; height: calc(100vh - 60px); overflow: hidden; }
   .left-col { overflow-y: auto; padding-right: 4px; }
-  .right-col { display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+  .right-col { overflow: hidden; }
 }
+
+/* [LAYOUT FIX] Explicit Flex for columns to support gap and flex:1 */
+.left-col { display: flex; flex-direction: column; gap: 12px; }
+.right-col { display: flex; flex-direction: column; gap: 12px; }
 
 .card { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
 
@@ -138,7 +142,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .btn-long { background: var(--accent-green); color: #052e1f; }
 .btn-short { background: var(--accent-red); color: #2d0a0f; }
 
-/* ————— ORDER BOOK & TRADES ————— */
+/* ————— ORDER BOOK & TRADES (FIXED) ————— */
 .ob-header {
     display: grid; grid-template-columns: 1fr 1fr; 
     font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; padding: 0 4px;
@@ -155,6 +159,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     white-space: nowrap; 
 }
 
+/* [Z-INDEX FIX] 0 instead of -1 so bars are visible */
 .ob-bg {
     position: absolute; top: 0; bottom: 0; right: 0; 
     opacity: 0.2; transition: width 0.2s;
@@ -381,9 +386,12 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   let previousPair = selectedPair;
 
   function switchPair(newPair) {
+    // [FIX] Safe Unsubscribe: Check if socket is actually OPEN before sending
     if (socket && socket.readyState === WebSocket.OPEN && previousPair) {
-      try { socket.send(JSON.stringify({ type: "unsubscribe", pair: previousPair })); }
-      catch (e) { /* ignore */ }
+      try { 
+          socket.send(JSON.stringify({ type: "unsubscribe", pair: previousPair })); 
+          console.log("[WS] Unsubscribed from", previousPair);
+      } catch (e) { console.warn("[WS] Unsubscribe failed:", e); }
     }
 
     previousPair = newPair;
@@ -399,6 +407,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     lastCandle = null;
 
     if (socket && socket.readyState === WebSocket.OPEN) {
+      console.log("[WS] Subscribing to", newPair);
       socket.send(JSON.stringify({ type: "subscribe", pair: newPair }));
     }
   }
@@ -477,13 +486,14 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   let lastCandle = null;
 
   function connectWS() {
+    console.log("[WS] Connecting...");
     socket = new WebSocket(WSS_PRICE_URL);
 
     socket.onopen = () => {
-      console.log("Client WS opened, subscribing to", selectedPair);
+      console.log("[WS] Open. Subscribing to", selectedPair);
       try {
         socket.send(JSON.stringify({ type: "subscribe", pair: selectedPair }));
-      } catch (e) { console.error("Subscribe send error:", e); }
+      } catch (e) { console.error("[WS] Subscribe send error:", e); }
     };
 
     socket.onmessage = (evt) => {
@@ -491,6 +501,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       try {
         msg = JSON.parse(evt.data);
       } catch (e) {
+        console.warn("[WS] Parse error:", e);
         return;
       }
       if (!msg || !msg.type) return;
@@ -498,11 +509,14 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       const msgPairNorm = normalizePair(msg.pair);
       const selPairNorm = normalizePair(selectedPair);
 
+      // [DEBUG LOG] Uncomment to see traffic
+      // console.log("[WS] Msg:", msg.type, msgPairNorm);
+
       // СТАКАН (ORDERBOOK)
       if (msg.type === "orderBook") {
         if (!msg.pair || msgPairNorm === selPairNorm) {
-          // Сервер присылает данные уже в нужном формате, 
-          // buys (bids) и sells (asks) в полях "buy" и "sell"
+          // [LOG] Confirming we received an update
+          console.log("[WS] OrderBook Update Received"); 
           renderOrderBook(msg.buy || msg.bids, msg.sell || msg.asks);
         }
         return;
@@ -535,6 +549,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
       // ИСТОРИЯ (HISTORY)
       if (msg.type === "history" && msgPairNorm === selPairNorm) {
+        console.log("[WS] History received");
         const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
         candleSeries.setData(data);
         chart.timeScale().fitContent();
@@ -555,13 +570,13 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       }
     };
 
-    socket.onclose = () => {
-      console.warn("Client WS closed — reconnecting in 2s");
+    socket.onclose = (event) => {
+      console.warn(`[WS] Closed (Code: ${event.code}, Reason: ${event.reason}) — reconnecting in 2s`);
       setTimeout(connectWS, 2000);
     };
 
     socket.onerror = (e) => {
-      console.error("Client WS error:", e);
+      console.error("[WS] Error:", e);
     };
   }
 
@@ -611,7 +626,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
   function renderOrderBook(buys, sells) {
     const el = $('orderBook');
-    // Гарантируем массивы
+    // Ensure arrays
     buys = Array.isArray(buys) ? buys : [];
     sells = Array.isArray(sells) ? sells : [];
 
@@ -627,9 +642,8 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
     let html = '<div id="orderBookInner">';
 
-    // ASKS (Продавцы). 
-    // Ваш сервер присылает их отсортированными по возрастанию (Cheap -> Expensive).
-    // Берем первые 7 (самые дешевые), затем переворачиваем reverse(), чтобы самые дорогие были вверху, а дешевые - у спреда.
+    // ASKS (Sells) - show cheapest first, usually sorted ascending by price.
+    // We reverse to show highest price at top.
     const showSells = sells.slice(0,7).reverse();
 
     showSells.forEach((s) => {
@@ -646,9 +660,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
     html += `<div style="height:1px; background:var(--border); margin: 2px 0; opacity:0.3"></div>`;
 
-    // BIDS (Покупатели).
-    // Ваш сервер присылает их отсортированными по убыванию (Expensive -> Cheap).
-    // Это ровно то, что нужно. Берем топ 7 и выводим.
+    // BIDS (Buys) - show most expensive first (descending).
     const showBuys = buys.slice(0,7);
 
     showBuys.forEach((b) => {
