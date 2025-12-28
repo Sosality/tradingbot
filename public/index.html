@@ -142,42 +142,113 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .btn-long { background: var(--accent-green); color: #052e1f; }
 .btn-short { background: var(--accent-red); color: #2d0a0f; }
 
-/* ————— ORDER BOOK & TRADES (FIXED) ————— */
+/* ————— ORDER BOOK & TRADES (BINANCE STYLE) ————— */
+
 .ob-header {
-    display: grid; grid-template-columns: 1fr 1fr; 
-    font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; padding: 0 4px;
-}
-.ob-container { 
-    font-size: 12px; font-family: 'Roboto Mono', monospace; 
-    display: flex; flex-direction: column; gap: 2px; 
-    overflow: hidden; 
-}
-.ob-row { 
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 3px 4px; height: 20px;
-    position: relative; 
-    white-space: nowrap; 
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding: 0 6px;
 }
 
-/* [Z-INDEX FIX] 0 instead of -1 so bars are visible */
+/* Контейнер стакана */
+.ob-container {
+  font-size: 12px;
+  font-family: 'Roboto Mono', monospace;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+
+/* Строка уровня */
+.ob-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Фон-бар (объём) */
 .ob-bg {
-    position: absolute; top: 0; bottom: 0; right: 0; 
-    opacity: 0.2; transition: width 0.2s;
-    z-index: 0; 
-}
-.ob-row span {
-    position: relative; 
-    z-index: 1;
-}
-/* FLASH для отдельных строк */
-.ob-row.flash {
-  animation: obFlash 0.35s ease;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 0;
+  opacity: 0.18;
+  transition: width 0.2s ease;
 }
 
-.bg-red { background: var(--accent-red); }
-.bg-green { background: var(--accent-green); }
+/* Для ask — бар слева */
+.bg-red {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    var(--accent-red),
+    transparent
+  );
+}
+
+/* Для bid — бар справа */
+.bg-green {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    var(--accent-green),
+    transparent
+  );
+}
+
+/* Текст поверх бара */
+.ob-row span {
+  position: relative;
+  z-index: 1;
+}
+
+/* Цена */
+.price-cell {
+  font-weight: 600;
+}
+
+/* Размер */
+.size-cell {
+  text-align: right;
+  opacity: 0.9;
+}
+
+/* Цвета */
 .text-green { color: var(--accent-green); }
-.text-red { color: var(--accent-red); }
+.text-red   { color: var(--accent-red); }
+
+/* FLASH-анимация при изменении */
+.ob-row.flash {
+  animation: obRowFlash 0.35s ease;
+}
+
+@keyframes obRowFlash {
+  0%   { background-color: rgba(255,255,255,0); }
+  30%  { background-color: rgba(255,255,255,0.05); }
+  100% { background-color: rgba(255,255,255,0); }
+}
+
+/* Общий flash контейнера (опционально) */
+.ob-container.flash {
+  animation: obContainerFlash 0.35s ease;
+}
+
+@keyframes obContainerFlash {
+  0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+  30%  { box-shadow: 0 0 10px 3px rgba(255,255,255,0.05); }
+  100% { box-shadow: none; }
+}
 
 /* ————— POSITIONS ————— */
 .pos-list { display: flex; flex-direction: column; gap: 8px; }
@@ -188,15 +259,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .close-btn { 
   background: transparent; border: 1px solid var(--border); color: var(--white); 
   padding: 6px 12px; border-radius: 4px; font-size: 11px; margin-top: 10px; width: 100%; cursor: pointer; font-weight: 600;
-}
-
-.ob-container.flash {
-  animation: obFlash 0.35s ease;
-}
-@keyframes obFlash {
-  0%   { box-shadow: 0 0 0 0 rgba(14,203,129,0); }
-  30%  { box-shadow: 0 0 10px 4px rgba(14,203,129,0.06); }
-  100% { box-shadow: none; }
 }
 
 /* ————— LOADER ————— */
