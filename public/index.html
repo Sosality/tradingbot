@@ -624,65 +624,134 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     list.querySelectorAll('.close-btn').forEach(b => b.onclick = () => closePosition(b.dataset.id));
   }
 
-function renderOrderBook(buys, sells) {
-    const el = $('orderBook');
-    
-    // 1. ПРОВЕРКА ДАННЫХ: берем либо buy/sell, либо bids/asks
-    const bids = Array.isArray(buys) ? buys : [];
-    const asks = Array.isArray(sells) ? sells : [];
+// НОВАЯ ФУНКЦИЯ — УМНОЕ ОБНОВЛЕНИЕ СТАКАНА (BINANCE STYLE)
+function smartUpdateOrderBook(buys = [], sells = []) {
+  const container = $('orderBook');
+  const maxLevels = 10;
 
-    // Если данных совсем нет, пишем об этом для отладки
-    if (bids.length === 0 && asks.length === 0) {
-        console.warn("[OB] Received empty arrays for bids/asks");
-        return;
+  // Создаём карты для быстрого доступа
+  const bidMap = new Map();
+  buys.forEach(l => {
+    const p = String(l.price);
+    const s = Number(l.size || 0);
+    if (s > 0) bidMap.set(p, s);
+  });
+  const askMap = new Map();
+  sells.forEach(l => {
+    const p = String(l.price);
+    const s = Number(l.size || 0);
+    if (s > 0) askMap.set(p, s);
+  });
+
+  // Все текущие строки
+  const existingRows = Array.from(container.querySelectorAll('.ob-row[data-price]'));
+  const existingPrices = new Set(existingRows.map(r => r.dataset.price));
+
+  // Максимальный объём для баров
+  const allSizes = [...bidMap.values(), ...askMap.values()];
+  const maxVol = Math.max(...allSizes, 0.0001);
+
+  let changedRows = [];
+
+  // === ASKS (красные, сверху) ===
+  const sortedAsks = Array.from(askMap.entries())
+    .sort((a, b) => Number(a[0]) - Number(b[0])) // от низкой к высокой
+    .slice(0, maxLevels);
+
+  sortedAsks.forEach(([priceStr, size]) => {
+    let row = container.querySelector(`.ob-row[data-price="${priceStr}"]`);
+    const isNew = !row;
+
+    if (isNew) {
+      row = document.createElement('div');
+      row.className = 'ob-row';
+      row.dataset.price = priceStr;
+      row.innerHTML = `
+        <div class="ob-bg bg-red" style="width:0%"></div>
+        <span class="text-red">${formatPrice(priceStr)}</span>
+        <span>${size.toFixed(6)}</span>
+      `;
+      // Добавляем в начало (самые дешёвые asks ближе к спреду)
+      container.insertBefore(row, container.firstChild);
     }
 
-    // 2. РАСЧЕТ МАКСИМАЛЬНОГО ОБЪЕМА для полосок
-    const allSizes = [...bids, ...asks].map(x => Number(x.size) || 0);
-    const maxVol = Math.max(...allSizes, 0.0001);
+    // Обновляем бар и размер
+    const bg = row.querySelector('.ob-bg');
+    const pct = (size / maxVol) * 100;
+    if (bg.style.width !== `${pct}%`) {
+      bg.style.width = `${pct}%`;
+      changedRows.push(row);
+    }
 
-    let html = '<div id="orderBookInner">';
+    const sizeSpan = row.querySelector('span:nth-child(3)');
+    const formattedSize = size.toFixed(6);
+    if (sizeSpan.textContent !== formattedSize) {
+      sizeSpan.textContent = formattedSize;
+      changedRows.push(row);
+    }
 
-    // 3. ОТРИСОВКА ПРОДАЖ (ASKS) — Красные (сверху)
-    // Берем первые 10 и разворачиваем, чтобы самые дешевые были ближе к середине
-    const showAsks = asks.slice(0, 10).reverse();
-    showAsks.forEach(s => {
-        const p = Number(s.price);
-        const v = Number(s.size);
-        const pct = (v / maxVol) * 100;
-        html += `
-            <div class="ob-row">
-                <div class="ob-bg bg-red" style="width:${pct.toFixed(1)}%"></div>
-                <span class="text-red">${formatPrice(p)}</span>
-                <span>${v.toFixed(4)}</span>
-            </div>`;
-    });
+    existingPrices.delete(priceStr);
+  });
 
-    // Разделитель
-    html += `<div style="height:1px; background:var(--border); margin: 4px 0; opacity:0.5"></div>`;
+  // === BIDS (зелёные, снизу) ===
+  const sortedBids = Array.from(bidMap.entries())
+    .sort((a, b) => Number(b[0]) - Number(a[0])) // от высокой к низкой
+    .slice(0, maxLevels);
 
-    // 4. ОТРИСОВКА ПОКУПОК (BIDS) — Зеленые (снизу)
-    const showBids = bids.slice(0, 10);
-    showBids.forEach(b => {
-        const p = Number(b.price);
-        const v = Number(b.size);
-        const pct = (v / maxVol) * 100;
-        html += `
-            <div class="ob-row">
-                <div class="ob-bg bg-green" style="width:${pct.toFixed(1)}%"></div>
-                <span class="text-green">${formatPrice(p)}</span>
-                <span>${v.toFixed(4)}</span>
-            </div>`;
-    });
+  sortedBids.forEach(([priceStr, size]) => {
+    let row = container.querySelector(`.ob-row[data-price="${priceStr}"]`);
+    const isNew = !row;
 
-    html += '</div>';
+    if (isNew) {
+      row = document.createElement('div');
+      row.className = 'ob-row';
+      row.dataset.price = priceStr;
+      row.innerHTML = `
+        <div class="ob-bg bg-green" style="width:0%"></div>
+        <span class="text-green">${formatPrice(priceStr)}</span>
+        <span>${size.toFixed(6)}</span>
+      `;
+      container.appendChild(row);
+    }
 
-    // 5. ОБНОВЛЕНИЕ DOM
-    el.innerHTML = html;
+    const bg = row.querySelector('.ob-bg');
+    const pct = (size / maxVol) * 100;
+    if (bg.style.width !== `${pct}%`) {
+      bg.style.width = `${pct}%`;
+      changedRows.push(row);
+    }
 
-    // Индикация обновления для визуального контроля
-    const updEl = $('bookUpdated');
-    if (updEl) updEl.textContent = new Date().toLocaleTimeString();
+    const sizeSpan = row.querySelector('span:nth-child(3)');
+    const formattedSize = size.toFixed(6);
+    if (sizeSpan.textContent !== formattedSize) {
+      sizeSpan.textContent = formattedSize;
+      changedRows.push(row);
+    }
+
+    existingPrices.delete(priceStr);
+  });
+
+  // Удаляем исчезнувшие уровни
+  existingPrices.forEach(price => {
+    const row = container.querySelector(`.ob-row[data-price="${price}"]`);
+    if (row) row.remove();
+  });
+
+  // Подсветка изменённых строк
+  changedRows.forEach(row => {
+    row.classList.remove('flash');
+    void row.offsetWidth;
+    row.classList.add('flash');
+  });
+
+  // Обновляем время
+  const updEl = $('bookUpdated');
+  if (updEl) updEl.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+}
+
+// Заменяем старую renderOrderBook на вызов новой
+function renderOrderBook(buys, sells) {
+  smartUpdateOrderBook(buys, sells);
 }
 
   function renderTrades(trades) {
