@@ -695,144 +695,64 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 // buys и sells — могут быть длиннее, клиент отрисует topLevels
 function smartUpdateOrderBook(buys = [], sells = [], topLevels = 10) {
   const container = $('orderBook');
+  container.innerHTML = "";
+
   const maxLevels = topLevels;
 
-  // Нормализуем вход: приводим price к строке в формате 2 знака (совпадение со стороной сервера)
-  const bidMap = new Map();
-  buys.forEach(l => {
-    const priceNum = Number(l.price);
-    const priceKey = priceNum.toFixed(2);
-    const s = Number(l.size) || 0;
-    if (s > 0) bidMap.set(priceKey, s);
-  });
-
-  const askMap = new Map();
-  sells.forEach(l => {
-    const priceNum = Number(l.price);
-    const priceKey = priceNum.toFixed(2);
-    const s = Number(l.size) || 0;
-    if (s > 0) askMap.set(priceKey, s);
-  });
-
-  // Выберем отображаемые уровни (asks сверху, bids снизу)
-  const sortedAsks = Array.from(askMap.entries())
-    .map(([p, s]) => ({ price: Number(p), size: s }))
+  const sortedAsks = [...sells]
+    .map(l => ({ price: Number(l.price), size: Number(l.size) }))
+    .filter(l => l.size > 0)
     .sort((a, b) => a.price - b.price)
     .slice(0, maxLevels);
 
-  const sortedBids = Array.from(bidMap.entries())
-    .map(([p, s]) => ({ price: Number(p), size: s }))
+  const sortedBids = [...buys]
+    .map(l => ({ price: Number(l.price), size: Number(l.size) }))
+    .filter(l => l.size > 0)
     .sort((a, b) => b.price - a.price)
     .slice(0, maxLevels);
 
-  // Сбор текущих строк
-  const existingRows = Array.from(container.querySelectorAll('.ob-row'));
-  const existingByPrice = new Map();
-  existingRows.forEach(r => existingByPrice.set(r.dataset.price, r));
+  // CUMULATIVE (КРИТИЧНО)
+  let askCum = 0;
+  let bidCum = 0;
 
-  // Определяем максимальный объём для относительных баров
-  const allSizes = [...sortedAsks.map(x => x.size), ...sortedBids.map(x => x.size)];
-  const maxVol = Math.max(...allSizes, 0.0000001);
+  const maxCum = Math.max(
+    sortedAsks.reduce((s, l) => s + l.size, 0),
+    sortedBids.reduce((s, l) => s + l.size, 0),
+    0.0001
+  );
 
-  const touched = new Set();
-  const changedRows = [];
+  // ASKS (верх)
+  sortedAsks.forEach(l => {
+    askCum += l.size;
+    const pct = (askCum / maxCum) * 100;
 
-  // === Asks: вставляем сверху (редкие цены ближе к спреду) ===
-  sortedAsks.forEach(level => {
-    const priceKey = level.price.toFixed(2);
-    touched.add(priceKey);
-    let row = existingByPrice.get(priceKey);
-    if (!row) {
-      row = document.createElement('div');
-      row.className = 'ob-row';
-      row.dataset.price = priceKey;
-      row.innerHTML = `
-        <div class="ob-bg bg-red" style="width:0%"></div>
-        <span class="text-red price-cell">${formatPrice(level.price)}</span>
-        <span class="size-cell">${level.size.toFixed(6)}</span>
-      `;
-      // вставляем в начало
-      container.insertBefore(row, container.firstChild);
-      existingByPrice.set(priceKey, row);
-      changedRows.push(row);
-    } else {
-      // обновляем порядок: если row не в верхней части, переместим - аккуратно
-      // хотим, чтобы asks были перед bids — но упрощенно: если row находится после firstChild, перемещаем вверх
-      if (container.firstChild !== row) {
-        container.insertBefore(row, container.firstChild);
-      }
-    }
-
-    const bg = row.querySelector('.ob-bg');
-    const pct = (level.size / maxVol) * 100;
-    if (bg.style.width !== `${pct}%`) {
-      bg.style.width = `${pct}%`;
-      changedRows.push(row);
-    }
-
-    const sizeSpan = row.querySelector('.size-cell');
-    const formattedSize = level.size.toFixed(6);
-    if (sizeSpan.textContent !== formattedSize) {
-      sizeSpan.textContent = formattedSize;
-      changedRows.push(row);
-    }
+    const row = document.createElement('div');
+    row.className = 'ob-row';
+    row.innerHTML = `
+      <div class="ob-bg bg-red" style="width:${pct}%"></div>
+      <span class="text-red price-cell">${formatPrice(l.price)}</span>
+      <span class="size-cell">${askCum.toFixed(4)}</span>
+    `;
+    container.appendChild(row);
   });
 
-  // === Bids: вставляем в конец (нижняя часть) ===
-  sortedBids.forEach(level => {
-    const priceKey = level.price.toFixed(2);
-    touched.add(priceKey);
-    let row = existingByPrice.get(priceKey);
-    if (!row) {
-      row = document.createElement('div');
-      row.className = 'ob-row';
-      row.dataset.price = priceKey;
-      row.innerHTML = `
-        <div class="ob-bg bg-green" style="width:0%"></div>
-        <span class="text-green price-cell">${formatPrice(level.price)}</span>
-        <span class="size-cell">${level.size.toFixed(6)}</span>
-      `;
-      container.appendChild(row);
-      existingByPrice.set(priceKey, row);
-      changedRows.push(row);
-    } else {
-      // Если во время asks вставки row был перемещён — оставим его внизу
-      if (container.lastChild !== row) container.appendChild(row);
-    }
+  // BIDS (низ)
+  sortedBids.forEach(l => {
+    bidCum += l.size;
+    const pct = (bidCum / maxCum) * 100;
 
-    const bg = row.querySelector('.ob-bg');
-    const pct = (level.size / maxVol) * 100;
-    if (bg.style.width !== `${pct}%`) {
-      bg.style.width = `${pct}%`;
-      changedRows.push(row);
-    }
-
-    const sizeSpan = row.querySelector('.size-cell');
-    const formattedSize = level.size.toFixed(6);
-    if (sizeSpan.textContent !== formattedSize) {
-      sizeSpan.textContent = formattedSize;
-      changedRows.push(row);
-    }
+    const row = document.createElement('div');
+    row.className = 'ob-row';
+    row.innerHTML = `
+      <div class="ob-bg bg-green" style="width:${pct}%"></div>
+      <span class="text-green price-cell">${formatPrice(l.price)}</span>
+      <span class="size-cell">${bidCum.toFixed(4)}</span>
+    `;
+    container.appendChild(row);
   });
 
-  // Удаляем уровни, которых нет в новом срезе
-  existingByPrice.forEach((row, price) => {
-    if (!touched.has(price)) {
-      row.remove();
-    }
-  });
-
-  // Подсветка изменений (flash)
-  changedRows.forEach(row => {
-    row.classList.remove('flash');
-    // force reflow
-    void row.offsetWidth;
-    row.classList.add('flash');
-  });
-
-  // Обновляем метку времени
-  const updEl = $('bookUpdated');
-  if (updEl) updEl.textContent = new Date().toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  $('bookUpdated').textContent =
+    new Date().toLocaleTimeString([], { hour12:false });
 }
 
 // Простая обёртка
