@@ -843,6 +843,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     const container = $('orderBook');
     const maxLevels = topLevels;
 
+    // 1. Подготовка данных (Map для быстрого доступа)
     const bidMap = new Map();
     buys.forEach(l => {
       const s = Number(l.size) || 0;
@@ -855,78 +856,83 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       if (s > 0) askMap.set(Number(l.price).toFixed(2), s);
     });
 
-    const sortedAsks = Array.from(askMap.entries())
-      .map(([p, s]) => ({ price: Number(p), size: s }))
-      .sort((a, b) => a.price - b.price)
+    // 2. Сортировка массивов
+    // Asks: Сортируем по возрастанию цены (дешевые внизу, у спреда), потом обрежем и перевернем для отображения
+    let sortedAsks = Array.from(askMap.entries())
+      .map(([p, s]) => ({ price: Number(p), size: s, type: 'ask' }))
+      .sort((a, b) => a.price - b.price) // 100, 101, 102
+      .slice(0, maxLevels)               // берем лучшие (близкие к цене)
+      .reverse();                        // переворачиваем: 102, 101, 100 (чтобы 100 было внизу блока Asks)
+
+    // Bids: Сортируем по убыванию (дорогие наверху, у спреда)
+    let sortedBids = Array.from(bidMap.entries())
+      .map(([p, s]) => ({ price: Number(p), size: s, type: 'bid' }))
+      .sort((a, b) => b.price - a.price) // 99, 98, 97
       .slice(0, maxLevels);
 
-    const sortedBids = Array.from(bidMap.entries())
-      .map(([p, s]) => ({ price: Number(p), size: s }))
-      .sort((a, b) => b.price - a.price)
-      .slice(0, maxLevels);
+    // 3. Создаем ЕДИНЫЙ список рендера (Сверху -> Вниз)
+    const renderList = [...sortedAsks, ...sortedBids];
 
+    // Вычисляем maxVol для полосок
+    const allSizes = renderList.map(x => x.size);
+    const maxVol = Math.max(...allSizes, 0.0000001);
+
+    // 4. Синхронизация с DOM
     const existingRows = Array.from(container.querySelectorAll('.ob-row'));
     const existingByPrice = new Map();
     existingRows.forEach(r => existingByPrice.set(r.dataset.price, r));
-
-    const allSizes = [...sortedAsks.map(x => x.size), ...sortedBids.map(x => x.size)];
-    const maxVol = Math.max(...allSizes, 0.0000001);
-
+    
     const touched = new Set();
 
-    // Asks
-    sortedAsks.forEach(level => {
+    // Проходим по упорядоченному списку и расставляем элементы
+    renderList.forEach(level => {
       const priceKey = level.price.toFixed(2);
       touched.add(priceKey);
+      
       let row = existingByPrice.get(priceKey);
+      const isAsk = level.type === 'ask';
+
+      // Если строки нет - создаем
       if (!row) {
         row = document.createElement('div');
         row.className = 'ob-row';
         row.dataset.price = priceKey;
         row.innerHTML = `
-          <div class="ob-bg bg-red" style="width:0%"></div>
-          <span class="text-red price-cell">${formatPrice(level.price)}</span>
+          <div class="ob-bg" style="width:0%"></div>
+          <span class="price-cell">${formatPrice(level.price)}</span>
           <span class="size-cell">${level.size.toFixed(5)}</span>
         `;
-        container.insertBefore(row, container.firstChild);
-        existingByPrice.set(priceKey, row);
-      } else {
-        if (container.firstChild !== row) container.insertBefore(row, container.firstChild);
+        // Важно: пока не вставляем, сделаем это appendChild-ом ниже, чтобы сохранить порядок
       }
+
+      // Обновляем классы и цвета (на случай, если цена перешла из Bid в Ask или наоборот)
       const bg = row.querySelector('.ob-bg');
+      const priceSpan = row.querySelector('.price-cell');
+      
+      // Сброс классов цветов
+      bg.className = `ob-bg ${isAsk ? 'bg-red' : 'bg-green'}`;
+      priceSpan.className = `price-cell ${isAsk ? 'text-red' : 'text-green'}`;
+
+      // Обновляем ширину и текст
       bg.style.width = `${(level.size / maxVol) * 100}%`;
-      row.querySelector('.size-cell').textContent = level.size.toFixed(5);
+      const sizeSpan = row.querySelector('.size-cell');
+      if (sizeSpan.textContent !== level.size.toFixed(5)) {
+        sizeSpan.textContent = level.size.toFixed(5);
+      }
+
+      // ГЛАВНЫЙ ФИКС: Жесткая сортировка DOM
+      // appendChild перемещает существующий элемент в конец контейнера.
+      // Так как мы идем по отсортированному массиву renderList, 
+      // элементы в DOM выстроятся ровно в таком же порядке.
+      container.appendChild(row);
     });
 
-    // Bids
-    sortedBids.forEach(level => {
-      const priceKey = level.price.toFixed(2);
-      touched.add(priceKey);
-      let row = existingByPrice.get(priceKey);
-      if (!row) {
-        row = document.createElement('div');
-        row.className = 'ob-row';
-        row.dataset.price = priceKey;
-        row.innerHTML = `
-          <div class="ob-bg bg-green" style="width:0%"></div>
-          <span class="text-green price-cell">${formatPrice(level.price)}</span>
-          <span class="size-cell">${level.size.toFixed(5)}</span>
-        `;
-        container.appendChild(row);
-        existingByPrice.set(priceKey, row);
-      } else {
-        if (container.lastChild !== row) container.appendChild(row);
-      }
-      const bg = row.querySelector('.ob-bg');
-      bg.style.width = `${(level.size / maxVol) * 100}%`;
-      row.querySelector('.size-cell').textContent = level.size.toFixed(5);
-    });
-
-    // Remove old
+    // 5. Удаляем лишние (которых нет в новом списке)
     existingByPrice.forEach((row, price) => {
       if (!touched.has(price)) row.remove();
     });
 
+    // Обновляем время
     const updEl = $('bookUpdated');
     if (updEl) updEl.textContent = new Date().toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
   }
