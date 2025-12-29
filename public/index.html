@@ -98,7 +98,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   .right-col { overflow: hidden; }
 }
 
-/* [LAYOUT FIX] Explicit Flex for columns to support gap and flex:1 */
 .left-col { display: flex; flex-direction: column; gap: 12px; }
 .right-col { display: flex; flex-direction: column; gap: 12px; }
 
@@ -142,7 +141,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .btn-long { background: var(--accent-green); color: #052e1f; }
 .btn-short { background: var(--accent-red); color: #2d0a0f; }
 
-/* ————— ORDER BOOK & TRADES (BINANCE STYLE) ————— */
+/* ————— ORDER BOOK & TRADES ————— */
 
 .ob-header {
   display: grid;
@@ -154,7 +153,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   padding: 0 6px;
 }
 
-/* Контейнер стакана */
 .ob-container {
   font-size: 12px;
   font-family: 'Roboto Mono', monospace;
@@ -164,11 +162,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   overflow: hidden;
 }
 
-/* Строка уровня */
 .ob-row {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr; /* 50% / 50% */
   align-items: center;
   height: 20px;
   padding: 0 6px;
@@ -177,7 +174,12 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   overflow: hidden;
 }
 
-/* Фон-бар (объём) */
+/* Выравнивание времени вправо */
+.trade-time {
+  text-align: right;
+  opacity: 0.7;
+}
+
 .ob-bg {
   position: absolute;
   top: 0;
@@ -187,68 +189,17 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   transition: width 0.2s ease;
 }
 
-/* Для ask — бар слева */
-.bg-red {
-  left: 0;
-  background: linear-gradient(
-    to right,
-    var(--accent-red),
-    transparent
-  );
-}
+.bg-red { left: 0; background: linear-gradient(to right, var(--accent-red), transparent); }
+.bg-green { right: 0; background: linear-gradient(to left, var(--accent-green), transparent); }
 
-/* Для bid — бар справа */
-.bg-green {
-  right: 0;
-  background: linear-gradient(
-    to left,
-    var(--accent-green),
-    transparent
-  );
-}
+.ob-row span { position: relative; z-index: 1; }
+.price-cell { font-weight: 600; }
+.size-cell { text-align: right; opacity: 0.9; }
 
-/* Текст поверх бара */
-.ob-row span {
-  position: relative;
-  z-index: 1;
-}
-
-/* Цена */
-.price-cell {
-  font-weight: 600;
-}
-
-/* Размер */
-.size-cell {
-  text-align: right;
-  opacity: 0.9;
-}
-
-/* Цвета */
 .text-green { color: var(--accent-green); }
 .text-red   { color: var(--accent-red); }
 
-/* FLASH-анимация при изменении */
-.ob-row.flash {
-  animation: obRowFlash 0.35s ease;
-}
-
-@keyframes obRowFlash {
-  0%   { background-color: rgba(255,255,255,0); }
-  30%  { background-color: rgba(255,255,255,0.05); }
-  100% { background-color: rgba(255,255,255,0); }
-}
-
-/* Общий flash контейнера (опционально) */
-.ob-container.flash {
-  animation: obContainerFlash 0.35s ease;
-}
-
-@keyframes obContainerFlash {
-  0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
-  30%  { box-shadow: 0 0 10px 3px rgba(255,255,255,0.05); }
-  100% { box-shadow: none; }
-}
+/* [FIX] Убрал класс .flash и анимацию @keyframes, чтобы не светилось */
 
 /* ————— POSITIONS ————— */
 .pos-list { display: flex; flex-direction: column; gap: 8px; }
@@ -376,20 +327,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   const $ = (id) => document.getElementById(id);
   
   // ————————————————————————————————————————————
-  // LOADER
-  // ————————————————————————————————————————————
-  const loaderEl = $('app-loader');
-  const loaderBar = $('loaderBar');
-  const loaderText = $('loaderText');
-  function setProgress(pct, txt) {
-    loaderBar.style.width = pct + '%';
-    if(txt) loaderText.textContent = txt.toUpperCase();
-  }
-
-  // ————————————————————————————————————————————
   // CONFIG
   // ————————————————————————————————————————————
-  const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com";
+  // Если тестируешь локально, меняй на localhost. Для продакшена оставь render
+  const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com"; 
   const API_BASE = "https://tradingbot-p9n8.onrender.com";
   let currentUserId = null;
 
@@ -406,6 +347,9 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   let profile = { balance: 0 };
   let currentLeverage = 10;
   
+  // Локальный буфер сделок
+  let localTrades = [];
+
   // ————————————————————————————————————————————
   // UTILS
   // ————————————————————————————————————————————
@@ -447,34 +391,27 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     });
   });
   
-  let previousPair = selectedPair;
-
   function switchPair(newPair) {
-    // безопасная отписка
-    if (socket && socket.readyState === WebSocket.OPEN && previousPair) {
-      try {
-        socket.send(JSON.stringify({ type: "unsubscribe", pair: previousPair }));
-        console.log("[WS] Unsubscribed from", previousPair);
-      } catch (e) { console.warn("[WS] Unsubscribe failed:", e); }
-    }
-
-    previousPair = newPair;
     selectedPair = newPair;
 
+    // Сброс UI
     $('priceDisplay').textContent = "--.--";
     $('orderBook').innerHTML = '';
     $('tradeHistory').innerHTML = "";
+    
+    // [FIX] Сброс локального буфера сделок
+    localTrades = [];
 
-    // CHART RESET
+    // [FIX] Сброс Графика полностью
     candleSeries.setData([]);
-    chart.timeScale().fitContent();
     lastCandle = null;
+    chart.timeScale().fitContent();
+    // [FIX] Принудительный сброс шкалы цены, чтобы не оставался масштаб BTC
+    chart.priceScale('right').applyOptions({ autoScale: true });
 
     if (socket && socket.readyState === WebSocket.OPEN) {
-      try {
-        socket.send(JSON.stringify({ type: "subscribe", pair: newPair }));
-        console.log("[WS] Subscribing to", newPair);
-      } catch(e) { console.warn("[WS] Subscribe failed:", e); }
+      // Отправляем subscribe, сервер сам отпишет старую пару
+      socket.send(JSON.stringify({ type: "subscribe", pair: newPair }));
     }
   }
 
@@ -557,38 +494,26 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
     socket.onopen = () => {
       console.log("[WS] Open. Subscribing to", selectedPair);
-      try {
-        socket.send(JSON.stringify({ type: "subscribe", pair: selectedPair }));
-      } catch (e) { console.error("[WS] Subscribe send error:", e); }
+      socket.send(JSON.stringify({ type: "subscribe", pair: selectedPair }));
     };
 
     socket.onmessage = (evt) => {
       let msg;
-      try {
-        msg = JSON.parse(evt.data);
-      } catch (e) {
-        console.warn("[WS] Parse error:", e);
-        return;
-      }
+      try { msg = JSON.parse(evt.data); } catch (e) { return; }
       if (!msg || !msg.type) return;
 
       const msgPairNorm = normalizePair(msg.pair);
       const selPairNorm = normalizePair(selectedPair);
 
-      // [DEBUG LOG] Uncomment to see traffic
-      // console.log("[WS] Msg:", msg.type, msgPairNorm);
-
-      // СТАКАН (ORDERBOOK)
+      // 1. ORDERBOOK (Стакан)
       if (msg.type === "orderBook") {
         if (!msg.pair || msgPairNorm === selPairNorm) {
-          // [LOG] Confirming we received an update
-          console.log("[WS] OrderBook Update Received"); 
           renderOrderBook(msg.buy || msg.bids, msg.sell || msg.asks);
         }
         return;
       }
 
-      // ЦЕНА (PRICE)
+      // 2. PRICE (Цена)
       if (msg.type === "price" && msgPairNorm === selPairNorm) {
         const prevPrice = currentPrice;
         currentPrice = Number(msg.price);
@@ -596,6 +521,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         if (prevPrice !== 0) {
           $('priceDisplay').className = currentPrice >= prevPrice ? "price-display text-green" : "price-display text-red";
         }
+        // Обновляем свечу
         if (lastCandle) {
           const now = Math.floor(Date.now()/1000);
           const minTime = now - (now % 60);
@@ -613,12 +539,13 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         return;
       }
 
-      // ИСТОРИЯ (HISTORY)
+      // 3. HISTORY (История графика)
       if (msg.type === "history" && msgPairNorm === selPairNorm) {
-        console.log("[WS] History received");
         const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
         candleSeries.setData(data);
         chart.timeScale().fitContent();
+        // Принудительный рескейл при загрузке истории
+        chart.priceScale('right').applyOptions({ autoScale: true });
 
         if (data.length) {
           lastCandle = data[data.length-1];
@@ -629,21 +556,20 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         return;
       }
 
-      // СДЕЛКИ (TRADES)
+      // 4. TRADES (Лента сделок) - [FIXED]
       if (msg.type === "trades" && msgPairNorm === selPairNorm) {
-        renderTrades(msg.trades || []);
+        const newTrades = msg.trades || [];
+        // Добавляем новые сделки в начало массива
+        localTrades = [...newTrades, ...localTrades];
+        // Ограничиваем длину (например, 20 штук)
+        if (localTrades.length > 20) localTrades = localTrades.slice(0, 20);
+        // Отрисовываем
+        renderTrades(localTrades);
         return;
       }
     };
 
-    socket.onclose = (event) => {
-      console.warn(`[WS] Closed (Code: ${event.code}, Reason: ${event.reason}) — reconnecting in 2s`);
-      setTimeout(connectWS, 2000);
-    };
-
-    socket.onerror = (e) => {
-      console.error("[WS] Error:", e);
-    };
+    socket.onclose = () => setTimeout(connectWS, 2000);
   }
 
   // ————————————————————————————————————————————
@@ -690,172 +616,118 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     list.querySelectorAll('.close-btn').forEach(b => b.onclick = () => closePosition(b.dataset.id));
   }
 
-// НОВАЯ ФУНКЦИЯ — УМНОЕ ОБНОВЛЕНИЕ СТАКАНА (BINANCE STYLE)
-// Умное обновление стакана — принимает массивы уровней вида {price: Number, size: Number}
-// buys и sells — могут быть длиннее, клиент отрисует topLevels
-function smartUpdateOrderBook(buys = [], sells = [], topLevels = 10) {
-  const container = $('orderBook');
-  const maxLevels = topLevels;
+  // [FIX] Убрал flash-анимацию из функции обновления стакана
+  function smartUpdateOrderBook(buys = [], sells = [], topLevels = 10) {
+    const container = $('orderBook');
+    const maxLevels = topLevels;
 
-  // Нормализуем вход: приводим price к строке в формате 2 знака (совпадение со стороной сервера)
-  const bidMap = new Map();
-  buys.forEach(l => {
-    const priceNum = Number(l.price);
-    const priceKey = priceNum.toFixed(2);
-    const s = Number(l.size) || 0;
-    if (s > 0) bidMap.set(priceKey, s);
-  });
+    const bidMap = new Map();
+    buys.forEach(l => {
+      const s = Number(l.size) || 0;
+      if (s > 0) bidMap.set(Number(l.price).toFixed(2), s);
+    });
 
-  const askMap = new Map();
-  sells.forEach(l => {
-    const priceNum = Number(l.price);
-    const priceKey = priceNum.toFixed(2);
-    const s = Number(l.size) || 0;
-    if (s > 0) askMap.set(priceKey, s);
-  });
+    const askMap = new Map();
+    sells.forEach(l => {
+      const s = Number(l.size) || 0;
+      if (s > 0) askMap.set(Number(l.price).toFixed(2), s);
+    });
 
-  // Выберем отображаемые уровни (asks сверху, bids снизу)
-  const sortedAsks = Array.from(askMap.entries())
-    .map(([p, s]) => ({ price: Number(p), size: s }))
-    .sort((a, b) => a.price - b.price)
-    .slice(0, maxLevels);
+    const sortedAsks = Array.from(askMap.entries())
+      .map(([p, s]) => ({ price: Number(p), size: s }))
+      .sort((a, b) => a.price - b.price)
+      .slice(0, maxLevels);
 
-  const sortedBids = Array.from(bidMap.entries())
-    .map(([p, s]) => ({ price: Number(p), size: s }))
-    .sort((a, b) => b.price - a.price)
-    .slice(0, maxLevels);
+    const sortedBids = Array.from(bidMap.entries())
+      .map(([p, s]) => ({ price: Number(p), size: s }))
+      .sort((a, b) => b.price - a.price)
+      .slice(0, maxLevels);
 
-  // Сбор текущих строк
-  const existingRows = Array.from(container.querySelectorAll('.ob-row'));
-  const existingByPrice = new Map();
-  existingRows.forEach(r => existingByPrice.set(r.dataset.price, r));
+    const existingRows = Array.from(container.querySelectorAll('.ob-row'));
+    const existingByPrice = new Map();
+    existingRows.forEach(r => existingByPrice.set(r.dataset.price, r));
 
-  // Определяем максимальный объём для относительных баров
-  const allSizes = [...sortedAsks.map(x => x.size), ...sortedBids.map(x => x.size)];
-  const maxVol = Math.max(...allSizes, 0.0000001);
+    const allSizes = [...sortedAsks.map(x => x.size), ...sortedBids.map(x => x.size)];
+    const maxVol = Math.max(...allSizes, 0.0000001);
 
-  const touched = new Set();
-  const changedRows = [];
+    const touched = new Set();
 
-  // === Asks: вставляем сверху (редкие цены ближе к спреду) ===
-  sortedAsks.forEach(level => {
-    const priceKey = level.price.toFixed(2);
-    touched.add(priceKey);
-    let row = existingByPrice.get(priceKey);
-    if (!row) {
-      row = document.createElement('div');
-      row.className = 'ob-row';
-      row.dataset.price = priceKey;
-      row.innerHTML = `
-        <div class="ob-bg bg-red" style="width:0%"></div>
-        <span class="text-red price-cell">${formatPrice(level.price)}</span>
-        <span class="size-cell">${level.size.toFixed(6)}</span>
-      `;
-      // вставляем в начало
-      container.insertBefore(row, container.firstChild);
-      existingByPrice.set(priceKey, row);
-      changedRows.push(row);
-    } else {
-      // обновляем порядок: если row не в верхней части, переместим - аккуратно
-      // хотим, чтобы asks были перед bids — но упрощенно: если row находится после firstChild, перемещаем вверх
-      if (container.firstChild !== row) {
+    // Asks
+    sortedAsks.forEach(level => {
+      const priceKey = level.price.toFixed(2);
+      touched.add(priceKey);
+      let row = existingByPrice.get(priceKey);
+      if (!row) {
+        row = document.createElement('div');
+        row.className = 'ob-row';
+        row.dataset.price = priceKey;
+        row.innerHTML = `
+          <div class="ob-bg bg-red" style="width:0%"></div>
+          <span class="text-red price-cell">${formatPrice(level.price)}</span>
+          <span class="size-cell">${level.size.toFixed(5)}</span>
+        `;
         container.insertBefore(row, container.firstChild);
+        existingByPrice.set(priceKey, row);
+      } else {
+        if (container.firstChild !== row) container.insertBefore(row, container.firstChild);
       }
-    }
+      const bg = row.querySelector('.ob-bg');
+      bg.style.width = `${(level.size / maxVol) * 100}%`;
+      row.querySelector('.size-cell').textContent = level.size.toFixed(5);
+    });
 
-    const bg = row.querySelector('.ob-bg');
-    const pct = (level.size / maxVol) * 100;
-    if (bg.style.width !== `${pct}%`) {
-      bg.style.width = `${pct}%`;
-      changedRows.push(row);
-    }
+    // Bids
+    sortedBids.forEach(level => {
+      const priceKey = level.price.toFixed(2);
+      touched.add(priceKey);
+      let row = existingByPrice.get(priceKey);
+      if (!row) {
+        row = document.createElement('div');
+        row.className = 'ob-row';
+        row.dataset.price = priceKey;
+        row.innerHTML = `
+          <div class="ob-bg bg-green" style="width:0%"></div>
+          <span class="text-green price-cell">${formatPrice(level.price)}</span>
+          <span class="size-cell">${level.size.toFixed(5)}</span>
+        `;
+        container.appendChild(row);
+        existingByPrice.set(priceKey, row);
+      } else {
+        if (container.lastChild !== row) container.appendChild(row);
+      }
+      const bg = row.querySelector('.ob-bg');
+      bg.style.width = `${(level.size / maxVol) * 100}%`;
+      row.querySelector('.size-cell').textContent = level.size.toFixed(5);
+    });
 
-    const sizeSpan = row.querySelector('.size-cell');
-    const formattedSize = level.size.toFixed(6);
-    if (sizeSpan.textContent !== formattedSize) {
-      sizeSpan.textContent = formattedSize;
-      changedRows.push(row);
-    }
-  });
+    // Remove old
+    existingByPrice.forEach((row, price) => {
+      if (!touched.has(price)) row.remove();
+    });
 
-  // === Bids: вставляем в конец (нижняя часть) ===
-  sortedBids.forEach(level => {
-    const priceKey = level.price.toFixed(2);
-    touched.add(priceKey);
-    let row = existingByPrice.get(priceKey);
-    if (!row) {
-      row = document.createElement('div');
-      row.className = 'ob-row';
-      row.dataset.price = priceKey;
-      row.innerHTML = `
-        <div class="ob-bg bg-green" style="width:0%"></div>
-        <span class="text-green price-cell">${formatPrice(level.price)}</span>
-        <span class="size-cell">${level.size.toFixed(6)}</span>
-      `;
-      container.appendChild(row);
-      existingByPrice.set(priceKey, row);
-      changedRows.push(row);
-    } else {
-      // Если во время asks вставки row был перемещён — оставим его внизу
-      if (container.lastChild !== row) container.appendChild(row);
-    }
+    const updEl = $('bookUpdated');
+    if (updEl) updEl.textContent = new Date().toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  }
 
-    const bg = row.querySelector('.ob-bg');
-    const pct = (level.size / maxVol) * 100;
-    if (bg.style.width !== `${pct}%`) {
-      bg.style.width = `${pct}%`;
-      changedRows.push(row);
-    }
-
-    const sizeSpan = row.querySelector('.size-cell');
-    const formattedSize = level.size.toFixed(6);
-    if (sizeSpan.textContent !== formattedSize) {
-      sizeSpan.textContent = formattedSize;
-      changedRows.push(row);
-    }
-  });
-
-  // Удаляем уровни, которых нет в новом срезе
-  existingByPrice.forEach((row, price) => {
-    if (!touched.has(price)) {
-      row.remove();
-    }
-  });
-
-  // Подсветка изменений (flash)
-  changedRows.forEach(row => {
-    row.classList.remove('flash');
-    // force reflow
-    void row.offsetWidth;
-    row.classList.add('flash');
-  });
-
-  // Обновляем метку времени
-  const updEl = $('bookUpdated');
-  if (updEl) updEl.textContent = new Date().toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
-}
-
-// Простая обёртка
-function renderOrderBook(buys, sells) {
-  // buys/sells могут быть переданы как buy/sell или bids/asks — нормализуем
-  const b = Array.isArray(buys) ? buys : (buys?.bids || []);
-  const s = Array.isArray(sells) ? sells : (sells?.asks || []);
-  // Отобразим top 10 по умолчанию
-  smartUpdateOrderBook(b, s, 10);
-}
+  function renderOrderBook(buys, sells) {
+    const b = Array.isArray(buys) ? buys : (buys?.bids || []);
+    const s = Array.isArray(sells) ? sells : (sells?.asks || []);
+    smartUpdateOrderBook(b, s, 10);
+  }
 
   function renderTrades(trades) {
     const el = $('tradeHistory');
     if(!Array.isArray(trades)) return;
     
     let html = "";
-    trades.slice().reverse().slice(0, 15).forEach(t => {
+    trades.forEach(t => {
       const color = t.side === 'buy' ? 'text-green' : 'text-red';
       const timeStr = new Date(t.time).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+      // [FIX] Добавил класс trade-time для выравнивания
       html += `
         <div class="ob-row">
             <span class="${color}">${formatPrice(t.price)}</span>
-            <span style="opacity:0.7; font-size:10px;">${timeStr}</span>
+            <span class="trade-time">${timeStr}</span>
         </div>`;
     });
     el.innerHTML = html;
@@ -866,23 +738,15 @@ function renderOrderBook(buys, sells) {
   // ————————————————————————————————————————————
   async function openPosition(type) {
     const margin = Number($('sizeInput').value);
-    if(!margin || margin <= 0) return alert("Please enter valid margin");
+    if(!margin || margin <= 0) return alert("Enter margin");
     
     const size = margin * currentLeverage; 
-    
     if(tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
 
     try {
       const res = await fetch(API_BASE + "/api/order/open", {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ 
-            userId: currentUserId, 
-            pair: selectedPair, 
-            type, 
-            size, 
-            leverage: currentLeverage, 
-            entryPrice: currentPrice 
-        })
+        body: JSON.stringify({ userId: currentUserId, pair: selectedPair, type, size, leverage: currentLeverage, entryPrice: currentPrice })
       });
       const data = await res.json();
       if(data.ok) {
@@ -891,14 +755,13 @@ function renderOrderBook(buys, sells) {
         renderPositions();
         if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       } else { 
-          alert(data.error || "Error opening position"); 
-          if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+          alert(data.error || "Error"); 
       }
     } catch(e) { console.error(e); }
   }
 
   async function closePosition(id) {
-    if(!confirm("Close this position?")) return;
+    if(!confirm("Close?")) return;
     try {
       const res = await fetch(API_BASE + "/api/order/close", {
         method:"POST", headers:{"Content-Type":"application/json"},
@@ -920,14 +783,18 @@ function renderOrderBook(buys, sells) {
   // ————————————————————————————————————————————
   // INIT
   // ————————————————————————————————————————————
-  setProgress(20, "Authenticating...");
+  const loaderEl = $('app-loader');
+  const loaderBar = $('loaderBar');
+  function setProgress(pct, txt) { loaderBar.style.width = pct + '%'; $('loaderText').textContent = txt; }
+
+  setProgress(20, "AUTH...");
   await initSession();
   
-  setProgress(50, "Connecting stream...");
+  setProgress(50, "STREAM...");
   connectWS();
   
   await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
-  setProgress(100, "Ready");
+  setProgress(100, "READY");
   
   setTimeout(() => {
     loaderEl.classList.add('hidden');
