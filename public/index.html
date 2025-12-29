@@ -22,6 +22,7 @@
   --accent-red-transparent: rgba(246, 70, 93, 0.15);
   --white: #EAECEF;
   --border: rgba(255, 255, 255, 0.08);
+  --gradient-gold: linear-gradient(135deg, #F0B90B 0%, #D49D00 100%);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -32,8 +33,24 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 
-/* ————— LAYOUT ————— */
-.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+/* ————— LAYOUT & VIEWS ————— */
+.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; position: relative; }
+
+/* View Switching */
+.view-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.view-section.hidden {
+  display: none;
+  opacity: 0;
+  pointer-events: none;
+}
 
 /* HEADER */
 .header {
@@ -142,64 +159,16 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .btn-short { background: var(--accent-red); color: #2d0a0f; }
 
 /* ————— ORDER BOOK & TRADES ————— */
-
-.ob-header {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  font-size: 10px;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 8px;
-  padding: 0 6px;
-}
-
-.ob-container {
-  font-size: 12px;
-  font-family: 'Roboto Mono', monospace;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  overflow: hidden;
-}
-
-.ob-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr; /* 50% / 50% */
-  align-items: center;
-  height: 20px;
-  padding: 0 6px;
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-/* Выравнивание времени вправо */
-.trade-time {
-  text-align: right;
-  opacity: 0.7;
-}
-
-.ob-bg {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  z-index: 0;
-  opacity: 0.18;
-  transition: width 0.2s ease;
-}
-
+.ob-header { display: grid; grid-template-columns: 1fr 1fr; font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; padding: 0 6px; }
+.ob-container { font-size: 12px; font-family: 'Roboto Mono', monospace; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+.ob-row { position: relative; display: grid; grid-template-columns: 1fr 1fr; align-items: center; height: 20px; padding: 0 6px; line-height: 1; white-space: nowrap; overflow: hidden; }
+.trade-time { text-align: right; opacity: 0.7; }
+.ob-bg { position: absolute; top: 0; bottom: 0; z-index: 0; opacity: 0.18; transition: width 0.2s ease; }
 .bg-red { left: 0; background: linear-gradient(to right, var(--accent-red), transparent); }
 .bg-green { right: 0; background: linear-gradient(to left, var(--accent-green), transparent); }
-
 .ob-row span { position: relative; z-index: 1; }
-.price-cell { font-weight: 600; }
-.size-cell { text-align: right; opacity: 0.9; }
-
 .text-green { color: var(--accent-green); }
 .text-red   { color: var(--accent-red); }
-
-/* [FIX] Убрал класс .flash и анимацию @keyframes, чтобы не светилось */
 
 /* ————— POSITIONS ————— */
 .pos-list { display: flex; flex-direction: column; gap: 8px; }
@@ -210,6 +179,106 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .close-btn { 
   background: transparent; border: 1px solid var(--border); color: var(--white); 
   padding: 6px 12px; border-radius: 4px; font-size: 11px; margin-top: 10px; width: 100%; cursor: pointer; font-weight: 600;
+}
+
+/* ————— PROFILE STYLES (NEW) ————— */
+.profile-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  overflow-y: auto;
+  gap: 16px;
+  background: var(--bg);
+}
+
+.profile-header-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.profile-avatar-xl {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  border: 3px solid var(--panel-light);
+  overflow: hidden;
+  background: #333;
+}
+.profile-avatar-xl img { width: 100%; height: 100%; object-fit: cover; }
+
+.profile-name { font-size: 20px; font-weight: 700; color: var(--white); }
+.profile-id { font-size: 12px; color: var(--muted); font-family: monospace; }
+
+.profile-balance-block {
+  margin-top: 8px;
+  background: rgba(255,255,255,0.03);
+  padding: 12px 24px;
+  border-radius: 12px;
+}
+.profile-balance-label { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+.profile-balance-val { font-size: 24px; font-weight: 700; color: #F0B90B; font-family: 'Roboto Mono'; }
+
+.wallet-actions {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; margin-top: 8px;
+}
+.btn-wallet {
+  padding: 12px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--panel-light); color: var(--white); font-weight: 600; font-size: 14px;
+  cursor: not-allowed; opacity: 0.6; /* Пока не кликабельные */
+}
+
+/* Stats Block */
+.stats-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.stat-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.stat-label { font-size: 11px; color: var(--muted); }
+.stat-value { font-size: 16px; font-weight: 700; font-family: 'Roboto Mono'; }
+
+/* Filters */
+.time-filter {
+  display: flex; background: var(--panel); padding: 4px; border-radius: 8px; border: 1px solid var(--border);
+}
+.tf-item {
+  flex: 1; text-align: center; padding: 6px; font-size: 12px; color: var(--muted);
+  border-radius: 6px; cursor: pointer; transition: 0.2s;
+}
+.tf-item.active { background: var(--panel-light); color: var(--white); font-weight: 600; }
+
+/* History List */
+.history-section-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--white); }
+.history-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 40px; }
+
+.history-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.hc-header { display: flex; justify-content: space-between; align-items: center; }
+.hc-pair { font-weight: 700; font-size: 14px; }
+.hc-type { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
+.hc-type.long { background: var(--accent-green-transparent); color: var(--accent-green); }
+.hc-type.short { background: var(--accent-red-transparent); color: var(--accent-red); }
+
+.hc-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.hc-val { color: var(--white); font-family: 'Roboto Mono'; }
+.hc-pnl { font-weight: 700; font-family: 'Roboto Mono'; font-size: 14px; }
+
+.btn-back {
+  background: var(--panel); border: 1px solid var(--border); color: var(--white);
+  padding: 12px; width: 100%; border-radius: 8px; font-weight: 600; cursor: pointer;
+  margin-top: auto;
 }
 
 /* ————— LOADER ————— */
@@ -235,91 +304,145 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 </div>
 
 <div class="app">
-  <header class="header">
-    <div class="header-left">
-      <img src="https://i.postimg.cc/D0Zvnmdq/logobirzhi2.png" alt="Logo" class="logo-img">
-      
-      <div class="pair-dropdown" id="pairDropdown">
-          <div class="pair-trigger" id="pairTrigger">
-              <span id="triggerText">BTC/USD</span>
-              <span class="arrow">▼</span>
-          </div>
-          <div class="pair-menu">
-              <div class="pair-item active" data-pair="BTC-USD">BTC/USD</div>
-              <div class="pair-item" data-pair="ETH-USD">ETH/USD</div>
-          </div>
-      </div>
-    </div>
-    <div class="user-area" id="btnProfile">
-      <div class="balance-group">
-        <span class="balance-label">Balance</span>
-        <span class="balance-val" id="headerBalance">0.00 VP</span>
-      </div>
-      <div class="avatar-sm"><img id="avatarImg" src="" style="display:none"></div>
-    </div>
-  </header>
-
-  <main class="container">
-    <div class="left-col">
-      <div class="card">
-        <div class="market-header">
-          <div>
-            <div style="color:var(--muted); font-size:11px; margin-bottom:4px;">Market Price</div>
-            <div class="price-display text-green" id="priceDisplay">--.--</div>
-          </div>
+  
+  <div id="view-trade" class="view-section">
+    <header class="header">
+      <div class="header-left">
+        <img src="https://i.postimg.cc/D0Zvnmdq/logobirzhi2.png" alt="Logo" class="logo-img">
+        
+        <div class="pair-dropdown" id="pairDropdown">
+            <div class="pair-trigger" id="pairTrigger">
+                <span id="triggerText">BTC/USD</span>
+                <span class="arrow">▼</span>
+            </div>
+            <div class="pair-menu">
+                <div class="pair-item active" data-pair="BTC-USD">BTC/USD</div>
+                <div class="pair-item" data-pair="ETH-USD">ETH/USD</div>
+            </div>
         </div>
-        <div class="chart-container" id="chartCard"><div id="chart" style="width: 100%; height: 100%;"></div></div>
-        <div class="controls-area">
-          <div class="input-group">
-            <span class="input-label">Margin (VP)</span>
-            <input type="number" id="sizeInput" class="main-input" value="100" placeholder="10-10000" />
-          </div>
-          <div class="leverage-wrap">
-            <div class="lev-header"><span>Leverage</span><span class="lev-val" id="leverageValText">10x</span></div>
-            <input type="range" class="range-slider" id="leverageSlider" min="1" max="50" step="1" value="10">
-            <div class="chips-row" id="leverageChips">
-              <div class="chip" data-v="1">1x</div>
-              <div class="chip" data-v="5">5x</div>
-              <div class="chip active" data-v="10">10x</div>
-              <div class="chip" data-v="20">20x</div>
-              <div class="chip" data-v="50">50x</div>
+      </div>
+      <div class="user-area" id="btnProfile">
+        <div class="balance-group">
+          <span class="balance-label">Balance</span>
+          <span class="balance-val" id="headerBalance">0.00 VP</span>
+        </div>
+        <div class="avatar-sm"><img id="avatarImg" src="" style="display:none"></div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="left-col">
+        <div class="card">
+          <div class="market-header">
+            <div>
+              <div style="color:var(--muted); font-size:11px; margin-bottom:4px;">Market Price</div>
+              <div class="price-display text-green" id="priceDisplay">--.--</div>
             </div>
           </div>
-          <div class="action-btns">
-            <button id="openLong" class="btn-trade btn-long">Buy / Long <span>Up</span></button>
-            <button id="openShort" class="btn-trade btn-short">Sell / Short <span>Down</span></button>
+          <div class="chart-container" id="chartCard"><div id="chart" style="width: 100%; height: 100%;"></div></div>
+          <div class="controls-area">
+            <div class="input-group">
+              <span class="input-label">Margin (VP)</span>
+              <input type="number" id="sizeInput" class="main-input" value="100" placeholder="10-10000" />
+            </div>
+            <div class="leverage-wrap">
+              <div class="lev-header"><span>Leverage</span><span class="lev-val" id="leverageValText">10x</span></div>
+              <input type="range" class="range-slider" id="leverageSlider" min="1" max="50" step="1" value="10">
+              <div class="chips-row" id="leverageChips">
+                <div class="chip" data-v="1">1x</div>
+                <div class="chip" data-v="5">5x</div>
+                <div class="chip active" data-v="10">10x</div>
+                <div class="chip" data-v="20">20x</div>
+                <div class="chip" data-v="50">50x</div>
+              </div>
+            </div>
+            <div class="action-btns">
+              <button id="openLong" class="btn-trade btn-long">Buy / Long <span>Up</span></button>
+              <button id="openShort" class="btn-trade btn-short">Sell / Short <span>Down</span></button>
+            </div>
           </div>
         </div>
-      </div>
-      <div style="margin-top: 12px;">
-        <div style="font-weight: 700; margin-bottom: 8px; font-size: 14px; padding-left: 4px;">Open Positions</div>
-        <div id="positionsList" class="pos-list"><div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div></div>
-      </div>
-    </div>
-
-    <div class="right-col">
-      <div class="card" style="display:flex; flex-direction:column; min-height: 300px;">
-        <div style="font-weight: 700; margin-bottom: 10px; font-size: 14px; display:flex; justify-content:space-between; align-items:center;">
-          <span>Order Book</span>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <span id="bookPairLabel" style="color:var(--muted); font-size:11px;">BTC-USD</span>
-            <span id="bookUpdated" style="color:var(--muted); font-size:11px;">—</span>
-          </div>
+        <div style="margin-top: 12px;">
+          <div style="font-weight: 700; margin-bottom: 8px; font-size: 14px; padding-left: 4px;">Open Positions</div>
+          <div id="positionsList" class="pos-list"><div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div></div>
         </div>
-        <div class="ob-header"><span>Price</span><span style="text-align:right">Amount</span></div>
-        <div class="ob-container" id="orderBook" style="flex:1;"></div>
       </div>
 
-      <div class="card" style="display:flex; flex-direction:column; min-height: 250px;">
-         <div style="font-weight: 700; margin-bottom: 10px; font-size: 14px; display:flex; justify-content:space-between;">
-           <span>Last Trades</span>
-           <span style="color:var(--muted); font-size:11px;">Real-time</span>
-         </div>
-         <div class="ob-header"><span>Price</span><span style="text-align:right">Time</span></div>
-         <div class="ob-container" id="tradeHistory" style="flex:1;"></div>
+      <div class="right-col">
+        <div class="card" style="display:flex; flex-direction:column; min-height: 300px;">
+          <div style="font-weight: 700; margin-bottom: 10px; font-size: 14px; display:flex; justify-content:space-between; align-items:center;">
+            <span>Order Book</span>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span id="bookPairLabel" style="color:var(--muted); font-size:11px;">BTC-USD</span>
+              <span id="bookUpdated" style="color:var(--muted); font-size:11px;">—</span>
+            </div>
+          </div>
+          <div class="ob-header"><span>Price</span><span style="text-align:right">Amount</span></div>
+          <div class="ob-container" id="orderBook" style="flex:1;"></div>
+        </div>
+
+        <div class="card" style="display:flex; flex-direction:column; min-height: 250px;">
+           <div style="font-weight: 700; margin-bottom: 10px; font-size: 14px; display:flex; justify-content:space-between;">
+             <span>Last Trades</span>
+             <span style="color:var(--muted); font-size:11px;">Real-time</span>
+           </div>
+           <div class="ob-header"><span>Price</span><span style="text-align:right">Time</span></div>
+           <div class="ob-container" id="tradeHistory" style="flex:1;"></div>
+        </div>
       </div>
+    </main>
+  </div>
+
+  <div id="view-profile" class="view-section hidden">
+    <div class="profile-container">
+      
+      <div class="profile-header-card">
+        <div class="profile-avatar-xl"><img id="profileAvatarBig" src=""></div>
+        <div>
+          <div class="profile-name" id="profileName">User</div>
+          <div class="profile-id" id="profileId">ID: --</div>
+        </div>
+        
+        <div class="profile-balance-block">
+          <div class="profile-balance-label">Total Balance</div>
+          <div class="profile-balance-val" id="profileBalance">0.00 VP</div>
+        </div>
+
+        <div class="wallet-actions">
+          <button class="btn-wallet">Deposit</button>
+          <button class="btn-wallet">Withdraw</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-label">Total PnL</span>
+          <span class="stat-value" id="statPnL">0.00</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Total Trades</span>
+          <span class="stat-value" id="statCount">0</span>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:14px; font-weight:700; margin-bottom:8px;">History Report</div>
+        <div class="time-filter">
+          <div class="tf-item" onclick="setHistoryFilter('day', this)">Day</div>
+          <div class="tf-item" onclick="setHistoryFilter('week', this)">Week</div>
+          <div class="tf-item" onclick="setHistoryFilter('month', this)">Month</div>
+          <div class="tf-item active" onclick="setHistoryFilter('all', this)">All</div>
+        </div>
+      </div>
+
+      <div class="history-list" id="historyList">
+        <div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No trading history yet</div>
+      </div>
+
+      <button class="btn-back" id="btnBackToTrade">Back to Trading</button>
     </div>
-  </main>
+  </div>
+
 </div>
 
 <script>
@@ -329,7 +452,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   // ————————————————————————————————————————————
   // CONFIG
   // ————————————————————————————————————————————
-  // Если тестируешь локально, меняй на localhost. Для продакшена оставь render
   const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com"; 
   const API_BASE = "https://tradingbot-p9n8.onrender.com";
   let currentUserId = null;
@@ -340,15 +462,17 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     try { tg.expand(); } catch(e){}
     tg.setHeaderColor('#1E2329');
     tg.setBackgroundColor('#0B0E11');
+    tg.enableClosingConfirmation();
   }
 
   let selectedPair = "BTC-USD";
   let currentPrice = 0;
-  let profile = { balance: 0 };
+  let profile = { balance: 0, name: "Trader", id: 0, photo: "" };
   let currentLeverage = 10;
-  
-  // Локальный буфер сделок
   let localTrades = [];
+  
+  // Локальное хранилище закрытых сделок (так как сервер пока не хранит историю)
+  let closedHistory = []; 
 
   // ————————————————————————————————————————————
   // UTILS
@@ -364,6 +488,113 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   function normalizePair(p) {
     if (!p) return "";
     return String(p).trim().replace("/", "-").toUpperCase();
+  }
+
+  // ————————————————————————————————————————————
+  // NAVIGATION & VIEWS
+  // ————————————————————————————————————————————
+  const viewTrade = $('view-trade');
+  const viewProfile = $('view-profile');
+
+  function switchView(viewName) {
+    if(viewName === 'profile') {
+      renderProfile(); // Обновляем данные перед показом
+      viewTrade.classList.add('hidden');
+      viewProfile.classList.remove('hidden');
+      if(tg) tg.BackButton.show();
+    } else {
+      viewProfile.classList.add('hidden');
+      viewTrade.classList.remove('hidden');
+      if(tg) tg.BackButton.hide();
+    }
+  }
+
+  $('btnProfile').onclick = () => switchView('profile');
+  $('btnBackToTrade').onclick = () => switchView('trade');
+  if(tg) {
+    tg.BackButton.onClick(() => switchView('trade'));
+  }
+
+  // ————————————————————————————————————————————
+  // PROFILE LOGIC
+  // ————————————————————————————————————————————
+  let currentFilter = 'all';
+
+  window.setHistoryFilter = function(filter, el) {
+    document.querySelectorAll('.tf-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    currentFilter = filter;
+    renderHistoryList();
+  }
+
+  function renderProfile() {
+    // Basic Info
+    $('profileName').textContent = profile.name || "Trader";
+    $('profileId').textContent = "ID: " + profile.id;
+    $('profileBalance').textContent = profile.balance.toFixed(2) + " VP";
+    if(profile.photo) $('profileAvatarBig').src = profile.photo;
+
+    // Calc Stats
+    let totalPnL = 0;
+    closedHistory.forEach(h => totalPnL += h.pnl);
+    
+    const pnlEl = $('statPnL');
+    pnlEl.textContent = (totalPnL > 0 ? "+" : "") + totalPnL.toFixed(2) + " VP";
+    pnlEl.className = "stat-value " + (totalPnL >= 0 ? "text-green" : "text-red");
+    
+    $('statCount').textContent = closedHistory.length;
+
+    renderHistoryList();
+  }
+
+  function renderHistoryList() {
+    const list = $('historyList');
+    list.innerHTML = "";
+
+    const now = Date.now();
+    let filtered = closedHistory.filter(h => {
+      if(currentFilter === 'all') return true;
+      const diff = now - h.timestamp;
+      if(currentFilter === 'day') return diff < 86400000;
+      if(currentFilter === 'week') return diff < 604800000;
+      if(currentFilter === 'month') return diff < 2592000000;
+      return true;
+    });
+
+    // Сортировка: новые сверху
+    filtered.sort((a,b) => b.timestamp - a.timestamp);
+
+    if(filtered.length === 0) {
+      list.innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No history for this period</div>';
+      return;
+    }
+
+    filtered.forEach(h => {
+      const pnlClass = h.pnl >= 0 ? "text-green" : "text-red";
+      const dateStr = new Date(h.timestamp).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+      
+      const div = document.createElement('div');
+      div.className = "history-card";
+      div.innerHTML = `
+        <div class="hc-header">
+          <div class="hc-pair">${h.pair}</div>
+          <div class="hc-type ${h.type === 'LONG' ? 'long' : 'short'}">${h.type} x${h.leverage}</div>
+        </div>
+        <div class="hc-row">
+          <span>Size: <span class="hc-val">${h.size.toFixed(0)}</span></span>
+          <span>${dateStr}</span>
+        </div>
+        <div class="hc-row">
+          <span>Entry: <span class="hc-val">${formatPrice(h.entry)}</span></span>
+          <span>Exit: <span class="hc-val">${formatPrice(h.exit)}</span></span>
+        </div>
+        <div class="hc-row" style="margin-top:4px; border-top:1px solid var(--border); padding-top:4px;">
+          <span>PnL</span>
+          <span class="hc-pnl ${pnlClass}">${h.pnl > 0 ? '+' : ''}${h.pnl.toFixed(2)} VP</span>
+        </div>
+      `;
+      list.appendChild(div);
+    });
   }
 
   // ————————————————————————————————————————————
@@ -398,19 +629,15 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     $('priceDisplay').textContent = "--.--";
     $('orderBook').innerHTML = '';
     $('tradeHistory').innerHTML = "";
-    
-    // [FIX] Сброс локального буфера сделок
     localTrades = [];
 
-    // [FIX] Сброс Графика полностью
+    // Сброс Графика
     candleSeries.setData([]);
     lastCandle = null;
     chart.timeScale().fitContent();
-    // [FIX] Принудительный сброс шкалы цены, чтобы не оставался масштаб BTC
     chart.priceScale('right').applyOptions({ autoScale: true });
 
     if (socket && socket.readyState === WebSocket.OPEN) {
-      // Отправляем subscribe, сервер сам отпишет старую пару
       socket.send(JSON.stringify({ type: "subscribe", pair: newPair }));
     }
   }
@@ -441,7 +668,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
    }).observe(chartEl);
 
   // ————————————————————————————————————————————
-  // LOGIC
+  // LEVERAGE
   // ————————————————————————————————————————————
   const slider = $('leverageSlider');
   const levDisplay = $('leverageValText');
@@ -477,8 +704,15 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       if(data.ok && data.user) {
         currentUserId = data.user.user_id;
         profile.balance = Number(data.user.balance || 0);
+        profile.name = (data.user.first_name || "User");
+        profile.id = data.user.user_id;
+        
         window._positions = data.positions || [];
-        if(data.user.photo_url) { $('avatarImg').src = data.user.photo_url; $('avatarImg').style.display = 'block'; }
+        if(data.user.photo_url) { 
+          profile.photo = data.user.photo_url;
+          $('avatarImg').src = data.user.photo_url; 
+          $('avatarImg').style.display = 'block'; 
+        }
         updateBalanceUI();
         renderPositions();
       }
@@ -489,11 +723,9 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   let lastCandle = null;
 
   function connectWS() {
-    console.log("[WS] Connecting...");
     socket = new WebSocket(WSS_PRICE_URL);
 
     socket.onopen = () => {
-      console.log("[WS] Open. Subscribing to", selectedPair);
       socket.send(JSON.stringify({ type: "subscribe", pair: selectedPair }));
     };
 
@@ -505,7 +737,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       const msgPairNorm = normalizePair(msg.pair);
       const selPairNorm = normalizePair(selectedPair);
 
-      // 1. ORDERBOOK (Стакан)
       if (msg.type === "orderBook") {
         if (!msg.pair || msgPairNorm === selPairNorm) {
           renderOrderBook(msg.buy || msg.bids, msg.sell || msg.asks);
@@ -513,7 +744,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         return;
       }
 
-      // 2. PRICE (Цена)
       if (msg.type === "price" && msgPairNorm === selPairNorm) {
         const prevPrice = currentPrice;
         currentPrice = Number(msg.price);
@@ -521,7 +751,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         if (prevPrice !== 0) {
           $('priceDisplay').className = currentPrice >= prevPrice ? "price-display text-green" : "price-display text-red";
         }
-        // Обновляем свечу
         if (lastCandle) {
           const now = Math.floor(Date.now()/1000);
           const minTime = now - (now % 60);
@@ -539,12 +768,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         return;
       }
 
-      // 3. HISTORY (История графика)
       if (msg.type === "history" && msgPairNorm === selPairNorm) {
         const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
         candleSeries.setData(data);
         chart.timeScale().fitContent();
-        // Принудительный рескейл при загрузке истории
         chart.priceScale('right').applyOptions({ autoScale: true });
 
         if (data.length) {
@@ -556,14 +783,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         return;
       }
 
-      // 4. TRADES (Лента сделок) - [FIXED]
       if (msg.type === "trades" && msgPairNorm === selPairNorm) {
         const newTrades = msg.trades || [];
-        // Добавляем новые сделки в начало массива
         localTrades = [...newTrades, ...localTrades];
-        // Ограничиваем длину (например, 20 штук)
         if (localTrades.length > 20) localTrades = localTrades.slice(0, 20);
-        // Отрисовываем
         renderTrades(localTrades);
         return;
       }
@@ -616,7 +839,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     list.querySelectorAll('.close-btn').forEach(b => b.onclick = () => closePosition(b.dataset.id));
   }
 
-  // [FIX] Убрал flash-анимацию из функции обновления стакана
   function smartUpdateOrderBook(buys = [], sells = [], topLevels = 10) {
     const container = $('orderBook');
     const maxLevels = topLevels;
@@ -723,7 +945,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     trades.forEach(t => {
       const color = t.side === 'buy' ? 'text-green' : 'text-red';
       const timeStr = new Date(t.time).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
-      // [FIX] Добавил класс trade-time для выравнивания
       html += `
         <div class="ob-row">
             <span class="${color}">${formatPrice(t.price)}</span>
@@ -761,6 +982,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   }
 
   async function closePosition(id) {
+    // 1. Находим позицию, которую закрываем
+    const pos = window._positions.find(p => (p.id == id || p._id == id));
+    if(!pos) return;
+
     if(!confirm("Close?")) return;
     try {
       const res = await fetch(API_BASE + "/api/order/close", {
@@ -769,8 +994,30 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       });
       const data = await res.json();
       if(data.ok) {
+        // 2. Рассчитываем PnL для истории
+        const entry = Number(pos.entry_price || pos.entryPrice);
+        const size = Number(pos.size);
+        const type = (pos.type || "LONG").toUpperCase();
+        let pnl = 0;
+        const diff = (currentPrice - entry) / entry;
+        pnl = diff * size * (type==="SHORT"? -1 : 1);
+
+        // 3. Сохраняем в локальную историю
+        closedHistory.push({
+          pair: selectedPair,
+          type: type,
+          leverage: pos.leverage,
+          entry: entry,
+          exit: currentPrice,
+          size: size,
+          pnl: pnl,
+          timestamp: Date.now()
+        });
+
+        // 4. Удаляем из открытых
         window._positions = window._positions.filter(p => (p.id!=id && p._id!=id));
         if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
+        
         renderPositions();
         if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       }
