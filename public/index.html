@@ -22,7 +22,8 @@
   --accent-red-transparent: rgba(246, 70, 93, 0.15);
   --white: #EAECEF;
   --border: rgba(255, 255, 255, 0.08);
-  --gradient-gold: linear-gradient(135deg, #F0B90B 0%, #D49D00 100%);
+  --gold: #F0B90B;
+  --gold-gradient: linear-gradient(135deg, #F0B90B 0%, #B88A00 100%);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -44,12 +45,21 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   height: 100%;
   overflow: hidden;
   transition: opacity 0.3s ease, transform 0.3s ease;
+  position: absolute; width: 100%; top:0; left:0; /* Stack views */
+  background: var(--bg);
 }
 
 .view-section.hidden {
   display: none;
   opacity: 0;
   pointer-events: none;
+  z-index: -1;
+}
+
+.view-section.active {
+    display: flex;
+    opacity: 1;
+    z-index: 10;
 }
 
 /* HEADER */
@@ -181,85 +191,84 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   padding: 6px 12px; border-radius: 4px; font-size: 11px; margin-top: 10px; width: 100%; cursor: pointer; font-weight: 600;
 }
 
-/* ————— PROFILE STYLES (NEW) ————— */
+/* ————— NEW PROFILE DESIGN (BINANCE STYLE) ————— */
 .profile-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 16px;
-  overflow-y: auto;
-  gap: 16px;
+  flex: 1; display: flex; flex-direction: column;
+  padding: 16px; overflow-y: auto; gap: 20px;
   background: var(--bg);
 }
 
-.profile-header-card {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  text-align: center;
+.pro-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
 }
+.pro-user { display: flex; align-items: center; gap: 12px; }
+.pro-avatar { width: 44px; height: 44px; border-radius: 50%; background: #333; overflow: hidden; border: 2px solid var(--panel); }
+.pro-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.pro-name { font-size: 16px; font-weight: 700; color: var(--white); line-height: 1.2; }
+.pro-id { font-size: 11px; color: var(--muted); font-family: monospace; background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: inline-block; }
 
-.profile-avatar-xl {
-  width: 80px; height: 80px;
-  border-radius: 50%;
-  border: 3px solid var(--panel-light);
-  overflow: hidden;
-  background: #333;
+.asset-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 16px; padding: 20px;
+  position: relative; overflow: hidden;
 }
-.profile-avatar-xl img { width: 100%; height: 100%; object-fit: cover; }
+.asset-label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.asset-val { font-size: 26px; font-weight: 700; color: var(--white); font-family: 'Roboto Mono'; margin: 8px 0; }
+.asset-approx { font-size: 13px; color: var(--muted); }
+.asset-pnl { font-size: 12px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.05); display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
 
-.profile-name { font-size: 20px; font-weight: 700; color: var(--white); }
-.profile-id { font-size: 12px; color: var(--muted); font-family: monospace; }
-
-.profile-balance-block {
-  margin-top: 8px;
-  background: rgba(255,255,255,0.03);
-  padding: 12px 24px;
-  border-radius: 12px;
+.pro-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.pro-btn {
+  background: var(--panel-light); border: none; color: var(--white);
+  padding: 10px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer;
+  transition: 0.2s;
 }
-.profile-balance-label { font-size: 11px; color: var(--muted); text-transform: uppercase; }
-.profile-balance-val { font-size: 24px; font-weight: 700; color: #F0B90B; font-family: 'Roboto Mono'; }
+.pro-btn.primary { background: var(--gold); color: #000; }
 
-.wallet-actions {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; margin-top: 8px;
-}
-.btn-wallet {
-  padding: 12px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--panel-light); color: var(--white); font-weight: 600; font-size: 14px;
-  cursor: not-allowed; opacity: 0.6; /* Пока не кликабельные */
-}
-
-/* Stats Block */
-.stats-grid {
+/* Analysis Block */
+.analysis-block {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
 }
-.stat-card {
-  background: var(--panel); border: 1px solid var(--border);
-  border-radius: 12px; padding: 12px;
-  display: flex; flex-direction: column; gap: 4px;
+.an-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
-.stat-label { font-size: 11px; color: var(--muted); }
-.stat-value { font-size: 16px; font-weight: 700; font-family: 'Roboto Mono'; }
+.an-title { font-size: 11px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; width: 100%; text-align: left; }
 
-/* Filters */
-.time-filter {
-  display: flex; background: var(--panel); padding: 4px; border-radius: 8px; border: 1px solid var(--border);
+/* Donut Chart CSS */
+.donut-chart {
+  width: 70px; height: 70px; border-radius: 50%;
+  background: conic-gradient(var(--accent-green) 0% 0%, var(--panel-light) 0% 100%);
+  position: relative; display: flex; align-items: center; justify-content: center;
+  margin-bottom: 4px;
 }
-.tf-item {
-  flex: 1; text-align: center; padding: 6px; font-size: 12px; color: var(--muted);
-  border-radius: 6px; cursor: pointer; transition: 0.2s;
+.donut-chart::after {
+  content: ''; position: absolute; width: 56px; height: 56px;
+  background: var(--panel); border-radius: 50%;
 }
-.tf-item.active { background: var(--panel-light); color: var(--white); font-weight: 600; }
+.donut-val { position: absolute; z-index: 2; font-size: 12px; font-weight: 700; color: var(--white); }
+.an-text { font-size: 12px; color: var(--white); font-weight: 600; margin-top: 4px; }
 
-/* History List */
-.history-section-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--white); }
-.history-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 40px; }
+/* Rewards Banner */
+.rewards-banner {
+  background: linear-gradient(90deg, #1E2329 0%, #252a33 100%);
+  border: 1px solid rgba(240, 185, 11, 0.3);
+  border-radius: 12px; padding: 16px;
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; position: relative; overflow: hidden;
+}
+.rewards-banner::before {
+  content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+  background: var(--gold);
+}
+.rb-content h3 { margin: 0; font-size: 15px; color: var(--white); }
+.rb-content p { margin: 4px 0 0; font-size: 11px; color: var(--muted); }
+.rb-icon { font-size: 20px; }
 
+/* History List Clean */
+.hist-title { font-size: 15px; font-weight: 700; margin: 10px 0; }
+.history-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 60px; }
 .history-card {
   background: var(--panel); border: 1px solid var(--border);
   border-radius: 12px; padding: 14px;
@@ -270,15 +279,47 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .hc-type { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
 .hc-type.long { background: var(--accent-green-transparent); color: var(--accent-green); }
 .hc-type.short { background: var(--accent-red-transparent); color: var(--accent-red); }
-
 .hc-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
 .hc-val { color: var(--white); font-family: 'Roboto Mono'; }
 .hc-pnl { font-weight: 700; font-family: 'Roboto Mono'; font-size: 14px; }
 
-.btn-back {
-  background: var(--panel); border: 1px solid var(--border); color: var(--white);
-  padding: 12px; width: 100%; border-radius: 8px; font-weight: 600; cursor: pointer;
-  margin-top: auto;
+/* ————— REWARDS VIEW STYLES ————— */
+.rewards-container {
+    padding: 20px; display: flex; flex-direction: column; gap: 24px;
+}
+.rewards-header { text-align: center; padding: 20px 0; }
+.rh-title { font-size: 22px; font-weight: 700; color: var(--white); margin-bottom: 8px; }
+.rh-sub { font-size: 13px; color: var(--muted); }
+
+.progress-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 20px;
+}
+.prog-info { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 12px; color: var(--white); font-weight: 600; }
+.prog-track { height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; position: relative; }
+.prog-fill { height: 100%; background: var(--gold-gradient); width: 0%; transition: width 0.5s ease; border-radius: 4px; }
+
+.milestones { display: flex; justify-content: space-between; margin-top: 12px; }
+.ms-item { text-align: center; width: 30px; position: relative; }
+.ms-dot { width: 10px; height: 10px; background: #333; border: 2px solid var(--muted); border-radius: 50%; margin: 0 auto 4px; z-index: 2; position: relative; }
+.ms-item.active .ms-dot { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px rgba(240, 185, 11, 0.4); }
+.ms-val { font-size: 10px; color: var(--muted); }
+
+.task-list { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+.task-item {
+    background: rgba(255,255,255,0.03); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center;
+}
+.task-left h4 { margin: 0 0 4px; font-size: 14px; }
+.task-left p { margin: 0; font-size: 11px; color: var(--muted); }
+.btn-claim {
+    background: var(--gold); color: #000; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer;
+}
+.btn-claim:disabled { background: var(--panel-light); color: var(--muted); cursor: not-allowed; }
+
+.btn-back-float {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--panel-light); border: 1px solid var(--border); color: var(--white);
+    padding: 12px 24px; border-radius: 20px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    z-index: 900;
 }
 
 /* ————— LOADER ————— */
@@ -305,7 +346,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
 <div class="app">
   
-  <div id="view-trade" class="view-section">
+  <div id="view-trade" class="view-section active">
     <header class="header">
       <div class="header-left">
         <img src="https://i.postimg.cc/D0Zvnmdq/logobirzhi2.png" alt="Logo" class="logo-img">
@@ -323,7 +364,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       </div>
       <div class="user-area" id="btnProfile">
         <div class="balance-group">
-          <span class="balance-label">Balance</span>
+          <span class="balance-label">Total Assets</span>
           <span class="balance-val" id="headerBalance">0.00 VP</span>
         </div>
         <div class="avatar-sm"><img id="avatarImg" src="" style="display:none"></div>
@@ -396,51 +437,105 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   <div id="view-profile" class="view-section hidden">
     <div class="profile-container">
       
-      <div class="profile-header-card">
-        <div class="profile-avatar-xl"><img id="profileAvatarBig" src=""></div>
-        <div>
-          <div class="profile-name" id="profileName">User</div>
-          <div class="profile-id" id="profileId">ID: --</div>
+      <div class="pro-header">
+        <div class="pro-user">
+          <div class="pro-avatar"><img id="profileAvatarBig" src=""></div>
+          <div>
+             <div class="pro-name" id="profileName">Trader</div>
+             <div class="pro-id" id="profileId">ID: --</div>
+          </div>
         </div>
-        
-        <div class="profile-balance-block">
-          <div class="profile-balance-label">Total Balance</div>
-          <div class="profile-balance-val" id="profileBalance">0.00 VP</div>
-        </div>
+        <div class="btn-close" id="btnCloseProfile" style="color:var(--muted); padding:8px; cursor:pointer;">✕</div>
+      </div>
 
-        <div class="wallet-actions">
-          <button class="btn-wallet">Deposit</button>
-          <button class="btn-wallet">Withdraw</button>
+      <div class="asset-card">
+         <div class="asset-label">Total Assets (VP) <span>👁</span></div>
+         <div class="asset-val" id="profileBalance">0.00</div>
+         <div style="display:flex; align-items:center;">
+           <span class="asset-approx">≈ $0.00</span>
+           <div class="asset-pnl text-green" id="profilePnlPill">+0.00%</div>
+         </div>
+
+         <div class="pro-actions">
+           <button class="pro-btn primary">Deposit</button>
+           <button class="pro-btn">Withdraw</button>
+         </div>
+      </div>
+
+      <div class="analysis-block">
+        <div class="an-card">
+           <div class="an-title">Win Rate</div>
+           <div class="donut-chart" id="winRateChart" style="background: conic-gradient(var(--accent-green) 0% 0%, var(--panel-light) 0% 100%);">
+             <span class="donut-val" id="winRateVal">0%</span>
+           </div>
+           <div class="an-text" id="totalTradesVal">0 Trades</div>
+        </div>
+        <div class="an-card">
+           <div class="an-title">Net PnL</div>
+           <div style="font-size:18px; font-weight:700; font-family:'Roboto Mono'; margin-bottom:4px;" id="statPnL">0.00</div>
+           <div style="font-size:10px; color:var(--muted);">All Time</div>
         </div>
       </div>
 
-      <div class="stats-grid">
-        <div class="stat-card">
-          <span class="stat-label">Total PnL</span>
-          <span class="stat-value" id="statPnL">0.00</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-label">Total Trades</span>
-          <span class="stat-value" id="statCount">0</span>
-        </div>
+      <div class="rewards-banner" id="btnGoRewards">
+         <div class="rb-content">
+            <h3>Rewards Center</h3>
+            <p>Complete tasks to unlock features</p>
+         </div>
+         <div class="rb-icon">🎁</div>
       </div>
 
       <div>
-        <div style="font-size:14px; font-weight:700; margin-bottom:8px;">History Report</div>
-        <div class="time-filter">
-          <div class="tf-item" onclick="setHistoryFilter('day', this)">Day</div>
-          <div class="tf-item" onclick="setHistoryFilter('week', this)">Week</div>
-          <div class="tf-item" onclick="setHistoryFilter('month', this)">Month</div>
-          <div class="tf-item active" onclick="setHistoryFilter('all', this)">All</div>
+        <div class="hist-title">Recent History</div>
+        <div class="history-list" id="historyList">
+           <div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No trading history</div>
         </div>
       </div>
 
-      <div class="history-list" id="historyList">
-        <div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No trading history yet</div>
-      </div>
-
-      <button class="btn-back" id="btnBackToTrade">Back to Trading</button>
     </div>
+  </div>
+
+  <div id="view-rewards" class="view-section hidden">
+     <div class="rewards-container">
+        <div class="rewards-header">
+           <div class="rh-title">Achievement Progress</div>
+           <div class="rh-sub">Watch ads & trade to level up</div>
+        </div>
+
+        <div class="progress-card">
+           <div class="prog-info">
+              <span>Level 1</span>
+              <span>1 / 10 Ads</span>
+           </div>
+           <div class="prog-track">
+              <div class="prog-fill" style="width: 10%;"></div>
+           </div>
+           <div class="milestones">
+              <div class="ms-item active"><div class="ms-dot"></div><span class="ms-val">Start</span></div>
+              <div class="ms-item"><div class="ms-dot"></div><span class="ms-val">5 Ads</span></div>
+              <div class="ms-item"><div class="ms-dot"></div><span class="ms-val">10 Ads</span></div>
+           </div>
+        </div>
+
+        <div class="task-list">
+           <div class="task-item">
+              <div class="task-left">
+                 <h4>Watch Daily Ad</h4>
+                 <p>Get +1 Progress Point</p>
+              </div>
+              <button class="btn-claim">WATCH</button>
+           </div>
+           <div class="task-item">
+              <div class="task-left">
+                 <h4>Make 5 Trades</h4>
+                 <p>Reward: 50 VP Bonus</p>
+              </div>
+              <button class="btn-claim" disabled>LOCKED</button>
+           </div>
+        </div>
+
+        <button class="btn-back-float" id="btnBackFromRewards">Back to Profile</button>
+     </div>
   </div>
 
 </div>
@@ -470,9 +565,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   let profile = { balance: 0, name: "Trader", id: 0, photo: "" };
   let currentLeverage = 10;
   let localTrades = [];
-  
-  // Локальное хранилище закрытых сделок (так как сервер пока не хранит историю)
-  let remoteHistory = [];
+  let remoteHistory = []; 
 
   // ————————————————————————————————————————————
   // UTILS
@@ -495,43 +588,45 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   // ————————————————————————————————————————————
   const viewTrade = $('view-trade');
   const viewProfile = $('view-profile');
+  const viewRewards = $('view-rewards');
 
-  function switchView(viewName) {
-    if(viewName === 'profile') {
-      renderProfile(); // Обновляем данные перед показом
-      viewTrade.classList.add('hidden');
-      viewProfile.classList.remove('hidden');
-      if(tg) tg.BackButton.show();
-    } else {
-      viewProfile.classList.add('hidden');
-      viewTrade.classList.remove('hidden');
-      if(tg) tg.BackButton.hide();
+  function showView(viewId) {
+    document.querySelectorAll('.view-section').forEach(el => {
+        el.classList.remove('active');
+        el.classList.add('hidden');
+    });
+    const target = $(viewId);
+    target.classList.remove('hidden');
+    target.classList.add('active');
+
+    if(viewId === 'view-profile') {
+        if(tg) tg.BackButton.show();
+    } else if (viewId === 'view-trade') {
+        if(tg) tg.BackButton.hide();
     }
   }
 
-  $('btnProfile').onclick = () => switchView('profile');
-  $('btnBackToTrade').onclick = () => switchView('trade');
+  $('btnProfile').onclick = () => { renderProfile(); showView('view-profile'); };
+  $('btnCloseProfile').onclick = () => showView('view-trade');
+  $('btnGoRewards').onclick = () => showView('view-rewards');
+  $('btnBackFromRewards').onclick = () => showView('view-profile');
+
   if(tg) {
-    tg.BackButton.onClick(() => switchView('trade'));
+    tg.BackButton.onClick(() => {
+        // Simple back logic
+        if(viewRewards.classList.contains('active')) showView('view-profile');
+        else if(viewProfile.classList.contains('active')) showView('view-trade');
+    });
   }
 
   // ————————————————————————————————————————————
-  // PROFILE LOGIC
+  // PROFILE LOGIC (NEW)
   // ————————————————————————————————————————————
-  let currentFilter = 'all';
-
-  window.setHistoryFilter = function(filter, el) {
-    document.querySelectorAll('.tf-item').forEach(i => i.classList.remove('active'));
-    el.classList.add('active');
-    currentFilter = filter;
-    renderHistoryList();
-  }
-
   async function renderProfile() {
     // Basic Info
     $('profileName').textContent = profile.name || "Trader";
     $('profileId').textContent = "ID: " + profile.id;
-    $('profileBalance').textContent = profile.balance.toFixed(2) + " VP";
+    $('profileBalance').textContent = profile.balance.toFixed(2);
     if(profile.photo) $('profileAvatarBig').src = profile.photo;
 
     // СНАЧАЛА ЗАГРУЖАЕМ ИСТОРИЮ С СЕРВЕРА
@@ -543,16 +638,30 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         }
     } catch(e) { console.error("History fetch error", e); }
 
-    // Подсчет статистики
+    // ANALYTICS CALCULATION
     let totalPnL = 0;
-    // Данные с сервера приходят как строки, нужно парсить
-    remoteHistory.forEach(h => totalPnL += Number(h.pnl));
-    
+    let wins = 0;
+    let count = remoteHistory.length;
+
+    remoteHistory.forEach(h => {
+        const p = Number(h.pnl);
+        totalPnL += p;
+        if(p > 0) wins++;
+    });
+
+    // Render Stats
     const pnlEl = $('statPnL');
     pnlEl.textContent = (totalPnL > 0 ? "+" : "") + totalPnL.toFixed(2) + " VP";
-    pnlEl.className = "stat-value " + (totalPnL >= 0 ? "text-green" : "text-red");
+    pnlEl.className = (totalPnL >= 0 ? "text-green" : "text-red");
     
-    $('statCount').textContent = remoteHistory.length;
+    // Win Rate Chart Update
+    let winRate = count > 0 ? Math.round((wins / count) * 100) : 0;
+    $('winRateVal').textContent = winRate + "%";
+    $('totalTradesVal').textContent = count + " Trades";
+    
+    // Update CSS Conic Gradient
+    const chartColor = winRate >= 50 ? '#0ECB81' : '#F6465D';
+    $('winRateChart').style.background = `conic-gradient(${chartColor} 0% ${winRate}%, var(--panel-light) ${winRate}% 100%)`;
 
     renderHistoryList();
   }
@@ -561,34 +670,20 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     const list = $('historyList');
     list.innerHTML = "";
 
-    const now = Date.now();
-    // Фильтруем remoteHistory
-    let filtered = remoteHistory.filter(h => {
-      if(currentFilter === 'all') return true;
-      const ts = new Date(h.closed_at).getTime(); // PostgreSQL возвращает ISO дату
-      const diff = now - ts;
-      if(currentFilter === 'day') return diff < 86400000;
-      if(currentFilter === 'week') return diff < 604800000;
-      if(currentFilter === 'month') return diff < 2592000000;
-      return true;
-    });
-
-    // Данные уже отсортированы на сервере, но на всякий случай
-    // filtered.sort... (не обязательно, если SQL запрос делает ORDER BY)
-
-    if(filtered.length === 0) {
-      list.innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No history for this period</div>';
+    if(remoteHistory.length === 0) {
+      list.innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No trading history yet</div>';
       return;
     }
 
-    filtered.forEach(h => {
+    // Show last 20
+    remoteHistory.slice(0, 20).forEach(h => {
       const pnlVal = Number(h.pnl);
       const sizeVal = Number(h.size);
       const entryVal = Number(h.entry_price);
       const exitVal = Number(h.exit_price);
       
       const pnlClass = pnlVal >= 0 ? "text-green" : "text-red";
-      const dateStr = new Date(h.closed_at).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+      const dateStr = new Date(h.closed_at).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
       
       const div = document.createElement('div');
       div.className = "history-card";
@@ -707,7 +802,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   const historyPromise = new Promise(r => historyResolve = r);
 
   function updateBalanceUI() {
-    $('headerBalance').textContent = profile.balance.toFixed(2) + " VP";
+    // Обновляем в хедере и в профиле
+    const val = profile.balance.toFixed(2);
+    $('headerBalance').textContent = val + " VP";
+    $('profileBalance').textContent = val;
   }
 
   async function initSession() {
@@ -859,97 +957,40 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   function smartUpdateOrderBook(buys = [], sells = [], topLevels = 10) {
     const container = $('orderBook');
     const maxLevels = topLevels;
-
-    // 1. Подготовка данных (Map для быстрого доступа)
     const bidMap = new Map();
-    buys.forEach(l => {
-      const s = Number(l.size) || 0;
-      if (s > 0) bidMap.set(Number(l.price).toFixed(2), s);
-    });
-
+    buys.forEach(l => { const s = Number(l.size) || 0; if (s > 0) bidMap.set(Number(l.price).toFixed(2), s); });
     const askMap = new Map();
-    sells.forEach(l => {
-      const s = Number(l.size) || 0;
-      if (s > 0) askMap.set(Number(l.price).toFixed(2), s);
-    });
+    sells.forEach(l => { const s = Number(l.size) || 0; if (s > 0) askMap.set(Number(l.price).toFixed(2), s); });
 
-    // 2. Сортировка массивов
-    // Asks: Сортируем по возрастанию цены (дешевые внизу, у спреда), потом обрежем и перевернем для отображения
-    let sortedAsks = Array.from(askMap.entries())
-      .map(([p, s]) => ({ price: Number(p), size: s, type: 'ask' }))
-      .sort((a, b) => a.price - b.price) // 100, 101, 102
-      .slice(0, maxLevels)               // берем лучшие (близкие к цене)
-      .reverse();                        // переворачиваем: 102, 101, 100 (чтобы 100 было внизу блока Asks)
-
-    // Bids: Сортируем по убыванию (дорогие наверху, у спреда)
-    let sortedBids = Array.from(bidMap.entries())
-      .map(([p, s]) => ({ price: Number(p), size: s, type: 'bid' }))
-      .sort((a, b) => b.price - a.price) // 99, 98, 97
-      .slice(0, maxLevels);
-
-    // 3. Создаем ЕДИНЫЙ список рендера (Сверху -> Вниз)
+    let sortedAsks = Array.from(askMap.entries()).map(([p, s]) => ({ price: Number(p), size: s, type: 'ask' })).sort((a, b) => a.price - b.price).slice(0, maxLevels).reverse();
+    let sortedBids = Array.from(bidMap.entries()).map(([p, s]) => ({ price: Number(p), size: s, type: 'bid' })).sort((a, b) => b.price - a.price).slice(0, maxLevels);
     const renderList = [...sortedAsks, ...sortedBids];
-
-    // Вычисляем maxVol для полосок
-    const allSizes = renderList.map(x => x.size);
-    const maxVol = Math.max(...allSizes, 0.0000001);
-
-    // 4. Синхронизация с DOM
+    const maxVol = Math.max(...renderList.map(x => x.size), 0.0000001);
     const existingRows = Array.from(container.querySelectorAll('.ob-row'));
     const existingByPrice = new Map();
     existingRows.forEach(r => existingByPrice.set(r.dataset.price, r));
-    
     const touched = new Set();
 
-    // Проходим по упорядоченному списку и расставляем элементы
     renderList.forEach(level => {
       const priceKey = level.price.toFixed(2);
       touched.add(priceKey);
-      
       let row = existingByPrice.get(priceKey);
       const isAsk = level.type === 'ask';
-
-      // Если строки нет - создаем
       if (!row) {
         row = document.createElement('div');
         row.className = 'ob-row';
         row.dataset.price = priceKey;
-        row.innerHTML = `
-          <div class="ob-bg" style="width:0%"></div>
-          <span class="price-cell">${formatPrice(level.price)}</span>
-          <span class="size-cell">${level.size.toFixed(5)}</span>
-        `;
-        // Важно: пока не вставляем, сделаем это appendChild-ом ниже, чтобы сохранить порядок
+        row.innerHTML = `<div class="ob-bg" style="width:0%"></div><span class="price-cell">${formatPrice(level.price)}</span><span class="size-cell">${level.size.toFixed(5)}</span>`;
       }
-
-      // Обновляем классы и цвета (на случай, если цена перешла из Bid в Ask или наоборот)
       const bg = row.querySelector('.ob-bg');
       const priceSpan = row.querySelector('.price-cell');
-      
-      // Сброс классов цветов
       bg.className = `ob-bg ${isAsk ? 'bg-red' : 'bg-green'}`;
       priceSpan.className = `price-cell ${isAsk ? 'text-red' : 'text-green'}`;
-
-      // Обновляем ширину и текст
       bg.style.width = `${(level.size / maxVol) * 100}%`;
-      const sizeSpan = row.querySelector('.size-cell');
-      if (sizeSpan.textContent !== level.size.toFixed(5)) {
-        sizeSpan.textContent = level.size.toFixed(5);
-      }
-
-      // ГЛАВНЫЙ ФИКС: Жесткая сортировка DOM
-      // appendChild перемещает существующий элемент в конец контейнера.
-      // Так как мы идем по отсортированному массиву renderList, 
-      // элементы в DOM выстроятся ровно в таком же порядке.
+      row.querySelector('.size-cell').textContent = level.size.toFixed(5);
       container.appendChild(row);
     });
-
-    // 5. Удаляем лишние (которых нет в новом списке)
-    existingByPrice.forEach((row, price) => {
-      if (!touched.has(price)) row.remove();
-    });
-
-    // Обновляем время
+    existingByPrice.forEach((row, price) => { if (!touched.has(price)) row.remove(); });
     const updEl = $('bookUpdated');
     if (updEl) updEl.textContent = new Date().toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
   }
@@ -963,16 +1004,11 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   function renderTrades(trades) {
     const el = $('tradeHistory');
     if(!Array.isArray(trades)) return;
-    
     let html = "";
     trades.forEach(t => {
       const color = t.side === 'buy' ? 'text-green' : 'text-red';
       const timeStr = new Date(t.time).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
-      html += `
-        <div class="ob-row">
-            <span class="${color}">${formatPrice(t.price)}</span>
-            <span class="trade-time">${timeStr}</span>
-        </div>`;
+      html += `<div class="ob-row"><span class="${color}">${formatPrice(t.price)}</span><span class="trade-time">${timeStr}</span></div>`;
     });
     el.innerHTML = html;
   }
@@ -1016,13 +1052,8 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       });
       const data = await res.json();
       if(data.ok) {
-        // Убрали ручное добавление в массив closedHistory.
-        // Сервер теперь сам сохранил это в БД.
-
-        // Удаляем из открытых
         window._positions = window._positions.filter(p => (p.id!=id && p._id!=id));
         if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
-        
         renderPositions();
         if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       }
