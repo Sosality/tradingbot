@@ -4,7 +4,7 @@ import express from "express";
 import crypto from "crypto";
 import cors from "cors";
 import { Pool } from "pg";
-import { validate } from '@telegram-apps/init-data-node';
+// Убрали импорт @telegram-apps/init-data-node, так как он мог вызывать ошибки
 
 const app = express();
 
@@ -36,7 +36,6 @@ const db = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-// Тест подключения к БД при старте
 db.connect()
   .then(client => {
     console.log("✅ Successfully connected to PostgreSQL database");
@@ -44,20 +43,34 @@ db.connect()
   })
   .catch(err => {
     console.error("❌ Failed to connect to database:", err.message);
-    console.error("Full error:", err);
   });
 
-// ======================== TELEGRAM AUTH HELPERS ========================
+// ======================== TELEGRAM AUTH (MANUAL FIX) ========================
+// Мы вернули ручную проверку, так как она надежнее работает без внешних зависимостей
 function checkTelegramAuthInitData(initData) {
-  try {
-    console.log("🔍 Validating initData with official @telegram-apps/init-data-node library...");
-    validate(initData, process.env.BOT_TOKEN);
-    console.log("✅ initData signature VALID (library confirmed)!");
-    return true;
-  } catch (err) {
-    console.error("❌ initData validation FAILED:", err.message);
-    return false;
+  if (!process.env.BOT_TOKEN) return false;
+
+  const urlParams = new URLSearchParams(initData);
+  const hash = urlParams.get("hash");
+  if (!hash) return false;
+
+  urlParams.delete("hash");
+  
+  const dataToCheck = [...urlParams.entries()]
+    .map(([key, value]) => key + "=" + value)
+    .sort()
+    .join("\n");
+
+  const secretKey = crypto.createHmac("sha256", "WebAppData").update(process.env.BOT_TOKEN).digest();
+  const calculatedHash = crypto.createHmac("sha256", secretKey).update(dataToCheck).digest("hex");
+
+  const valid = calculatedHash === hash;
+  if(valid) {
+    console.log("✅ Signature verified successfully (manual crypto)");
+  } else {
+    console.log("❌ Signature verification failed. Calculated:", calculatedHash, "Received:", hash);
   }
+  return valid;
 }
 
 // ======================== COOKIE HELPERS ========================
@@ -82,7 +95,6 @@ async function initDB() {
   try {
     console.log("🔄 Checking/Creating DB tables...");
 
-    // 1. Таблица Users
     await db.query(`
       CREATE TABLE IF NOT EXISTS users (
         user_id TEXT PRIMARY KEY,
@@ -95,13 +107,11 @@ async function initDB() {
       );
     `);
 
-    // 2. Таблица Positions (Добавили поле pair, если его нет)
-    // Сначала создаем, если нет
     await db.query(`
       CREATE TABLE IF NOT EXISTS positions (
         id BIGSERIAL PRIMARY KEY,
         user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
-        pair TEXT NOT NULL DEFAULT 'BTC-USD', -- Добавлено поле pair
+        pair TEXT NOT NULL DEFAULT 'BTC-USD',
         type TEXT NOT NULL,
         entry_price NUMERIC NOT NULL,
         margin NUMERIC NOT NULL,
@@ -111,13 +121,11 @@ async function initDB() {
       );
     `);
     
-    // Миграция на случай, если таблица уже была без поля pair (опционально, но полезно)
+    // Миграция
     try {
         await db.query(`ALTER TABLE positions ADD COLUMN IF NOT EXISTS pair TEXT DEFAULT 'BTC-USD'`);
     } catch(e) { console.log("Migration check passed"); }
 
-
-    // 3. Таблица Истории (НОВАЯ)
     await db.query(`
       CREATE TABLE IF NOT EXISTS trades_history (
         id BIGSERIAL PRIMARY KEY,
@@ -136,7 +144,6 @@ async function initDB() {
     console.log("✅ DB tables ready!");
   } catch (err) {
     console.error("❌ Error recreating tables:", err.message);
-    console.error(err.stack);
   }
 }
 await initDB();
@@ -202,15 +209,19 @@ app.post("/api/init", async (req, res) => {
     let userRow;
 
     if (initData) {
+      // Manual Check
       const sigValid = checkTelegramAuthInitData(initData);
       if (!sigValid && process.env.DEV_ALLOW_BYPASS !== "1") {
         return res.status(403).json({ ok: false, error: "INVALID_SIGNATURE" });
       }
+      
+      // Parse User
       const params = new URLSearchParams(initData);
-      params.delete("signature");
       const userObj = JSON.parse(params.get("user"));
       userRow = await upsertUserFromObj(userObj);
+      
     } else {
+      // Cookie Fallback
       const cookieHeader = req.headers.cookie || "";
       const cookies = Object.fromEntries(
         cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
@@ -223,14 +234,12 @@ app.post("/api/init", async (req, res) => {
       userRow = ures.rows[0];
     }
 
-    // Загружаем открытые позиции
     const positionsRes = await db.query(
       "SELECT * FROM positions WHERE user_id = $1 ORDER BY created_at ASC",
       [userRow.user_id]
     );
 
     const cookieVal = makeSessionCookieValue(userRow.user_id);
-    const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
     res.setHeader("Set-Cookie", `${COOKIE_NAME}=${cookieVal}; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=${60 * 60 * 24 * 30}`);
 
     res.json({ ok: true, user: userRow, positions: positionsRes.rows });
@@ -240,18 +249,13 @@ app.post("/api/init", async (req, res) => {
   }
 });
 
-// === НОВЫЙ РОУТ: ПОЛУЧЕНИЕ ИСТОРИИ ===
 app.get("/api/user/history", async (req, res) => {
   try {
-    // Для GET запроса userId берем из куки или из query params (для простоты используем auth helper, но ему нужен body или cookie)
-    // Чуть схитрим: создадим фейковый req object для функции или напишем логику тут
     const cookieHeader = req.headers.cookie || "";
     const cookies = Object.fromEntries(cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2));
     let userId = verifySessionCookieValue(cookies[COOKIE_NAME]);
     
-    // Если передали в query (для отладки)
     if (!userId && req.query.userId) userId = String(req.query.userId);
-
     if (!userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
 
     const historyRes = await db.query(
@@ -282,7 +286,6 @@ app.post("/api/order/open", async (req, res) => {
 
     await db.query("UPDATE users SET balance = balance - $1 WHERE user_id = $2", [margin, user.user_id]);
 
-    // ВАЖНО: Добавлено поле pair в INSERT
     const posRes = await db.query(`
       INSERT INTO positions (user_id, pair, type, entry_price, margin, leverage, size)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -297,19 +300,16 @@ app.post("/api/order/open", async (req, res) => {
 });
 
 app.post("/api/order/close", async (req, res) => {
-  console.log("📡 /api/order/close called:", req.body);
   try {
     const user = await getAuthenticatedUser(req);
     const { positionId, closePrice } = req.body;
 
     if (!positionId || !closePrice) return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
 
-    // 1. Получаем позицию
     const posRes = await db.query("SELECT * FROM positions WHERE id = $1 AND user_id = $2", [positionId, user.user_id]);
     if (!posRes.rows.length) return res.status(404).json({ ok: false, error: "POSITION_NOT_FOUND" });
     const pos = posRes.rows[0];
 
-    // 2. Расчет PnL
     const cPrice = Number(closePrice);
     const ePrice = Number(pos.entry_price);
     const pSize = Number(pos.size);
@@ -319,17 +319,14 @@ app.post("/api/order/close", async (req, res) => {
     let pnl = priceChangePct * pSize;
     if (pos.type === "SHORT") pnl = -pnl;
     
-    // Защита от минуса больше маржи
     if (pnl < -pMargin) pnl = -pMargin;
 
     const totalReturn = pMargin + pnl;
 
-    // 3. ТРАНЗАКЦИЯ: Обновление баланса + Запись в Историю + Удаление позиции
     await db.query("BEGIN");
     
     await db.query("UPDATE users SET balance = balance + $1 WHERE user_id = $2", [totalReturn, user.user_id]);
 
-    // ВАЖНО: Запись в историю. Используем pair из позиции.
     await db.query(`
       INSERT INTO trades_history (user_id, pair, type, entry_price, exit_price, size, leverage, pnl)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
