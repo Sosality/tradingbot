@@ -1005,7 +1005,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   }
 
   async function closePosition(id) {
-    // 1. Находим позицию, которую закрываем
     const pos = window._positions.find(p => (p.id == id || p._id == id));
     if(!pos) return;
 
@@ -1017,27 +1016,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       });
       const data = await res.json();
       if(data.ok) {
-        // 2. Рассчитываем PnL для истории
-        const entry = Number(pos.entry_price || pos.entryPrice);
-        const size = Number(pos.size);
-        const type = (pos.type || "LONG").toUpperCase();
-        let pnl = 0;
-        const diff = (currentPrice - entry) / entry;
-        pnl = diff * size * (type==="SHORT"? -1 : 1);
+        // Убрали ручное добавление в массив closedHistory.
+        // Сервер теперь сам сохранил это в БД.
 
-        // 3. Сохраняем в локальную историю
-        closedHistory.push({
-          pair: selectedPair,
-          type: type,
-          leverage: pos.leverage,
-          entry: entry,
-          exit: currentPrice,
-          size: size,
-          pnl: pnl,
-          timestamp: Date.now()
-        });
-
-        // 4. Удаляем из открытых
+        // Удаляем из открытых
         window._positions = window._positions.filter(p => (p.id!=id && p._id!=id));
         if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
         
