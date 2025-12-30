@@ -527,22 +527,32 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     renderHistoryList();
   }
 
-  function renderProfile() {
+  async function renderProfile() {
     // Basic Info
     $('profileName').textContent = profile.name || "Trader";
     $('profileId').textContent = "ID: " + profile.id;
     $('profileBalance').textContent = profile.balance.toFixed(2) + " VP";
     if(profile.photo) $('profileAvatarBig').src = profile.photo;
 
-    // Calc Stats
+    // СНАЧАЛА ЗАГРУЖАЕМ ИСТОРИЮ С СЕРВЕРА
+    try {
+        const res = await fetch(API_BASE + "/api/user/history?userId=" + currentUserId);
+        const data = await res.json();
+        if(data.ok) {
+            remoteHistory = data.history;
+        }
+    } catch(e) { console.error("History fetch error", e); }
+
+    // Подсчет статистики
     let totalPnL = 0;
-    closedHistory.forEach(h => totalPnL += h.pnl);
+    // Данные с сервера приходят как строки, нужно парсить
+    remoteHistory.forEach(h => totalPnL += Number(h.pnl));
     
     const pnlEl = $('statPnL');
     pnlEl.textContent = (totalPnL > 0 ? "+" : "") + totalPnL.toFixed(2) + " VP";
     pnlEl.className = "stat-value " + (totalPnL >= 0 ? "text-green" : "text-red");
     
-    $('statCount').textContent = closedHistory.length;
+    $('statCount').textContent = remoteHistory.length;
 
     renderHistoryList();
   }
@@ -552,17 +562,19 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     list.innerHTML = "";
 
     const now = Date.now();
-    let filtered = closedHistory.filter(h => {
+    // Фильтруем remoteHistory
+    let filtered = remoteHistory.filter(h => {
       if(currentFilter === 'all') return true;
-      const diff = now - h.timestamp;
+      const ts = new Date(h.closed_at).getTime(); // PostgreSQL возвращает ISO дату
+      const diff = now - ts;
       if(currentFilter === 'day') return diff < 86400000;
       if(currentFilter === 'week') return diff < 604800000;
       if(currentFilter === 'month') return diff < 2592000000;
       return true;
     });
 
-    // Сортировка: новые сверху
-    filtered.sort((a,b) => b.timestamp - a.timestamp);
+    // Данные уже отсортированы на сервере, но на всякий случай
+    // filtered.sort... (не обязательно, если SQL запрос делает ORDER BY)
 
     if(filtered.length === 0) {
       list.innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No history for this period</div>';
@@ -570,27 +582,32 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     }
 
     filtered.forEach(h => {
-      const pnlClass = h.pnl >= 0 ? "text-green" : "text-red";
-      const dateStr = new Date(h.timestamp).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+      const pnlVal = Number(h.pnl);
+      const sizeVal = Number(h.size);
+      const entryVal = Number(h.entry_price);
+      const exitVal = Number(h.exit_price);
+      
+      const pnlClass = pnlVal >= 0 ? "text-green" : "text-red";
+      const dateStr = new Date(h.closed_at).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
       
       const div = document.createElement('div');
       div.className = "history-card";
       div.innerHTML = `
         <div class="hc-header">
-          <div class="hc-pair">${h.pair}</div>
+          <div class="hc-pair">${h.pair || "UNK"}</div>
           <div class="hc-type ${h.type === 'LONG' ? 'long' : 'short'}">${h.type} x${h.leverage}</div>
         </div>
         <div class="hc-row">
-          <span>Size: <span class="hc-val">${h.size.toFixed(0)}</span></span>
+          <span>Size: <span class="hc-val">${sizeVal.toFixed(0)}</span></span>
           <span>${dateStr}</span>
         </div>
         <div class="hc-row">
-          <span>Entry: <span class="hc-val">${formatPrice(h.entry)}</span></span>
-          <span>Exit: <span class="hc-val">${formatPrice(h.exit)}</span></span>
+          <span>Entry: <span class="hc-val">${formatPrice(entryVal)}</span></span>
+          <span>Exit: <span class="hc-val">${formatPrice(exitVal)}</span></span>
         </div>
         <div class="hc-row" style="margin-top:4px; border-top:1px solid var(--border); padding-top:4px;">
           <span>PnL</span>
-          <span class="hc-pnl ${pnlClass}">${h.pnl > 0 ? '+' : ''}${h.pnl.toFixed(2)} VP</span>
+          <span class="hc-pnl ${pnlClass}">${pnlVal > 0 ? '+' : ''}${pnlVal.toFixed(2)} VP</span>
         </div>
       `;
       list.appendChild(div);
