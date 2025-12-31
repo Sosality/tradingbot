@@ -4,7 +4,8 @@ import express from "express";
 import crypto from "crypto";
 import cors from "cors";
 import { Pool } from "pg";
-// Убрали импорт @telegram-apps/init-data-node, так как он мог вызывать ошибки
+// Оставляем твою библиотеку, как ты и просил
+import { validate } from '@telegram-apps/init-data-node';
 
 const app = express();
 
@@ -17,7 +18,7 @@ app.use(express.static("public"));
 
 // ======================== ЛОГИРОВАНИЕ ENV ========================
 console.log("=== ENV CHECK ===");
-console.log("BOT_TOKEN set:", !!process.env.BOT_TOKEN);
+console.log("BOT_TOKEN set:", !!process.env.BOT_TOKEN); 
 console.log("DATABASE_URL set:", !!process.env.DATABASE_URL);
 console.log("DEV_ALLOW_BYPASS:", process.env.DEV_ALLOW_BYPASS || "not set");
 console.log("==================");
@@ -36,6 +37,7 @@ const db = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
+// Тест подключения к БД при старте
 db.connect()
   .then(client => {
     console.log("✅ Successfully connected to PostgreSQL database");
@@ -43,34 +45,27 @@ db.connect()
   })
   .catch(err => {
     console.error("❌ Failed to connect to database:", err.message);
+    console.error("Full error:", err);
   });
 
-// ======================== TELEGRAM AUTH (MANUAL FIX) ========================
-// Мы вернули ручную проверку, так как она надежнее работает без внешних зависимостей
+// ======================== TELEGRAM AUTH HELPERS ========================
+// ТВОЯ ОРИГИНАЛЬНАЯ ФУНКЦИЯ
 function checkTelegramAuthInitData(initData) {
-  if (!process.env.BOT_TOKEN) return false;
+  try {
+    console.log("🔍 Validating initData with official @telegram-apps/init-data-node library...");
 
-  const urlParams = new URLSearchParams(initData);
-  const hash = urlParams.get("hash");
-  if (!hash) return false;
+    // Библиотека автоматически обрабатывает и hash, и signature
+    validate(initData, process.env.BOT_TOKEN);
 
-  urlParams.delete("hash");
-  
-  const dataToCheck = [...urlParams.entries()]
-    .map(([key, value]) => key + "=" + value)
-    .sort()
-    .join("\n");
-
-  const secretKey = crypto.createHmac("sha256", "WebAppData").update(process.env.BOT_TOKEN).digest();
-  const calculatedHash = crypto.createHmac("sha256", secretKey).update(dataToCheck).digest("hex");
-
-  const valid = calculatedHash === hash;
-  if(valid) {
-    console.log("✅ Signature verified successfully (manual crypto)");
-  } else {
-    console.log("❌ Signature verification failed. Calculated:", calculatedHash, "Received:", hash);
+    console.log("✅ initData signature VALID (library confirmed)!");
+    return true;
+  } catch (err) {
+    console.error("❌ initData validation FAILED:", err.message);
+    if (err.message.includes("SIGN_INVALID")) {
+      console.log("Possible causes: wrong BOT_TOKEN, outdated initData, or Telegram bug with signature");
+    }
+    return false;
   }
-  return valid;
 }
 
 // ======================== COOKIE HELPERS ========================
@@ -93,8 +88,9 @@ function verifySessionCookieValue(val) {
 // ======================== INIT DB ========================
 async function initDB() {
   try {
-    console.log("🔄 Checking/Creating DB tables...");
+    console.log("🔄 Recreating/Checking DB tables...");
 
+    // 1. Таблица Users (без изменений)
     await db.query(`
       CREATE TABLE IF NOT EXISTS users (
         user_id TEXT PRIMARY KEY,
@@ -107,11 +103,12 @@ async function initDB() {
       );
     `);
 
+    // 2. Таблица Positions (ДОБАВЛЕНО ПОЛЕ pair)
     await db.query(`
       CREATE TABLE IF NOT EXISTS positions (
         id BIGSERIAL PRIMARY KEY,
         user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
-        pair TEXT NOT NULL DEFAULT 'BTC-USD',
+        pair TEXT NOT NULL DEFAULT 'BTC-USD', -- Добавили поле pair
         type TEXT NOT NULL,
         entry_price NUMERIC NOT NULL,
         margin NUMERIC NOT NULL,
@@ -121,11 +118,12 @@ async function initDB() {
       );
     `);
     
-    // Миграция
+    // Миграция: если таблица уже есть, добавляем колонку pair
     try {
         await db.query(`ALTER TABLE positions ADD COLUMN IF NOT EXISTS pair TEXT DEFAULT 'BTC-USD'`);
-    } catch(e) { console.log("Migration check passed"); }
+    } catch(e) { console.log("Migration (pair column) check passed"); }
 
+    // 3. Таблица trades_history (НОВАЯ, для истории)
     await db.query(`
       CREATE TABLE IF NOT EXISTS trades_history (
         id BIGSERIAL PRIMARY KEY,
@@ -144,6 +142,7 @@ async function initDB() {
     console.log("✅ DB tables ready!");
   } catch (err) {
     console.error("❌ Error recreating tables:", err.message);
+    console.error(err.stack);
   }
 }
 await initDB();
@@ -151,7 +150,7 @@ await initDB();
 // ======================== UPSERT USER ========================
 async function upsertUserFromObj(userObj) {
   const userId = String(userObj.id);
-  console.log(`📝 Upserting user ${userId} (${userObj.first_name || "No name"})`);
+  console.log(`📝 Upserting user ${userId} (${userObj.first_name || "No name"} ${userObj.username ? `@${userObj.username}` : ""})`);
 
   try {
     await db.query(`
@@ -168,94 +167,144 @@ async function upsertUserFromObj(userObj) {
       "SELECT user_id, first_name, username, photo_url, balance FROM users WHERE user_id = $1",
       [userId]
     );
+    console.log(`✅ User ${userId} successfully saved/updated. Balance: ${res.rows[0].balance}`);
     return res.rows[0];
   } catch (err) {
-    console.error(`❌ Error saving user ${userId}:`, err.message);
+    console.error(`❌ Error saving user ${userId} to DB:`, err.message);
     throw err;
   }
 }
 
-// ======================== AUTH HELPERS ========================
-async function getAuthenticatedUser(req) {
-  let userId;
-  if (req.body && req.body.userId) {
-    userId = String(req.body.userId);
-  } else {
-    const cookieHeader = req.headers.cookie || "";
-    const cookies = Object.fromEntries(
-      cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
-    );
-    const sessionVal = cookies[COOKIE_NAME];
-    userId = verifySessionCookieValue(sessionVal);
-  }
-
-  if (!userId) throw new Error("NO_SESSION");
-
-  const res = await db.query("SELECT user_id, balance FROM users WHERE user_id = $1", [userId]);
-  if (!res.rows.length) throw new Error("NO_USER");
-  return res.rows[0];
-}
-
 // ======================== ROUTES ========================
 
+// Простой лог всех входящих запросов
 app.use((req, res, next) => {
   console.log(`\n📡 [${new Date().toISOString()}] ${req.method} ${req.path}`);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log("Body:", req.body);
+  }
+  // Не показываем куки целиком для безопасности логов, только факт наличия
+  if (req.headers.cookie) console.log("Cookies present");
   next();
 });
 
+app.get("/auth/telegram", async (req, res) => {
+  // Твой старый код, оставляем пустым/как было, если он не используется напрямую
+  res.json({msg: "Endpoint exists"});
+});
+
 app.post("/api/init", async (req, res) => {
+  console.log("\n🚀 /api/init called!");
+
   try {
     const { initData } = req.body;
+
+    if (!initData) {
+      console.log("⚠️ No initData in body — trying cookie fallback");
+    } else {
+      console.log(`initData received (length: ${initData.length})`);
+    }
+
     let userRow;
 
     if (initData) {
-      // Manual Check
+      // ИСПОЛЬЗУЕМ ТВОЮ ФУНКЦИЮ ПРОВЕРКИ
       const sigValid = checkTelegramAuthInitData(initData);
+      
       if (!sigValid && process.env.DEV_ALLOW_BYPASS !== "1") {
+        console.log("❌ Signature invalid and no bypass — rejecting");
         return res.status(403).json({ ok: false, error: "INVALID_SIGNATURE" });
       }
-      
-      // Parse User
+      if (!sigValid) console.log("⚠️ Signature invalid but DEV_ALLOW_BYPASS enabled");
+
       const params = new URLSearchParams(initData);
-      const userObj = JSON.parse(params.get("user"));
+      params.delete("signature");
+      const rawUser = params.get("user");
+      if (!rawUser) {
+        console.log("❌ No 'user' field in initData");
+        return res.status(400).json({ ok: false, error: "NO_USER" });
+      }
+
+      let userObj;
+      try {
+        userObj = JSON.parse(rawUser);
+        console.log(`👤 Parsed user: ID=${userObj.id}, name=${userObj.first_name}`);
+      } catch (e) {
+        console.log("❌ Failed to parse user JSON");
+        return res.status(400).json({ ok: false, error: "INVALID_USER_JSON" });
+      }
+
       userRow = await upsertUserFromObj(userObj);
-      
     } else {
-      // Cookie Fallback
+      // Cookie fallback
       const cookieHeader = req.headers.cookie || "";
+      console.log("Trying cookie auth...");
       const cookies = Object.fromEntries(
         cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
       );
-      const userId = verifySessionCookieValue(cookies[COOKIE_NAME]);
-      if (!userId) return res.status(401).json({ ok: false, error: "NO_SESSION" });
-      
-      const ures = await db.query("SELECT * FROM users WHERE user_id = $1", [userId]);
-      if (!ures.rows.length) return res.status(404).json({ ok: false, error: "NO_USER" });
+      const sessionVal = cookies[COOKIE_NAME];
+      console.log("Session cookie found:", !!sessionVal);
+
+      const userId = verifySessionCookieValue(sessionVal);
+      if (!userId) {
+        console.log("❌ Invalid or missing session cookie");
+        return res.status(401).json({ ok: false, error: "NO_SESSION" });
+      }
+
+      const ures = await db.query(
+        "SELECT user_id, first_name, username, photo_url, balance FROM users WHERE user_id = $1",
+        [userId]
+      );
+      if (!ures.rows.length) {
+        console.log("❌ User not found by cookie ID");
+        return res.status(404).json({ ok: false, error: "NO_USER" });
+      }
       userRow = ures.rows[0];
+      console.log(`✅ Authenticated via cookie: user ${userId}`);
     }
 
+    // Загружаем позиции
     const positionsRes = await db.query(
       "SELECT * FROM positions WHERE user_id = $1 ORDER BY created_at ASC",
       [userRow.user_id]
     );
+    console.log(`📊 Loaded ${positionsRes.rows.length} positions`);
 
+    // Устанавливаем куки
     const cookieVal = makeSessionCookieValue(userRow.user_id);
-    res.setHeader("Set-Cookie", `${COOKIE_NAME}=${cookieVal}; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=${60 * 60 * 24 * 30}`);
+    const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
+    const cookieParts = [
+      `${COOKIE_NAME}=${cookieVal}`,
+      `Path=/`,
+      `HttpOnly`,
+      `SameSite=None`,
+      `Secure`,
+      `Max-Age=${60 * 60 * 24 * 30}`
+    ];
+    if (isSecure) cookieParts.push("Secure");
+    res.setHeader("Set-Cookie", cookieParts.join("; "));
 
+    console.log(`✅ /api/init success for user ${userRow.user_id}`);
     res.json({ ok: true, user: userRow, positions: positionsRes.rows });
+
   } catch (err) {
-    console.error("Error in /api/init:", err);
+    console.error("💥 UNHANDLED ERROR in /api/init:", err);
+    console.error(err.stack);
     res.status(500).json({ ok: false, error: "SERVER_ERROR" });
   }
 });
 
+// === НОВЫЙ РОУТ: ИСТОРИЯ СДЕЛОК ===
 app.get("/api/user/history", async (req, res) => {
   try {
+    // Получаем ID из куки (так как GET запрос)
     const cookieHeader = req.headers.cookie || "";
     const cookies = Object.fromEntries(cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2));
     let userId = verifySessionCookieValue(cookies[COOKIE_NAME]);
     
+    // Фолбек для отладки
     if (!userId && req.query.userId) userId = String(req.query.userId);
+
     if (!userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
 
     const historyRes = await db.query(
@@ -270,10 +319,41 @@ app.get("/api/user/history", async (req, res) => {
   }
 });
 
+// ======================== ORDER ENDPOINTS ========================
+
+// Получаем user_id из сессии (куки) — общая функция
+async function getAuthenticatedUser(req) {
+  let userId;
+
+  // Приоритет 1: userId из тела запроса (надёжно из Mini App)
+  if (req.body && req.body.userId) {
+    userId = String(req.body.userId);
+  } else {
+    // Приоритет 2: fallback на куки
+    const cookieHeader = req.headers.cookie || "";
+    const cookies = Object.fromEntries(
+      cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
+    );
+    const sessionVal = cookies[COOKIE_NAME];
+    userId = verifySessionCookieValue(sessionVal);
+  }
+
+  if (!userId) throw new Error("NO_SESSION");
+
+  const res = await db.query(
+    "SELECT user_id, balance FROM users WHERE user_id = $1",
+    [userId]
+  );
+  if (!res.rows.length) throw new Error("NO_USER");
+
+  return res.rows[0];
+}
+
 app.post("/api/order/open", async (req, res) => {
+  console.log("/api/order/open called:", req.body);
   try {
     const user = await getAuthenticatedUser(req);
-    const { pair, type, size, leverage, entryPrice } = req.body;
+    const { pair, type, size, leverage, entryPrice } = req.body; 
 
     if (!pair || !type || !size || !leverage || !entryPrice) {
       return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
@@ -281,72 +361,118 @@ app.post("/api/order/open", async (req, res) => {
 
     const margin = Number(size) / Number(leverage);
     if (margin > Number(user.balance)) {
-      return res.status(400).json({ ok: false, error: "INSUFFICIENT_BALANCE" });
+      return res.status(400).json({ ok: false, error: "INSUFFICIENT_BALANCE", required: margin, available: user.balance });
     }
 
-    await db.query("UPDATE users SET balance = balance - $1 WHERE user_id = $2", [margin, user.user_id]);
+    // Замораживаем маржу
+    await db.query(
+      "UPDATE users SET balance = balance - $1 WHERE user_id = $2",
+      [margin, user.user_id]
+    );
 
+    // Сохраняем позицию (ВАЖНО: добавлено поле pair)
     const posRes = await db.query(`
       INSERT INTO positions (user_id, pair, type, entry_price, margin, leverage, size)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `, [user.user_id, pair, type, entryPrice, margin, leverage, size]);
 
+    console.log(`✅ Position opened: ${type} ${pair} size=${size}`);
+
     res.json({ ok: true, position: posRes.rows[0], newBalance: Number(user.balance) - margin });
   } catch (err) {
     console.error("Error opening position:", err.message);
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: err.message || "SERVER_ERROR" });
   }
 });
 
 app.post("/api/order/close", async (req, res) => {
+  console.log("📡 /api/order/close called:", req.body);
   try {
     const user = await getAuthenticatedUser(req);
     const { positionId, closePrice } = req.body;
 
-    if (!positionId || !closePrice) return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
+    if (!positionId || !closePrice) {
+      return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
+    }
 
-    const posRes = await db.query("SELECT * FROM positions WHERE id = $1 AND user_id = $2", [positionId, user.user_id]);
-    if (!posRes.rows.length) return res.status(404).json({ ok: false, error: "POSITION_NOT_FOUND" });
+    // 1. Получаем позицию из базы
+    const posRes = await db.query(
+      "SELECT * FROM positions WHERE id = $1 AND user_id = $2",
+      [positionId, user.user_id]
+    );
+
+    if (!posRes.rows.length) {
+      return res.status(404).json({ ok: false, error: "POSITION_NOT_FOUND" });
+    }
+
     const pos = posRes.rows[0];
 
+    // 2. Приводим все данные к числам
     const cPrice = Number(closePrice);
     const ePrice = Number(pos.entry_price);
     const pSize = Number(pos.size);
     const pMargin = Number(pos.margin);
 
+    // 3. Расчёт PnL
     const priceChangePct = (cPrice - ePrice) / ePrice;
     let pnl = priceChangePct * pSize;
-    if (pos.type === "SHORT") pnl = -pnl;
-    
-    if (pnl < -pMargin) pnl = -pMargin;
+    if (pos.type === "SHORT") {
+      pnl = -pnl;
+    }
 
+    // 5. Защита от "ухода в долг"
+    if (pnl < -pMargin) {
+      pnl = -pMargin;
+    }
+
+    // 6. Итоговый возврат
     const totalReturn = pMargin + pnl;
 
-    await db.query("BEGIN");
+    // 7. ТРАНЗАКЦИЯ: Обновление баланса + Запись истории + Удаление
+    await db.query("BEGIN"); 
     
-    await db.query("UPDATE users SET balance = balance + $1 WHERE user_id = $2", [totalReturn, user.user_id]);
+    await db.query(
+      "UPDATE users SET balance = balance + $1 WHERE user_id = $2",
+      [totalReturn, user.user_id]
+    );
 
+    // ЗАПИСЬ В ИСТОРИЮ (НОВОЕ)
     await db.query(`
       INSERT INTO trades_history (user_id, pair, type, entry_price, exit_price, size, leverage, pnl)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `, [user.user_id, pos.pair || 'BTC-USD', pos.type, ePrice, cPrice, pSize, pos.leverage, pnl]);
 
     await db.query("DELETE FROM positions WHERE id = $1", [positionId]);
-    await db.query("COMMIT");
 
+    await db.query("COMMIT"); 
+
+    // 8. Получаем актуальный баланс
     const newBalRes = await db.query("SELECT balance FROM users WHERE user_id = $1", [user.user_id]);
-    
-    res.json({ ok: true, pnl: Number(pnl.toFixed(2)), newBalance: Number(newBalRes.rows[0].balance) });
+    const finalBalance = Number(newBalRes.rows[0].balance);
+
+    console.log(`✅ Позиция закрыта! PnL: ${pnl.toFixed(2)} VP`);
+
+    res.json({
+      ok: true,
+      pnl: Number(pnl.toFixed(2)),
+      newBalance: finalBalance
+    });
 
   } catch (err) {
     await db.query("ROLLBACK");
-    console.error("❌ Error closing position:", err.message);
-    res.status(500).json({ ok: false, error: err.message });
+    console.error("❌ Ошибка закрытия позиции:", err.message);
+    res.status(500).json({ ok: false, error: err.message || "SERVER_ERROR" });
   }
 });
 
-app.get("/api/health", (req, res) => res.json({ ok: true }));
+app.get("/api/health", (req, res) => {
+  console.log("/api/health check");
+  res.json({ ok: true });
+});
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`Health check: https://your-service.onrender.com/api/health`);
+});
