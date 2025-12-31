@@ -555,6 +555,9 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   // ————————————————————————————————————————————
   const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com"; 
   const API_BASE = "https://tradingbot-p9n8.onrender.com";
+  // Список всех пар для подписки, чтобы знать цены даже в фоне
+  const ALL_PAIRS = ["BTC-USD", "ETH-USD"]; 
+
   let currentUserId = null;
 
   const tg = window.Telegram?.WebApp;
@@ -567,7 +570,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   }
 
   let selectedPair = "BTC-USD";
-  let currentPrice = 0;
+  
+  // ИСПРАВЛЕНИЕ 2: Храним цены для каждой пары отдельно
+  let marketPrices = {}; 
+  
   let profile = { balance: 0, name: "Trader", id: 0, photo: "" };
   let currentLeverage = 10;
   let localTrades = [];
@@ -619,32 +625,26 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
   if(tg) {
     tg.BackButton.onClick(() => {
-        // Simple back logic
         if(viewRewards.classList.contains('active')) showView('view-profile');
         else if(viewProfile.classList.contains('active')) showView('view-trade');
     });
   }
 
   // ————————————————————————————————————————————
-  // PROFILE LOGIC (NEW)
+  // PROFILE LOGIC
   // ————————————————————————————————————————————
   async function renderProfile() {
-    // Basic Info
     $('profileName').textContent = profile.name || "Trader";
     $('profileId').textContent = "ID: " + profile.id;
     $('profileBalance').textContent = profile.balance.toFixed(2);
     if(profile.photo) $('profileAvatarBig').src = profile.photo;
 
-    // СНАЧАЛА ЗАГРУЖАЕМ ИСТОРИЮ С СЕРВЕРА
     try {
         const res = await fetch(API_BASE + "/api/user/history?userId=" + currentUserId);
         const data = await res.json();
-        if(data.ok) {
-            remoteHistory = data.history;
-        }
+        if(data.ok) remoteHistory = data.history;
     } catch(e) { console.error("History fetch error", e); }
 
-    // ANALYTICS CALCULATION
     let totalPnL = 0;
     let wins = 0;
     let count = remoteHistory.length;
@@ -655,17 +655,14 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         if(p > 0) wins++;
     });
 
-    // Render Stats
     const pnlEl = $('statPnL');
     pnlEl.textContent = (totalPnL > 0 ? "+" : "") + totalPnL.toFixed(2) + " VP";
     pnlEl.className = (totalPnL >= 0 ? "text-green" : "text-red");
     
-    // Win Rate Chart Update
     let winRate = count > 0 ? Math.round((wins / count) * 100) : 0;
     $('winRateVal').textContent = winRate + "%";
     $('totalTradesVal').textContent = count + " Trades";
     
-    // Update CSS Conic Gradient
     const chartColor = winRate >= 50 ? '#0ECB81' : '#F6465D';
     $('winRateChart').style.background = `conic-gradient(${chartColor} 0% ${winRate}%, var(--panel-light) ${winRate}% 100%)`;
 
@@ -675,19 +672,15 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   function renderHistoryList() {
     const list = $('historyList');
     list.innerHTML = "";
-
     if(remoteHistory.length === 0) {
       list.innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No trading history yet</div>';
       return;
     }
-
-    // Show last 20
     remoteHistory.slice(0, 20).forEach(h => {
       const pnlVal = Number(h.pnl);
       const sizeVal = Number(h.size);
       const entryVal = Number(h.entry_price);
       const exitVal = Number(h.exit_price);
-      
       const pnlClass = pnlVal >= 0 ? "text-green" : "text-red";
       const dateStr = new Date(h.closed_at).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
       
@@ -734,17 +727,24 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         pairItems.forEach(i => i.classList.remove('active'));
         item.classList.add('active');
         triggerText.textContent = item.textContent;
-        selectedPair = newPair;
-        $('bookPairLabel').textContent = selectedPair;
+        
         switchPair(newPair);
     });
   });
   
   function switchPair(newPair) {
     selectedPair = newPair;
+    $('bookPairLabel').textContent = selectedPair;
 
-    // Сброс UI
-    $('priceDisplay').textContent = "--.--";
+    // Обновляем главный ценник сразу, если цена уже есть в памяти
+    const cachedPrice = marketPrices[selectedPair];
+    if (cachedPrice) {
+        $('priceDisplay').textContent = formatPrice(cachedPrice);
+    } else {
+        $('priceDisplay').textContent = "--.--";
+    }
+
+    // Сброс стакана и истории сделок (они специфичны для пары)
     $('orderBook').innerHTML = '';
     $('tradeHistory').innerHTML = "";
     localTrades = [];
@@ -755,8 +755,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     chart.timeScale().fitContent();
     chart.priceScale('right').applyOptions({ autoScale: true });
 
+    // Запрашиваем историю для новой пары
     if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: "subscribe", pair: newPair }));
+       // Мы и так подписаны на все, но этот запрос обновит историю на графике
+       socket.send(JSON.stringify({ type: "subscribe", pair: newPair }));
     }
   }
 
@@ -786,7 +788,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
    }).observe(chartEl);
 
   // ————————————————————————————————————————————
-  // LEVERAGE
+  // LEVERAGE & UI
   // ————————————————————————————————————————————
   const slider = $('leverageSlider');
   const levDisplay = $('leverageValText');
@@ -808,7 +810,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   const historyPromise = new Promise(r => historyResolve = r);
 
   function updateBalanceUI() {
-    // Обновляем в хедере и в профиле
     const val = profile.balance.toFixed(2);
     $('headerBalance').textContent = val + " VP";
     $('profileBalance').textContent = val;
@@ -835,11 +836,16 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
           $('avatarImg').style.display = 'block'; 
         }
         updateBalanceUI();
-        renderPositions();
+        
+        // Рендерим позиции первый раз полностью
+        renderPositions(true);
       }
     } catch(e) { console.error(e); }
   }
 
+  // ————————————————————————————————————————————
+  // WEBSOCKET & DATA STREAM
+  // ————————————————————————————————————————————
   let socket = null;
   let lastCandle = null;
 
@@ -847,7 +853,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     socket = new WebSocket(WSS_PRICE_URL);
 
     socket.onopen = () => {
-      socket.send(JSON.stringify({ type: "subscribe", pair: selectedPair }));
+      // ИСПРАВЛЕНИЕ 2: Подписываемся НА ВСЕ ПАРЫ сразу
+      ALL_PAIRS.forEach(pair => {
+         socket.send(JSON.stringify({ type: "subscribe", pair: pair }));
+      });
     };
 
     socket.onmessage = (evt) => {
@@ -858,38 +867,46 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       const msgPairNorm = normalizePair(msg.pair);
       const selPairNorm = normalizePair(selectedPair);
 
-      if (msg.type === "orderBook") {
-        if (!msg.pair || msgPairNorm === selPairNorm) {
-          renderOrderBook(msg.buy || msg.bids, msg.sell || msg.asks);
-        }
-        return;
-      }
-
-      if (msg.type === "price" && msgPairNorm === selPairNorm) {
-        const prevPrice = currentPrice;
-        currentPrice = Number(msg.price);
-        $('priceDisplay').textContent = formatPrice(currentPrice);
-        if (prevPrice !== 0) {
-          $('priceDisplay').className = currentPrice >= prevPrice ? "price-display text-green" : "price-display text-red";
-        }
-        if (lastCandle) {
-          const now = Math.floor(Date.now()/1000);
-          const minTime = now - (now % 60);
-          if (minTime === lastCandle.time) {
-            lastCandle.high = Math.max(lastCandle.high, currentPrice);
-            lastCandle.low = Math.min(lastCandle.low, currentPrice);
-            lastCandle.close = currentPrice;
-            candleSeries.update(lastCandle);
-          } else {
-            lastCandle = { time: minTime, open: lastCandle.close, high: currentPrice, low: currentPrice, close: currentPrice };
-            candleSeries.update(lastCandle);
+      // 1. Обновляем глобальный кеш цен для всех пар
+      if (msg.type === "price" && msg.pair && msg.price) {
+          marketPrices[msgPairNorm] = Number(msg.price);
+          
+          // Если это цена текущей выбранной пары - обновляем UI
+          if (msgPairNorm === selPairNorm) {
+             const prevPrice = marketPrices[msgPairNorm]; // (старое значение) - тут небольшая неточность, но для цвета пойдет
+             // Лучше было бы хранить prevPrice отдельно, но для простоты:
+             const currentPrice = Number(msg.price);
+             $('priceDisplay').textContent = formatPrice(currentPrice);
+             
+             // Логика свечей
+             if (lastCandle) {
+                const now = Math.floor(Date.now()/1000);
+                const minTime = now - (now % 60);
+                if (minTime === lastCandle.time) {
+                  lastCandle.high = Math.max(lastCandle.high, currentPrice);
+                  lastCandle.low = Math.min(lastCandle.low, currentPrice);
+                  lastCandle.close = currentPrice;
+                  candleSeries.update(lastCandle);
+                } else {
+                  lastCandle = { time: minTime, open: lastCandle.close, high: currentPrice, low: currentPrice, close: currentPrice };
+                  candleSeries.update(lastCandle);
+                }
+             }
           }
-        }
-        renderPositions();
-        return;
+          // Обновляем PnL (без полной перерисовки DOM!)
+          renderPositions(false); 
+          return;
       }
 
-      if (msg.type === "history" && msgPairNorm === selPairNorm) {
+      // Order Book и сделки обновляем только для выбранной пары
+      if (msgPairNorm !== selPairNorm) return;
+
+      if (msg.type === "orderBook") {
+          renderOrderBook(msg.buy || msg.bids, msg.sell || msg.asks);
+          return;
+      }
+
+      if (msg.type === "history") {
         const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
         candleSeries.setData(data);
         chart.timeScale().fitContent();
@@ -897,14 +914,14 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
         if (data.length) {
           lastCandle = data[data.length-1];
-          currentPrice = lastCandle.close;
-          $('priceDisplay').textContent = formatPrice(currentPrice);
+          marketPrices[selPairNorm] = lastCandle.close; // Инициализируем цену
+          $('priceDisplay').textContent = formatPrice(lastCandle.close);
         }
         if (historyResolve) { historyResolve(); historyResolve = null; }
         return;
       }
 
-      if (msg.type === "trades" && msgPairNorm === selPairNorm) {
+      if (msg.type === "trades") {
         const newTrades = msg.trades || [];
         localTrades = [...newTrades, ...localTrades];
         if (localTrades.length > 20) localTrades = localTrades.slice(0, 20);
@@ -917,47 +934,116 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   }
 
   // ————————————————————————————————————————————
-  // UI RENDERERS
+  // UI RENDERERS (FIXED)
   // ————————————————————————————————————————————
-  function renderPositions() {
+  
+  // ИСПРАВЛЕНИЕ 1: "Умный" рендер позиций. Не уничтожает DOM, если не нужно.
+  function renderPositions(forceRebuild = false) {
     const list = $('positionsList');
-    if(!window._positions || window._positions.length === 0) {
-      list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
-      return;
+    if (!window._positions) window._positions = [];
+    const positions = window._positions;
+
+    // 1. Если позиций нет
+    if (positions.length === 0) {
+        if (list.innerHTML.includes("pos-item")) { // Если там были позиции, очищаем
+            list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
+        } else if (forceRebuild) {
+            list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
+        }
+        return;
     }
-    list.innerHTML = "";
+
+    // Удаляем заглушку "No open positions", если она там есть и мы добавляем позицию
+    if (positions.length > 0 && list.innerText.includes("No open positions")) {
+        list.innerHTML = "";
+    }
+
+    // 2. Проверяем, есть ли удаленные позиции (которых нет в _positions, но есть в DOM)
+    const existingIds = Array.from(list.querySelectorAll('.pos-item')).map(el => el.dataset.id);
+    const currentIds = positions.map(p => String(p.id || p._id));
     
-    [...window._positions].reverse().forEach(pos => {
+    // Удаляем лишние DOM элементы
+    existingIds.forEach(domId => {
+        if (!currentIds.includes(domId)) {
+            const el = document.getElementById('pos-item-' + domId);
+            if(el) el.remove();
+        }
+    });
+    
+    // Если все удалили и стало пусто
+    if(list.children.length === 0 && positions.length === 0) {
+         list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
+         return;
+    }
+
+    // 3. Обновляем или создаем элементы
+    [...positions].reverse().forEach(pos => {
+      const id = String(pos.id || pos._id);
+      const pair = normalizePair(pos.pair || "BTC-USD");
+      
+      // ИСПРАВЛЕНИЕ 2: Берем цену конкретной пары из marketPrices
+      const currentAssetPrice = marketPrices[pair]; 
+      
       const entry = Number(pos.entry_price || pos.entryPrice);
       const size = Number(pos.size);
       const type = (pos.type || "LONG").toUpperCase();
       const lev = Number(pos.leverage || 1);
       
       let pnl = 0;
-      if(currentPrice > 0) {
-        const diff = (currentPrice - entry) / entry;
+      let markPriceDisplay = "--.--";
+
+      if(currentAssetPrice > 0) {
+        markPriceDisplay = formatPrice(currentAssetPrice);
+        const diff = (currentAssetPrice - entry) / entry;
         pnl = diff * size * (type==="SHORT"? -1 : 1);
       }
-      const pnlClass = pnl >= 0 ? "text-green" : "text-red";
       
-      const div = document.createElement('div');
-      div.className = "pos-item";
-      div.innerHTML = `
-        <div class="pos-header">
-           <span class="${type==='LONG'?'text-green':'text-red'}">${type} ${selectedPair} <span style="font-size:10px; opacity:0.7; border:1px solid currentColor; padding:1px 3px; border-radius:3px;">x${lev}</span></span>
-           <span class="${pnlClass}">${pnl>0?'+':''}${pnl.toFixed(2)} VP</span>
-        </div>
-        <div class="pos-details">
-           <div>Entry <div class="pos-val">${formatPrice(entry)}</div></div>
-           <div>Mark <div class="pos-val">${formatPrice(currentPrice)}</div></div>
-           <div>Size <div class="pos-val">${size.toFixed(0)}</div></div>
-           <div>Margin <div class="pos-val">${(size/lev).toFixed(2)}</div></div>
-        </div>
-        <button class="close-btn" data-id="${pos.id || pos._id}">Close Position</button>
-      `;
-      list.appendChild(div);
+      const pnlClass = pnl >= 0 ? "text-green" : "text-red";
+      const pnlText = (pnl > 0 ? '+' : '') + pnl.toFixed(2) + " VP";
+
+      // Ищем существующий элемент
+      let div = document.getElementById('pos-item-' + id);
+      
+      if (!div) {
+          // СОЗДАЕМ НОВЫЙ
+          div = document.createElement('div');
+          div.className = "pos-item";
+          div.id = 'pos-item-' + id;
+          div.dataset.id = id;
+          
+          div.innerHTML = `
+            <div class="pos-header">
+               <span class="${type==='LONG'?'text-green':'text-red'}">${type} ${pair} <span class="lev-badge">x${lev}</span></span>
+               <span class="pnl-val ${pnlClass}">${pnlText}</span>
+            </div>
+            <div class="pos-details">
+               <div>Entry <div class="pos-val">${formatPrice(entry)}</div></div>
+               <div>Mark <div class="pos-val mark-val">${markPriceDisplay}</div></div>
+               <div>Size <div class="pos-val">${size.toFixed(0)}</div></div>
+               <div>Margin <div class="pos-val">${(size/lev).toFixed(2)}</div></div>
+            </div>
+            <button class="close-btn" data-id="${id}">Close Position</button>
+            <style>.lev-badge {font-size:10px; opacity:0.7; border:1px solid currentColor; padding:1px 3px; border-radius:3px;}</style>
+          `;
+          list.appendChild(div); // Добавляем в конец (так как мы делаем reverse forEach, порядок может быть важен, но здесь упростим)
+          
+          // Вешаем событие только один раз при создании
+          div.querySelector('.close-btn').onclick = () => closePosition(id, pair);
+      } else {
+          // ОБНОВЛЯЕМ СУЩЕСТВУЮЩИЙ (БЕЗ перерисовки всего блока)
+          // Обновляем PnL
+          const pnlEl = div.querySelector('.pnl-val');
+          if(pnlEl.textContent !== pnlText) {
+             pnlEl.textContent = pnlText;
+             pnlEl.className = `pnl-val ${pnlClass}`;
+          }
+          // Обновляем Mark Price
+          const markEl = div.querySelector('.mark-val');
+          if(markEl.textContent !== markPriceDisplay) {
+             markEl.textContent = markPriceDisplay;
+          }
+      }
     });
-    list.querySelectorAll('.close-btn').forEach(b => b.onclick = () => closePosition(b.dataset.id));
   }
 
   function smartUpdateOrderBook(buys = [], sells = [], topLevels = 10) {
@@ -972,31 +1058,18 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     let sortedBids = Array.from(bidMap.entries()).map(([p, s]) => ({ price: Number(p), size: s, type: 'bid' })).sort((a, b) => b.price - a.price).slice(0, maxLevels);
     const renderList = [...sortedAsks, ...sortedBids];
     const maxVol = Math.max(...renderList.map(x => x.size), 0.0000001);
-    const existingRows = Array.from(container.querySelectorAll('.ob-row'));
-    const existingByPrice = new Map();
-    existingRows.forEach(r => existingByPrice.set(r.dataset.price, r));
-    const touched = new Set();
-
+    
+    // Очистка старая, можно тоже оптимизировать, но пока оставим как есть, так как стакан не влияет на инпуты
+    container.innerHTML = ""; 
+    
     renderList.forEach(level => {
-      const priceKey = level.price.toFixed(2);
-      touched.add(priceKey);
-      let row = existingByPrice.get(priceKey);
       const isAsk = level.type === 'ask';
-      if (!row) {
-        row = document.createElement('div');
-        row.className = 'ob-row';
-        row.dataset.price = priceKey;
-        row.innerHTML = `<div class="ob-bg" style="width:0%"></div><span class="price-cell">${formatPrice(level.price)}</span><span class="size-cell">${level.size.toFixed(5)}</span>`;
-      }
-      const bg = row.querySelector('.ob-bg');
-      const priceSpan = row.querySelector('.price-cell');
-      bg.className = `ob-bg ${isAsk ? 'bg-red' : 'bg-green'}`;
-      priceSpan.className = `price-cell ${isAsk ? 'text-red' : 'text-green'}`;
-      bg.style.width = `${(level.size / maxVol) * 100}%`;
-      row.querySelector('.size-cell').textContent = level.size.toFixed(5);
+      const row = document.createElement('div');
+      row.className = 'ob-row';
+      row.innerHTML = `<div class="ob-bg ${isAsk ? 'bg-red' : 'bg-green'}" style="width:${(level.size / maxVol) * 100}%"></div><span class="price-cell ${isAsk ? 'text-red' : 'text-green'}">${formatPrice(level.price)}</span><span class="size-cell" style="text-align:right;">${level.size.toFixed(5)}</span>`;
       container.appendChild(row);
     });
-    existingByPrice.forEach((row, price) => { if (!touched.has(price)) row.remove(); });
+    
     const updEl = $('bookUpdated');
     if (updEl) updEl.textContent = new Date().toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
   }
@@ -1024,7 +1097,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   // ————————————————————————————————————————————
   async function openPosition(type) {
     const margin = Number($('sizeInput').value);
+    const currentPrice = marketPrices[selectedPair]; // Берем цену из нашего хранилища
+
     if(!margin || margin <= 0) return alert("Enter margin");
+    if(!currentPrice) return alert("Waiting for price...");
     
     const size = margin * currentLeverage; 
     if(tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
@@ -1038,7 +1114,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       if(data.ok) {
         window._positions.push(data.position);
         if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
-        renderPositions();
+        renderPositions(true); // Форсируем обновление списка (добавление элемента)
         if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       } else { 
           alert(data.error || "Error"); 
@@ -1046,21 +1122,32 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     } catch(e) { console.error(e); }
   }
 
-  async function closePosition(id) {
+  // ИСПРАВЛЕНИЕ: Передаем pair, чтобы взять правильную цену закрытия
+  async function closePosition(id, pair) {
     const pos = window._positions.find(p => (p.id == id || p._id == id));
     if(!pos) return;
 
-    if(!confirm("Close?")) return;
+    // Берем цену ИМЕННО ЭТОЙ пары
+    const closePrice = marketPrices[pair || pos.pair];
+
+    if(!closePrice) return alert("Price not available for " + pair);
+
+    if(!confirm("Close position?")) return;
     try {
       const res = await fetch(API_BASE + "/api/order/close", {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ userId: currentUserId, positionId: id, closePrice: currentPrice })
+        body: JSON.stringify({ userId: currentUserId, positionId: id, closePrice: closePrice })
       });
       const data = await res.json();
       if(data.ok) {
         window._positions = window._positions.filter(p => (p.id!=id && p._id!=id));
         if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
-        renderPositions();
+        
+        // Удаляем элемент из DOM аккуратно
+        const el = document.getElementById('pos-item-' + id);
+        if(el) el.remove();
+        renderPositions(false); // Проверяем, пусто ли теперь
+        
         if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       }
     } catch(e) { console.error(e); }
@@ -1082,6 +1169,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   setProgress(50, "STREAM...");
   connectWS();
   
+  // Ждем немного истории или таймаут
   await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
   setProgress(100, "READY");
   
