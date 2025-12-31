@@ -177,10 +177,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .bg-red { left: 0; background: linear-gradient(to right, var(--accent-red), transparent); }
 .bg-green { right: 0; background: linear-gradient(to left, var(--accent-green), transparent); }
 .ob-row span { position: relative; z-index: 1; }
-
-/* FIX: Выравниваем вторую колонку (Amount) вправо */
 .ob-row span:last-child { text-align: right; }
-
 .text-green { color: var(--accent-green); }
 .text-red   { color: var(--accent-red); }
 
@@ -202,6 +199,15 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   background: var(--bg);
 }
 
+/* FIX: Защита блоков от сужения при длинной истории */
+.pro-header, 
+.asset-card, 
+.analysis-block, 
+.rewards-banner,
+.hist-header-row {
+  flex-shrink: 0; 
+}
+
 .pro-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 10px;
@@ -218,6 +224,14 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   position: relative; overflow: hidden;
 }
 .asset-label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+/* Eye Button Styles */
+.eye-btn {
+    width: 20px; height: 20px; cursor: pointer; opacity: 0.7; transition: opacity 0.2s;
+    margin-left: 6px; display: block;
+}
+.eye-btn:active { opacity: 1; transform: scale(0.9); }
+
 .asset-val { font-size: 26px; font-weight: 700; color: var(--white); font-family: 'Roboto Mono'; margin: 8px 0; }
 .asset-approx { font-size: 13px; color: var(--muted); }
 .asset-pnl { font-size: 12px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.05); display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
@@ -230,15 +244,19 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 }
 .pro-btn.primary { background: var(--gold); color: #000; }
 
-/* Analysis Block */
+/* Analysis Block - FIX ALIGNMENT */
 .analysis-block {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
 }
 .an-card {
   background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
-  padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 16px; 
+  display: flex; flex-direction: column; 
+  justify-content: space-between; align-items: center; /* FIX: Выравнивание */
+  min-height: 110px; /* FIX: Высота */
 }
-.an-title { font-size: 11px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; width: 100%; text-align: left; }
+.an-title { font-size: 11px; color: var(--muted); margin-bottom: 0; text-transform: uppercase; width: 100%; text-align: left; }
+.an-content-center { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; }
 
 /* Donut Chart CSS */
 .donut-chart {
@@ -270,8 +288,24 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .rb-content p { margin: 4px 0 0; font-size: 11px; color: var(--muted); }
 .rb-icon { display: flex; align-items: center; }
 
-/* History List Clean */
-.hist-title { font-size: 15px; font-weight: 700; margin: 10px 0; }
+/* History List & Filters */
+.hist-header-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin: 20px 0 10px 0;
+}
+.hist-title { margin: 0; font-size: 15px; font-weight: 700; }
+.hist-filters {
+    display: flex; background: var(--panel); border-radius: 8px; padding: 2px;
+    border: 1px solid var(--border);
+}
+.h-filter {
+    padding: 4px 10px; font-size: 11px; color: var(--muted);
+    border-radius: 6px; cursor: pointer; transition: 0.2s; font-weight: 500;
+}
+.h-filter.active {
+    background: var(--panel-light); color: var(--white); font-weight: 700;
+}
+
 .history-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 60px; }
 .history-card {
   background: var(--panel); border: 1px solid var(--border);
@@ -453,10 +487,15 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       </div>
 
       <div class="asset-card">
-         <div class="asset-label">Total Assets (VP) <span>👁</span></div>
+         <div class="asset-label">
+             Total Assets (VP) 
+             <img id="btnToggleBalance" class="eye-btn" src="https://img.icons8.com/ios-glyphs/60/ffffff/visible.png" alt="Show/Hide">
+         </div>
+         
          <div class="asset-val" id="profileBalance">0.00</div>
+         
          <div style="display:flex; align-items:center;">
-           <span class="asset-approx">≈ $0.00</span>
+           <span class="asset-approx" id="profileBalanceApprox">≈ $0.00</span>
            <div class="asset-pnl text-green" id="profilePnlPill">+0.00%</div>
          </div>
 
@@ -469,15 +508,19 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       <div class="analysis-block">
         <div class="an-card">
            <div class="an-title">Win Rate</div>
-           <div class="donut-chart" id="winRateChart" style="background: conic-gradient(var(--accent-green) 0% 0%, var(--panel-light) 0% 100%);">
-             <span class="donut-val" id="winRateVal">0%</span>
+           <div class="an-content-center">
+               <div class="donut-chart" id="winRateChart">
+                 <span class="donut-val" id="winRateVal">0%</span>
+               </div>
+               <div class="an-text" id="totalTradesVal" style="margin-top: 6px;">0 Trades</div>
            </div>
-           <div class="an-text" id="totalTradesVal">0 Trades</div>
         </div>
         <div class="an-card">
            <div class="an-title">Net PnL</div>
-           <div style="font-size:18px; font-weight:700; font-family:'Roboto Mono'; margin-bottom:4px;" id="statPnL">0.00</div>
-           <div style="font-size:10px; color:var(--muted);">All Time</div>
+           <div class="an-content-center">
+               <div style="font-size:20px; font-weight:700; font-family:'Roboto Mono';" id="statPnL">0.00</div>
+           </div>
+           <div style="font-size:10px; color:var(--muted); width:100%; text-align:center;">All Time</div>
         </div>
       </div>
 
@@ -492,7 +535,15 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       </div>
 
       <div>
-        <div class="hist-title">Recent History</div>
+        <div class="hist-header-row">
+            <div class="hist-title">History</div>
+            <div class="hist-filters">
+                <div class="h-filter active" data-filter="all">All</div>
+                <div class="h-filter" data-filter="day">24h</div>
+                <div class="h-filter" data-filter="week">7d</div>
+            </div>
+        </div>
+        
         <div class="history-list" id="historyList">
            <div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No trading history</div>
         </div>
@@ -551,14 +602,26 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   const $ = (id) => document.getElementById(id);
   
   // ————————————————————————————————————————————
-  // CONFIG
+  // CONFIG & STATE
   // ————————————————————————————————————————————
   const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com"; 
   const API_BASE = "https://tradingbot-p9n8.onrender.com";
-  // Список всех пар для подписки, чтобы знать цены даже в фоне
   const ALL_PAIRS = ["BTC-USD", "ETH-USD"]; 
 
   let currentUserId = null;
+  let selectedPair = "BTC-USD";
+  let marketPrices = {}; 
+  
+  let profile = { balance: 0, name: "Trader", id: 0, photo: "" };
+  let currentLeverage = 10;
+  let localTrades = [];
+  let remoteHistory = []; 
+
+  // NEW: Profile State
+  let isBalanceHidden = false;
+  let historyFilterMode = 'all'; // 'all', 'day', 'week'
+  const ICON_EYE_OPEN = "https://img.icons8.com/ios-glyphs/60/ffffff/visible.png";
+  const ICON_EYE_CLOSED = "https://img.icons8.com/ios-glyphs/60/ffffff/hide.png";
 
   const tg = window.Telegram?.WebApp;
   if(tg) {
@@ -568,16 +631,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     tg.setBackgroundColor('#0B0E11');
     tg.enableClosingConfirmation();
   }
-
-  let selectedPair = "BTC-USD";
-  
-  // ИСПРАВЛЕНИЕ 2: Храним цены для каждой пары отдельно
-  let marketPrices = {}; 
-  
-  let profile = { balance: 0, name: "Trader", id: 0, photo: "" };
-  let currentLeverage = 10;
-  let localTrades = [];
-  let remoteHistory = []; 
 
   // ————————————————————————————————————————————
   // UTILS
@@ -633,10 +686,32 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   // ————————————————————————————————————————————
   // PROFILE LOGIC
   // ————————————————————————————————————————————
+  
+  // 1. Balance Toggle
+  const btnEye = $('btnToggleBalance');
+  if(btnEye) {
+      btnEye.onclick = (e) => {
+          e.stopPropagation();
+          isBalanceHidden = !isBalanceHidden;
+          btnEye.src = isBalanceHidden ? ICON_EYE_CLOSED : ICON_EYE_OPEN;
+          updateBalanceUI();
+      };
+  }
+
+  // 2. History Filters
+  document.querySelectorAll('.h-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+          document.querySelectorAll('.h-filter').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          historyFilterMode = btn.dataset.filter;
+          renderHistoryList();
+      });
+  });
+
   async function renderProfile() {
     $('profileName').textContent = profile.name || "Trader";
     $('profileId').textContent = "ID: " + profile.id;
-    $('profileBalance').textContent = profile.balance.toFixed(2);
+    updateBalanceUI();
     if(profile.photo) $('profileAvatarBig').src = profile.photo;
 
     try {
@@ -672,11 +747,32 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   function renderHistoryList() {
     const list = $('historyList');
     list.innerHTML = "";
+    
     if(remoteHistory.length === 0) {
       list.innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No trading history yet</div>';
       return;
     }
-    remoteHistory.slice(0, 20).forEach(h => {
+
+    // Filter Logic
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+    const oneWeek = 7 * 24 * 60 * 60 * 1000;
+
+    const filtered = remoteHistory.filter(h => {
+        if(historyFilterMode === 'all') return true;
+        const t = new Date(h.closed_at).getTime();
+        if(historyFilterMode === 'day') return (now - t) < oneDay;
+        if(historyFilterMode === 'week') return (now - t) < oneWeek;
+        return true;
+    });
+
+    if(filtered.length === 0) {
+        list.innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No trades in this period</div>';
+        return;
+    }
+
+    // Limit render to 50 items for performance
+    filtered.slice(0, 50).forEach(h => {
       const pnlVal = Number(h.pnl);
       const sizeVal = Number(h.size);
       const entryVal = Number(h.entry_price);
@@ -736,7 +832,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     selectedPair = newPair;
     $('bookPairLabel').textContent = selectedPair;
 
-    // Обновляем главный ценник сразу, если цена уже есть в памяти
     const cachedPrice = marketPrices[selectedPair];
     if (cachedPrice) {
         $('priceDisplay').textContent = formatPrice(cachedPrice);
@@ -744,20 +839,16 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         $('priceDisplay').textContent = "--.--";
     }
 
-    // Сброс стакана и истории сделок (они специфичны для пары)
     $('orderBook').innerHTML = '';
     $('tradeHistory').innerHTML = "";
     localTrades = [];
 
-    // Сброс Графика
     candleSeries.setData([]);
     lastCandle = null;
     chart.timeScale().fitContent();
     chart.priceScale('right').applyOptions({ autoScale: true });
 
-    // Запрашиваем историю для новой пары
     if (socket && socket.readyState === WebSocket.OPEN) {
-       // Мы и так подписаны на все, но этот запрос обновит историю на графике
        socket.send(JSON.stringify({ type: "subscribe", pair: newPair }));
     }
   }
@@ -811,8 +902,18 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
   function updateBalanceUI() {
     const val = profile.balance.toFixed(2);
-    $('headerBalance').textContent = val + " VP";
-    $('profileBalance').textContent = val;
+    
+    // Masking logic
+    const displayVal = isBalanceHidden ? "******" : (val + " VP");
+    const displayValPure = isBalanceHidden ? "****" : val;
+
+    $('headerBalance').textContent = displayVal;
+    
+    const elProBal = $('profileBalance');
+    if(elProBal) elProBal.textContent = displayValPure;
+
+    const elApprox = $('profileBalanceApprox');
+    if(elApprox) elApprox.textContent = isBalanceHidden ? "≈ $****" : `≈ $${val}`; // Assuming 1:1 for simplicity
   }
 
   async function initSession() {
@@ -837,7 +938,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         }
         updateBalanceUI();
         
-        // Рендерим позиции первый раз полностью
         renderPositions(true);
       }
     } catch(e) { console.error(e); }
@@ -853,7 +953,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     socket = new WebSocket(WSS_PRICE_URL);
 
     socket.onopen = () => {
-      // ИСПРАВЛЕНИЕ 2: Подписываемся НА ВСЕ ПАРЫ сразу
       ALL_PAIRS.forEach(pair => {
          socket.send(JSON.stringify({ type: "subscribe", pair: pair }));
       });
@@ -867,18 +966,13 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       const msgPairNorm = normalizePair(msg.pair);
       const selPairNorm = normalizePair(selectedPair);
 
-      // 1. Обновляем глобальный кеш цен для всех пар
       if (msg.type === "price" && msg.pair && msg.price) {
           marketPrices[msgPairNorm] = Number(msg.price);
           
-          // Если это цена текущей выбранной пары - обновляем UI
           if (msgPairNorm === selPairNorm) {
-             const prevPrice = marketPrices[msgPairNorm]; // (старое значение) - тут небольшая неточность, но для цвета пойдет
-             // Лучше было бы хранить prevPrice отдельно, но для простоты:
              const currentPrice = Number(msg.price);
              $('priceDisplay').textContent = formatPrice(currentPrice);
              
-             // Логика свечей
              if (lastCandle) {
                 const now = Math.floor(Date.now()/1000);
                 const minTime = now - (now % 60);
@@ -893,12 +987,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
                 }
              }
           }
-          // Обновляем PnL (без полной перерисовки DOM!)
           renderPositions(false); 
           return;
       }
 
-      // Order Book и сделки обновляем только для выбранной пары
       if (msgPairNorm !== selPairNorm) return;
 
       if (msg.type === "orderBook") {
@@ -914,7 +1006,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 
         if (data.length) {
           lastCandle = data[data.length-1];
-          marketPrices[selPairNorm] = lastCandle.close; // Инициализируем цену
+          marketPrices[selPairNorm] = lastCandle.close;
           $('priceDisplay').textContent = formatPrice(lastCandle.close);
         }
         if (historyResolve) { historyResolve(); historyResolve = null; }
@@ -934,18 +1026,15 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   }
 
   // ————————————————————————————————————————————
-  // UI RENDERERS (FIXED)
+  // UI RENDERERS
   // ————————————————————————————————————————————
-  
-  // ИСПРАВЛЕНИЕ 1: "Умный" рендер позиций. Не уничтожает DOM, если не нужно.
   function renderPositions(forceRebuild = false) {
     const list = $('positionsList');
     if (!window._positions) window._positions = [];
     const positions = window._positions;
 
-    // 1. Если позиций нет
     if (positions.length === 0) {
-        if (list.innerHTML.includes("pos-item")) { // Если там были позиции, очищаем
+        if (list.innerHTML.includes("pos-item")) { 
             list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
         } else if (forceRebuild) {
             list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
@@ -953,16 +1042,13 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         return;
     }
 
-    // Удаляем заглушку "No open positions", если она там есть и мы добавляем позицию
     if (positions.length > 0 && list.innerText.includes("No open positions")) {
         list.innerHTML = "";
     }
 
-    // 2. Проверяем, есть ли удаленные позиции (которых нет в _positions, но есть в DOM)
     const existingIds = Array.from(list.querySelectorAll('.pos-item')).map(el => el.dataset.id);
     const currentIds = positions.map(p => String(p.id || p._id));
     
-    // Удаляем лишние DOM элементы
     existingIds.forEach(domId => {
         if (!currentIds.includes(domId)) {
             const el = document.getElementById('pos-item-' + domId);
@@ -970,18 +1056,14 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         }
     });
     
-    // Если все удалили и стало пусто
     if(list.children.length === 0 && positions.length === 0) {
          list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
          return;
     }
 
-    // 3. Обновляем или создаем элементы
     [...positions].reverse().forEach(pos => {
       const id = String(pos.id || pos._id);
       const pair = normalizePair(pos.pair || "BTC-USD");
-      
-      // ИСПРАВЛЕНИЕ 2: Берем цену конкретной пары из marketPrices
       const currentAssetPrice = marketPrices[pair]; 
       
       const entry = Number(pos.entry_price || pos.entryPrice);
@@ -1001,11 +1083,9 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       const pnlClass = pnl >= 0 ? "text-green" : "text-red";
       const pnlText = (pnl > 0 ? '+' : '') + pnl.toFixed(2) + " VP";
 
-      // Ищем существующий элемент
       let div = document.getElementById('pos-item-' + id);
       
       if (!div) {
-          // СОЗДАЕМ НОВЫЙ
           div = document.createElement('div');
           div.className = "pos-item";
           div.id = 'pos-item-' + id;
@@ -1025,19 +1105,15 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
             <button class="close-btn" data-id="${id}">Close Position</button>
             <style>.lev-badge {font-size:10px; opacity:0.7; border:1px solid currentColor; padding:1px 3px; border-radius:3px;}</style>
           `;
-          list.appendChild(div); // Добавляем в конец (так как мы делаем reverse forEach, порядок может быть важен, но здесь упростим)
+          list.appendChild(div);
           
-          // Вешаем событие только один раз при создании
           div.querySelector('.close-btn').onclick = () => closePosition(id, pair);
       } else {
-          // ОБНОВЛЯЕМ СУЩЕСТВУЮЩИЙ (БЕЗ перерисовки всего блока)
-          // Обновляем PnL
           const pnlEl = div.querySelector('.pnl-val');
           if(pnlEl.textContent !== pnlText) {
              pnlEl.textContent = pnlText;
              pnlEl.className = `pnl-val ${pnlClass}`;
           }
-          // Обновляем Mark Price
           const markEl = div.querySelector('.mark-val');
           if(markEl.textContent !== markPriceDisplay) {
              markEl.textContent = markPriceDisplay;
@@ -1059,7 +1135,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     const renderList = [...sortedAsks, ...sortedBids];
     const maxVol = Math.max(...renderList.map(x => x.size), 0.0000001);
     
-    // Очистка старая, можно тоже оптимизировать, но пока оставим как есть, так как стакан не влияет на инпуты
     container.innerHTML = ""; 
     
     renderList.forEach(level => {
@@ -1097,7 +1172,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   // ————————————————————————————————————————————
   async function openPosition(type) {
     const margin = Number($('sizeInput').value);
-    const currentPrice = marketPrices[selectedPair]; // Берем цену из нашего хранилища
+    const currentPrice = marketPrices[selectedPair]; 
 
     if(!margin || margin <= 0) return alert("Enter margin");
     if(!currentPrice) return alert("Waiting for price...");
@@ -1114,7 +1189,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
       if(data.ok) {
         window._positions.push(data.position);
         if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
-        renderPositions(true); // Форсируем обновление списка (добавление элемента)
+        renderPositions(true);
         if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       } else { 
           alert(data.error || "Error"); 
@@ -1122,12 +1197,9 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
     } catch(e) { console.error(e); }
   }
 
-  // ИСПРАВЛЕНИЕ: Передаем pair, чтобы взять правильную цену закрытия
   async function closePosition(id, pair) {
     const pos = window._positions.find(p => (p.id == id || p._id == id));
     if(!pos) return;
-
-    // Берем цену ИМЕННО ЭТОЙ пары
     const closePrice = marketPrices[pair || pos.pair];
 
     if(!closePrice) return alert("Price not available for " + pair);
@@ -1143,10 +1215,9 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
         window._positions = window._positions.filter(p => (p.id!=id && p._id!=id));
         if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
         
-        // Удаляем элемент из DOM аккуратно
         const el = document.getElementById('pos-item-' + id);
         if(el) el.remove();
-        renderPositions(false); // Проверяем, пусто ли теперь
+        renderPositions(false);
         
         if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       }
@@ -1169,7 +1240,6 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
   setProgress(50, "STREAM...");
   connectWS();
   
-  // Ждем немного истории или таймаут
   await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
   setProgress(100, "READY");
   
