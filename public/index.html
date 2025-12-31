@@ -177,6 +177,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 .bg-red { left: 0; background: linear-gradient(to right, var(--accent-red), transparent); }
 .bg-green { right: 0; background: linear-gradient(to left, var(--accent-green), transparent); }
 .ob-row span { position: relative; z-index: 1; }
+
+/* FIX: Выравниваем вторую колонку (Amount) вправо */
+.ob-row span:last-child { text-align: right; }
+
 .text-green { color: var(--accent-green); }
 .text-red   { color: var(--accent-red); }
 
@@ -264,7 +268,7 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
 }
 .rb-content h3 { margin: 0; font-size: 15px; color: var(--white); }
 .rb-content p { margin: 4px 0 0; font-size: 11px; color: var(--muted); }
-.rb-icon { font-size: 20px; }
+.rb-icon { display: flex; align-items: center; }
 
 /* History List Clean */
 .hist-title { font-size: 15px; font-weight: 700; margin: 10px 0; }
@@ -482,7 +486,9 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white)
             <h3>Rewards Center</h3>
             <p>Complete tasks to unlock features</p>
          </div>
-         <div class="rb-icon">🎁</div>
+         <div class="rb-icon">
+             <img src="https://i.postimg.cc/pdkwtBbQ/gift-thunder.png" style="width: 40px; height: auto;">
+         </div>
       </div>
 
       <div>
