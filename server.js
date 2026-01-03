@@ -4,10 +4,13 @@ import express from "express";
 import crypto from "crypto";
 import cors from "cors";
 import { Pool } from "pg";
-// Используем библиотеку для проверки, как в оригинале
 import { validate } from '@telegram-apps/init-data-node';
+import rateLimit from 'express-rate-limit';
 
 const app = express();
+
+// Важно для корректного определения IP на Render/Heroku
+app.set('trust proxy', 1);
 
 app.use(cors({
   origin: true,
@@ -16,8 +19,20 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static("public"));
 
+// ======================== RATE LIMITING (ЗАЩИТА ОТ БОТОВ) ========================
+// Ограничение: 100 запросов за 15 минут с одного IP
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 100, 
+  standardHeaders: true, 
+  legacyHeaders: false,
+  message: { ok: false, error: "TOO_MANY_REQUESTS" }
+});
+
+// Применяем лимит ко всем API запросам
+app.use('/api/', limiter);
+
 // ======================== КОНФИГУРАЦИЯ БД ========================
-// Твоя новая ссылка на NeonDB
 const CONNECTION_STRING = "postgresql://neondb_owner:npg_igxGcyUQmX52@ep-ancient-sky-a9db2z9z-pooler.gwc.azure.neon.tech/neondb?sslmode=require&channel_binding=require";
 
 // ======================== ЛОГИРОВАНИЕ ENV ========================
@@ -55,9 +70,6 @@ function checkTelegramAuthInitData(initData) {
     return true;
   } catch (err) {
     console.error("❌ initData validation FAILED:", err.message);
-    if (err.message.includes("SIGN_INVALID")) {
-      console.log("Possible causes: wrong BOT_TOKEN, outdated initData, or Telegram bug with signature");
-    }
     return false;
   }
 }
@@ -79,6 +91,12 @@ function verifySessionCookieValue(val) {
   return mac === expected ? userId : false;
 }
 
+// ======================== HELPER: GET IP ========================
+function getClientIp(req) {
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  return ip ? ip.split(',')[0].trim() : ip;
+}
+
 // ======================== INIT DB ========================
 async function initDB() {
   try {
@@ -92,10 +110,14 @@ async function initDB() {
         username TEXT,
         photo_url TEXT,
         balance NUMERIC NOT NULL DEFAULT 1000,
+        last_ip TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    
+    // Миграция IP
+    try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip TEXT`); } catch(e) {}
 
     // 2. Таблица Positions
     await db.query(`
@@ -108,15 +130,16 @@ async function initDB() {
         margin NUMERIC NOT NULL,
         leverage INT NOT NULL,
         size NUMERIC NOT NULL,
+        warning_sent BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
     
-    try {
-        await db.query(`ALTER TABLE positions ADD COLUMN IF NOT EXISTS pair TEXT DEFAULT 'BTC-USD'`);
-    } catch(e) { console.log("Migration check passed"); }
+    // Миграции для positions
+    try { await db.query(`ALTER TABLE positions ADD COLUMN IF NOT EXISTS pair TEXT DEFAULT 'BTC-USD'`); } catch(e) {}
+    try { await db.query(`ALTER TABLE positions ADD COLUMN IF NOT EXISTS warning_sent BOOLEAN DEFAULT FALSE`); } catch(e) {}
 
-    // 3. Таблица trades_history (добавили commission)
+    // 3. Таблица trades_history
     await db.query(`
       CREATE TABLE IF NOT EXISTS trades_history (
         id BIGSERIAL PRIMARY KEY,
@@ -133,11 +156,8 @@ async function initDB() {
       );
     `);
 
-    // Миграция для новой колонки commission
-    try {
-        await db.query(`ALTER TABLE trades_history ADD COLUMN IF NOT EXISTS commission NUMERIC DEFAULT 0`);
-        console.log("✅ Commission column check passed");
-    } catch(e) { console.log("Commission col migration skipped/error:", e.message); }
+    // Миграция для комиссии
+    try { await db.query(`ALTER TABLE trades_history ADD COLUMN IF NOT EXISTS commission NUMERIC DEFAULT 0`); } catch(e) {}
 
     console.log("✅ DB tables ready!");
   } catch (err) {
@@ -147,26 +167,26 @@ async function initDB() {
 await initDB();
 
 // ======================== UPSERT USER ========================
-async function upsertUserFromObj(userObj) {
+async function upsertUserFromObj(userObj, ipAddress) {
   const userId = String(userObj.id);
-  console.log(`📝 Upserting user ${userId} (${userObj.first_name || "No name"} ${userObj.username ? `@${userObj.username}` : ""})`);
+  console.log(`📝 Upserting user ${userId} (${userObj.first_name || "No name"}). IP: ${ipAddress}`);
 
   try {
     await db.query(`
-      INSERT INTO users (user_id, first_name, username, photo_url)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO users (user_id, first_name, username, photo_url, last_ip)
+      VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT (user_id) DO UPDATE SET
         first_name = EXCLUDED.first_name,
         username = EXCLUDED.username,
         photo_url = EXCLUDED.photo_url,
+        last_ip = EXCLUDED.last_ip,
         updated_at = CURRENT_TIMESTAMP
-    `, [userId, userObj.first_name || null, userObj.username || null, userObj.photo_url || null]);
+    `, [userId, userObj.first_name || null, userObj.username || null, userObj.photo_url || null, ipAddress]);
 
     const res = await db.query(
       "SELECT user_id, first_name, username, photo_url, balance FROM users WHERE user_id = $1",
       [userId]
     );
-    console.log(`✅ User ${userId} saved. Balance: ${res.rows[0].balance}`);
     return res.rows[0];
   } catch (err) {
     console.error(`❌ Error saving user ${userId}:`, err.message);
@@ -176,10 +196,11 @@ async function upsertUserFromObj(userObj) {
 
 // ======================== ROUTES ========================
 
+// Логирование запросов с IP
 app.use((req, res, next) => {
-  console.log(`\n📡 [${new Date().toISOString()}] ${req.method} ${req.path}`);
+  const ip = getClientIp(req);
+  console.log(`\n📡 [${new Date().toISOString()}] ${req.method} ${req.path} [IP: ${ip}]`);
   if (req.body && Object.keys(req.body).length > 0) console.log("Body:", req.body);
-  if (req.headers.cookie) console.log("Cookies present");
   next();
 });
 
@@ -189,13 +210,13 @@ app.get("/auth/telegram", async (req, res) => {
 
 app.post("/api/init", async (req, res) => {
   console.log("\n🚀 /api/init called!");
+  const ip = getClientIp(req);
 
   try {
     const { initData } = req.body;
     let userRow;
 
     if (initData) {
-      console.log(`initData received (length: ${initData.length})`);
       const sigValid = checkTelegramAuthInitData(initData);
       
       if (!sigValid && process.env.DEV_ALLOW_BYPASS !== "1") {
@@ -215,8 +236,10 @@ app.post("/api/init", async (req, res) => {
         return res.status(400).json({ ok: false, error: "INVALID_USER_JSON" });
       }
 
-      userRow = await upsertUserFromObj(userObj);
+      // Сохраняем юзера вместе с IP
+      userRow = await upsertUserFromObj(userObj, ip);
     } else {
+      // Cookie fallback
       const cookieHeader = req.headers.cookie || "";
       const cookies = Object.fromEntries(
         cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
@@ -224,9 +247,7 @@ app.post("/api/init", async (req, res) => {
       const sessionVal = cookies[COOKIE_NAME];
       const userId = verifySessionCookieValue(sessionVal);
       
-      if (!userId) {
-        return res.status(401).json({ ok: false, error: "NO_SESSION" });
-      }
+      if (!userId) return res.status(401).json({ ok: false, error: "NO_SESSION" });
 
       const ures = await db.query(
         "SELECT user_id, first_name, username, photo_url, balance FROM users WHERE user_id = $1",
@@ -300,7 +321,6 @@ async function getAuthenticatedUser(req) {
 }
 
 app.post("/api/order/open", async (req, res) => {
-  console.log("/api/order/open called:", req.body);
   try {
     const user = await getAuthenticatedUser(req);
     const { pair, type, size, leverage, entryPrice } = req.body; 
@@ -325,7 +345,6 @@ app.post("/api/order/open", async (req, res) => {
       RETURNING *
     `, [user.user_id, pair, type, entryPrice, margin, leverage, size]);
 
-    console.log(`✅ Position opened: ${type} ${pair}`);
     res.json({ ok: true, position: posRes.rows[0], newBalance: Number(user.balance) - margin });
   } catch (err) {
     console.error("Error opening position:", err.message);
@@ -334,7 +353,6 @@ app.post("/api/order/open", async (req, res) => {
 });
 
 app.post("/api/order/close", async (req, res) => {
-  console.log("📡 /api/order/close called:", req.body);
   try {
     const user = await getAuthenticatedUser(req);
     const { positionId, closePrice } = req.body;
@@ -350,47 +368,38 @@ app.post("/api/order/close", async (req, res) => {
     if (!posRes.rows.length) return res.status(404).json({ ok: false, error: "POSITION_NOT_FOUND" });
     const pos = posRes.rows[0];
 
-    // 2. Данные сделки
+    // 2. Расчёты
     const cPrice = Number(closePrice);
     const ePrice = Number(pos.entry_price);
     const pSize = Number(pos.size);
     const pMargin = Number(pos.margin);
 
-    // 3. Расчёт PnL
+    // 3. PnL
     const priceChangePct = (cPrice - ePrice) / ePrice;
     let pnl = priceChangePct * pSize;
     if (pos.type === "SHORT") pnl = -pnl;
     
-    // 4. Расчет КОМИССИИ (0.03% от объема)
+    // 4. Комиссия (0.03%)
     const commission = pSize * 0.0003; 
 
-    // 5. Итоговый возврат на баланс
-    // Формула: Маржа + PnL - Комиссия
+    // 5. Итоговый возврат
     let totalReturn = pMargin + pnl - commission;
 
-    // 6. СИСТЕМА ЛИКВИДАЦИИ
-    // Если возврат меньше или равен нулю, значит убыток и комиссия съели всю маржу.
+    // 6. Проверка на Ликвидацию
     let isLiquidated = false;
-    
     if (totalReturn <= 0) {
         isLiquidated = true;
-        totalReturn = 0; // Защита от ухода баланса в минус
-        pnl = -pMargin; // Записываем, что пользователь потерял ровно маржу
-        // При ликвидации комиссия считается "сгоревшей" внутри маржи, 
-        // но для статистики можно записать 0 или реальную, 
-        // но логичнее записать 0, т.к. пользователь не платил её сверх маржи.
+        totalReturn = 0; 
+        pnl = -pMargin; // Фиксируем убыток равный марже
     }
 
     // 7. Транзакция
     await db.query("BEGIN"); 
     
-    // Возвращаем остаток (или 0 при ликвидации) на баланс
     if (totalReturn > 0) {
         await db.query("UPDATE users SET balance = balance + $1 WHERE user_id = $2", [totalReturn, user.user_id]);
     }
 
-    // Запись в историю
-    // Если ликвидация - пишем комиссию 0 (она съедена ликвидацией), иначе реальную
     const finalCommission = isLiquidated ? 0 : commission;
 
     await db.query(`
@@ -404,7 +413,7 @@ app.post("/api/order/close", async (req, res) => {
 
     const newBalRes = await db.query("SELECT balance FROM users WHERE user_id = $1", [user.user_id]);
     
-    console.log(`✅ ${isLiquidated ? 'LIQUIDATED 💀' : 'CLOSED 💰'} | PnL: ${pnl.toFixed(2)} | Comm: ${finalCommission.toFixed(2)}`);
+    console.log(`✅ ${isLiquidated ? 'LIQUIDATED' : 'CLOSED'} | PnL: ${pnl.toFixed(2)}`);
 
     res.json({
       ok: true,
