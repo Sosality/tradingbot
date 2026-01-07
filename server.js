@@ -33,6 +33,23 @@ const limiter = rateLimit({
 // Применяем лимит ко всем API запросам
 app.use('/api/', limiter);
 
+// === 🛡️ СИСТЕМА ANTI-SLEEP (ВСТАВИТЬ ГДЕ УГОДНО ПОСЛЕ СОЗДАНИЯ app) 🛡️ ===
+// Сюда вставь ссылку на твой ПЕРВЫЙ сервер (Price/Liquidation)
+const PRICE_SERVER_URL = "https://tradingbot-backend-2yws.onrender.com"; // <-- ЗАМЕНИ НА СВОЙ URL
+
+// Запускаем задачу каждые 10 минут
+cron.schedule("*/10 * * * *", async () => {
+    console.log("⏰ Anti-Sleep: Pinging Price Server...");
+    try {
+        // Пингуем endpoint /health первого сервера
+        const response = await fetch(`${PRICE_SERVER_URL}/health`);
+        if (response.ok) console.log("✅ Price Server is awake");
+        else console.log("⚠️ Price Server responded with " + response.status);
+    } catch (e) {
+        console.error("❌ Anti-Sleep Error:", e.message);
+    }
+});
+
 // ======================== КОНФИГУРАЦИЯ БД ========================
 const CONNECTION_STRING = "postgresql://neondb_owner:npg_igxGcyUQmX52@ep-ancient-sky-a9db2z9z-pooler.gwc.azure.neon.tech/neondb?sslmode=require&channel_binding=require";
 
