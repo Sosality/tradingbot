@@ -6,6 +6,7 @@ import cors from "cors";
 import { Pool } from "pg";
 import { validate } from '@telegram-apps/init-data-node';
 import rateLimit from 'express-rate-limit';
+import cron from "node-cron";
 
 const app = express();
 
