@@ -784,98 +784,74 @@
   // ————————————————————————————————————————————
   // UI RENDERERS
   // ————————————————————————————————————————————
-  function renderPositions(forceRebuild = false) {
-    const list = $('positionsList');
-    if (!window._positions) window._positions = [];
-    const positions = window._positions;
+  function renderPositions(positions) {
+    const container = document.getElementById("positions-list");
+    container.innerHTML = "";
 
     if (positions.length === 0) {
-        if (list.innerHTML.includes("pos-item")) { 
-            list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
-        } else if (forceRebuild) {
-            list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
-        }
+        container.innerHTML = `<div style="text-align:center; color:#8b949e; padding:20px;">No open positions</div>`;
         return;
     }
 
-    if (positions.length > 0 && list.innerText.includes("No open positions")) {
-        list.innerHTML = "";
-    }
+    positions.forEach(pos => {
+        const div = document.createElement("div");
+        div.className = `pos-card ${pos.type === "LONG" ? "long" : "short"}`;
+        div.id = `pos-${pos.id}`; // Добавили ID для быстрого поиска
 
-    const existingIds = Array.from(list.querySelectorAll('.pos-item')).map(el => el.dataset.id);
-    const currentIds = positions.map(p => String(p.id || p._id));
-    
-    existingIds.forEach(domId => {
-        if (!currentIds.includes(domId)) {
-            const el = document.getElementById('pos-item-' + domId);
-            if(el) el.remove();
-        }
+        // Начальные значения (будут обновлены в updatePositionsDynamic)
+        div.innerHTML = `
+            <div class="pos-top">
+                <div style="display:flex; align-items:center;">
+                    <span class="pos-pair">${pos.pair}</span>
+                    <span class="pos-leverage">${pos.type} x${pos.leverage}</span>
+                </div>
+                <div class="pos-pnl" id="pnl-${pos.id}">0.00 VP</div>
+            </div>
+
+            <div class="pos-stats">
+                <div class="pos-stat-item">
+                    <span class="stat-label">ROE %</span>
+                    <span class="stat-value" id="roe-${pos.id}">0.00%</span>
+                </div>
+                <div class="pos-stat-item">
+                    <span class="stat-label">Margin Ratio</span>
+                    <span class="stat-value" id="mratio-${pos.id}">0.00%</span>
+                </div>
+                <div class="pos-stat-item">
+                    <span class="stat-label">Risk</span>
+                    <span class="stat-value" id="risk-val-${pos.id}">0.0%</span>
+                    <div class="risk-container">
+                        <div class="risk-bar-bg">
+                            <div class="risk-bar-fill" id="risk-bar-${pos.id}"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pos-info-row">
+                <span>Size</span>
+                <span class="pos-val">${Number(pos.size).toFixed(2)}</span>
+            </div>
+            <div class="pos-info-row">
+                <span>Entry Price</span>
+                <span class="pos-val">${Number(pos.entry_price).toFixed(2)}</span>
+            </div>
+            <div class="pos-info-row">
+                <span>Mark Price</span>
+                <span class="pos-val" id="mark-${pos.id}">---</span>
+            </div>
+            <div class="pos-info-row">
+                <span>Liq. Price</span>
+                <span class="pos-val" style="color: #f85149;">${Number(pos.liquidation_price || 0).toFixed(2)}</span>
+            </div>
+            
+            <button class="close-btn" onclick="closePosition(${pos.id})">Close Position</button>
+        `;
+        container.appendChild(div);
     });
     
-    if(list.children.length === 0 && positions.length === 0) {
-         list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
-         return;
-    }
-
-    [...positions].reverse().forEach(pos => {
-      const id = String(pos.id || pos._id);
-      const pair = normalizePair(pos.pair || "BTC-USD");
-      const currentAssetPrice = marketPrices[pair]; 
-      
-      const entry = Number(pos.entry_price || pos.entryPrice);
-      const size = Number(pos.size);
-      const type = (pos.type || "LONG").toUpperCase();
-      const lev = Number(pos.leverage || 1);
-      
-      let pnl = 0;
-      let markPriceDisplay = "--.--";
-
-      if(currentAssetPrice > 0) {
-        markPriceDisplay = formatPrice(currentAssetPrice);
-        const diff = (currentAssetPrice - entry) / entry;
-        pnl = diff * size * (type==="SHORT"? -1 : 1);
-      }
-      
-      const pnlClass = pnl >= 0 ? "text-green" : "text-red";
-      const pnlText = (pnl > 0 ? '+' : '') + pnl.toFixed(2) + " VP";
-
-      let div = document.getElementById('pos-item-' + id);
-      
-      if (!div) {
-          div = document.createElement('div');
-          div.className = "pos-item";
-          div.id = 'pos-item-' + id;
-          div.dataset.id = id;
-          
-          div.innerHTML = `
-            <div class="pos-header">
-               <span class="${type==='LONG'?'text-green':'text-red'}">${type} ${pair} <span class="lev-badge">x${lev}</span></span>
-               <span class="pnl-val ${pnlClass}">${pnlText}</span>
-            </div>
-            <div class="pos-details">
-               <div>Entry <div class="pos-val">${formatPrice(entry)}</div></div>
-               <div>Mark <div class="pos-val mark-val">${markPriceDisplay}</div></div>
-               <div>Size <div class="pos-val">${size.toFixed(0)}</div></div>
-               <div>Margin <div class="pos-val">${(size/lev).toFixed(2)}</div></div>
-            </div>
-            <button class="close-btn" data-id="${id}">Close Position</button>
-            <style>.lev-badge {font-size:10px; opacity:0.7; border:1px solid currentColor; padding:1px 3px; border-radius:3px;}</style>
-          `;
-          list.appendChild(div);
-          
-          div.querySelector('.close-btn').onclick = () => closePosition(id, pair);
-      } else {
-          const pnlEl = div.querySelector('.pnl-val');
-          if(pnlEl.textContent !== pnlText) {
-             pnlEl.textContent = pnlText;
-             pnlEl.className = `pnl-val ${pnlClass}`;
-          }
-          const markEl = div.querySelector('.mark-val');
-          if(markEl.textContent !== markPriceDisplay) {
-             markEl.textContent = markPriceDisplay;
-          }
-      }
-    });
+    // Сразу вызываем обновление цифр, чтобы не ждать тика
+    updatePositionsDynamic();
   }
 
   function smartUpdateOrderBook(buys = [], sells = [], topLevels = 10) {
