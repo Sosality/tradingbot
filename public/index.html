@@ -854,6 +854,100 @@
     updatePositionsDynamic();
   }
 
+  function updatePositionsDynamic() {
+    if (!currentPositions || currentPositions.length === 0) return;
+
+    currentPositions.forEach(pos => {
+        const currentPrice = lastPrices[pos.pair];
+        if (!currentPrice) return;
+
+        const entry = Number(pos.entry_price);
+        const size = Number(pos.size);
+        const margin = Number(pos.margin); // Твоя маржа в сделке
+        const liqPrice = Number(pos.liquidation_price || 0);
+
+        // 1. PnL Calc
+        let diff = (currentPrice - entry) / entry;
+        if (pos.type === "SHORT") diff = -diff;
+        
+        const pnl = diff * size;
+        
+        // 2. ROE Calc (Return on Equity)
+        // Формула: (PnL / Маржа) * 100
+        const roe = (pnl / margin) * 100;
+
+        // 3. Risk Calc (Близость к ликвидации)
+        // Простой расчет: какой % пути от входа до ликвидации мы прошли не в ту сторону
+        // Или более надежный: Maintenance Margin Ratio. 
+        // Сделаем визуально для пользователя: (1 - ДистанцияДоЛиквидации / ПолнаяДистанция)
+        let riskPercent = 0;
+        
+        if (liqPrice > 0) {
+            // Дистанция от входа до ликвидации
+            const totalRange = Math.abs(entry - liqPrice);
+            // Дистанция от текущей цены до ликвидации
+            const currentDist = Math.abs(currentPrice - liqPrice);
+            
+            // Если currentDist уменьшается, риск растет
+            riskPercent = (1 - (currentDist / totalRange)) * 100;
+            
+            // Если мы в плюсе, риск минимальный (условно 1% + нагрузка плеча)
+            if (pnl > 0) riskPercent = 1; 
+            if (riskPercent < 1) riskPercent = 1;
+            if (riskPercent > 99.9) riskPercent = 99.9;
+        }
+
+        // Обновляем DOM
+        const pnlEl = document.getElementById(`pnl-${pos.id}`);
+        const markEl = document.getElementById(`mark-${pos.id}`);
+        
+        // Новые элементы
+        const roeEl = document.getElementById(`roe-${pos.id}`);
+        const ratioEl = document.getElementById(`mratio-${pos.id}`);
+        const riskValEl = document.getElementById(`risk-val-${pos.id}`);
+        const riskBarEl = document.getElementById(`risk-bar-${pos.id}`);
+
+        if (pnlEl) {
+            pnlEl.innerText = `${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)} VP`;
+            pnlEl.className = `pos-pnl ${pnl >= 0 ? "text-green" : "text-red"}`;
+        }
+        
+        if (markEl) markEl.innerText = currentPrice.toFixed(2);
+
+        // Обновляем ROE
+        if (roeEl) {
+            roeEl.innerText = `${roe >= 0 ? "+" : ""}${roe.toFixed(2)}%`;
+            roeEl.className = `stat-value ${roe >= 0 ? "text-green" : "text-red"}`;
+        }
+
+        // Обновляем Risk UI
+        if (riskValEl && riskBarEl) {
+            riskValEl.innerText = `${riskPercent.toFixed(1)}%`;
+            riskBarEl.style.width = `${riskPercent}%`;
+            
+            // Цвета риска
+            if (riskPercent < 50) {
+                riskValEl.style.color = "#3fb950"; // Green
+                riskBarEl.style.background = "#3fb950";
+            } else if (riskPercent < 80) {
+                riskValEl.style.color = "#d29922"; // Orange
+                riskBarEl.style.background = "#d29922";
+            } else {
+                riskValEl.style.color = "#f85149"; // Red
+                riskBarEl.style.background = "#f85149";
+            }
+        }
+
+        // Обновляем Margin Ratio (Заглушка, либо формула Maintenance Margin / Equity)
+        // Для простоты покажем "Загрузку" относительно плеча.
+        if (ratioEl) {
+            // Примерное отображение "здоровья" маржи
+            ratioEl.innerText = (riskPercent / 2).toFixed(2) + "%"; 
+            ratioEl.style.color = "#8b949e";
+        }
+    });
+  }
+
   function smartUpdateOrderBook(buys = [], sells = [], topLevels = 10) {
     const container = $('orderBook');
     const maxLevels = topLevels;
