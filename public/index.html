@@ -201,7 +201,7 @@
 
     .pos-header { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; font-weight: 700; align-items: center; }
     .pos-pair { font-size: 15px; letter-spacing: 0.5px; }
-    .pos-type-badge { font-size: 13px; padding: 3px 8px; border-radius: 4px; margin-left: 8px; opacity: 0.9; font-weight: 700; vertical-align: middle; display: inline-flex; align-items: center; }
+    .pos-type-badge { font-size: 14px; padding: 2px 6px; border-radius: 4px; margin-left: 8px; opacity: 1; }
 
     /* New Stats Grid */
     .pos-stats-grid {
@@ -219,8 +219,10 @@
     .risk-track { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
     .risk-fill { height: 100%; width: 0%; background: var(--accent-green); transition: width 0.3s, background 0.3s; }
 
-    .pos-details { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px; color: var(--muted); margin-top: 10px; }
-    .pos-val { color: var(--white); font-family: 'Roboto Mono'; text-align: center; }
+    .pos-details { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); }
+    .pd-col { display: flex; flex-direction: column; gap: 2px; }
+    .pd-label { font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 600; }
+    .pd-val { font-size: 12px; color: var(--white); font-family: 'Roboto Mono'; font-weight: 700; }
 
     .close-btn {
       background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--accent-red);
@@ -1121,7 +1123,7 @@
           // MEXC STYLE LAYOUT
           div.innerHTML = `
                         <div class="pos-header">
-                            <div>
+                            <div style="display:flex; align-items:center; gap:6px;">
                                 <span class="${type==='LONG'?'text-green':'text-red'}">${type}</span>
                                 <span class="pos-pair">${pair}</span>
                                 <span class="pos-type-badge ${type==='LONG'?'text-green':'text-red'}">x${lev}</span>
@@ -1134,24 +1136,32 @@
                                 <span class="stat-label">ROE %</span>
                                 <span class="stat-val" id="roe-${id}">0.00%</span>
                             </div>
-                            <div class="stat-col">
+                            <div class="stat-col" style="align-items: center;">
                                 <span class="stat-label">Margin Ratio</span>
                                 <span class="stat-val" id="ratio-${id}">0.00%</span>
                             </div>
-                            <div class="stat-col">
+                            <div class="stat-col" style="align-items: flex-end;">
                                 <span class="stat-label">Risk</span>
                                 <span class="stat-val" id="risk-val-${id}">0.0%</span>
-                                <div class="risk-wrap">
+                                <div class="risk-wrap" style="width: 100%;">
                                     <div class="risk-track"><div class="risk-fill" id="risk-bar-${id}"></div></div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="pos-details">
-                            <div>Size <div class="pos-val">${size.toFixed(0)}</div></div>
-                            <div>Entry <div class="pos-val">${formatPrice(entry)}</div></div>
-                            <div>Mark <div class="pos-val" id="mark-${id}">--.--</div></div>
-                            <div>Liquidation <div class="pos-val text-red" id="liq-${id}">--.--</div></div>
+                            <div class="pd-col">
+                                <span class="pd-label">Entry Price</span>
+                                <span class="pd-val">${formatPrice(entry)}</span>
+                            </div>
+                            <div class="pd-col" style="align-items: center;">
+                                <span class="pd-label">Size / Mark</span>
+                                <span class="pd-val">${size.toFixed(0)} / <span id="mark-${id}">--.--</span></span>
+                            </div>
+                            <div class="pd-col" style="align-items: flex-end;">
+                                <span class="pd-label">Liquidation Price</span>
+                                <span class="pd-val text-red" id="liq-${id}">--.--</span>
+                            </div>
                         </div>
 
                         <button class="close-btn" data-id="${id}">Close Position</button>
