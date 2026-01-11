@@ -405,6 +405,12 @@
     @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
     .loader-bar-bg { width: 140px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
     .loader-bar-fill { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.2s; }
+
+    /* TIMEFRAME SELECTOR */
+    .tf-selector { display: flex; gap: 2px; background: rgba(255,255,255,0.03); padding: 2px; border-radius: 6px; height: fit-content; }
+    .tf-opt { padding: 4px 8px; font-size: 10px; color: var(--muted); border-radius: 4px; cursor: pointer; font-weight: 600; transition: 0.2s; user-select: none; }
+    .tf-opt:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+    .tf-opt.active { background: var(--panel-light); color: var(--gold); }
   </style>
 </head>
 
@@ -645,6 +651,10 @@
     let currentUserId = null;
     let selectedPair = "BTC-USD";
     let marketPrices = {};
+    let currentTimeframe = 60; // Default 1m
+    let localCandles = [];
+    let isLoadingHistory = false;
+    let allHistoryLoaded = false;
 
     let profile = { balance: 0, name: "Trader", id: 0, photo: "" };
     let currentLeverage = 10;
@@ -885,7 +895,7 @@
       chart.priceScale('right').applyOptions({ autoScale: true });
 
       if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "subscribe", pair: newPair }));
+        socket.send(JSON.stringify({ type: "subscribe", pair: newPair, timeframe: currentTimeframe }));
       }
     }
 
@@ -907,6 +917,28 @@
       upColor: '#0ECB81', borderUpColor: '#0ECB81', wickUpColor: '#0ECB81',
       downColor: '#F6465D', borderDownColor: '#F6465D', wickDownColor: '#F6465D'
     });
+
+    // Lazy Loading
+    function onVisibleLogicalRangeChanged(newVisibleLogicalRange) {
+        if (newVisibleLogicalRange === null) return;
+        if (isLoadingHistory || allHistoryLoaded) return;
+
+        // If we scrolled near the start (left)
+        if (newVisibleLogicalRange.from < 10) {
+            isLoadingHistory = true;
+            const oldestTime = localCandles.length > 0 ? localCandles[0].time : Math.floor(Date.now()/1000);
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: "loadMore",
+                    pair: selectedPair,
+                    timeframe: currentTimeframe,
+                    until: oldestTime
+                }));
+            }
+        }
+    }
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleLogicalRangeChanged);
 
     new ResizeObserver(entries => {
       if (entries.length === 0 || entries[0].target !== chartEl) { return; }
@@ -1037,18 +1069,58 @@
           return;
         }
 
+        if (msg.type === "moreHistory") {
+             if (!msg.data || msg.data.length === 0) {
+                 allHistoryLoaded = true;
+                 isLoadingHistory = false;
+                 return;
+             }
+             const newOldCandles = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
+
+             // Merge with localCandles
+             // Since newOldCandles are older, they go first
+             localCandles = [...newOldCandles, ...localCandles];
+
+             // Deduplicate just in case
+             localCandles = localCandles.filter((v,i,a)=>a.findIndex(t=>(t.time===v.time))===i).sort((a,b)=>a.time-b.time);
+
+             candleSeries.setData(localCandles);
+             isLoadingHistory = false;
+             return;
+        }
+
         if (msg.type === "history") {
           const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
+          localCandles = data;
           candleSeries.setData(data);
           chart.timeScale().fitContent();
           chart.priceScale('right').applyOptions({ autoScale: true });
 
           if (data.length) {
-            lastCandle = data[data.length-1];
+            const lastDataCandle = data[data.length-1];
+
+            const now = Math.floor(Date.now()/1000);
+            const currentCandleTime = now - (now % currentTimeframe);
+
+            if (lastDataCandle.time >= currentCandleTime) {
+                lastCandle = lastDataCandle;
+            } else {
+                 lastCandle = {
+                    time: currentCandleTime,
+                    open: lastDataCandle.close,
+                    high: lastDataCandle.close,
+                    low: lastDataCandle.close,
+                    close: lastDataCandle.close
+                };
+                candleSeries.update(lastCandle);
+                localCandles.push(lastCandle);
+            }
+
             marketPrices[selPairNorm] = lastCandle.close;
             $('priceDisplay').textContent = formatPrice(lastCandle.close);
           }
           if (historyResolve) { historyResolve(); historyResolve = null; }
+          isLoadingHistory = false;
           return;
         }
 
@@ -1387,6 +1459,68 @@
     }, 500);
 
   })();
+</script>
+</body>
+</html>tWS();
+
+    await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
+    setProgress(100, "READY");
+
+    setTimeout(() => {
+      loaderEl.classList.add('hidden');
+      setTimeout(() => loaderEl.style.display = 'none', 400);
+    }, 500);
+
+  })();
+</script>
+</body>
+</html>———
+    const loaderEl = $('app-loader');
+    const loaderBar = $('loaderBar');
+    function setProgress(pct, txt) { loaderBar.style.width = pct + '%'; $('loaderText').textContent = txt; }
+
+    setProgress(20, "AUTH...");
+    await initSession();
+
+    setProgress(50, "STREAM...");
+    connectWS();
+
+    await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
+    setProgress(100, "READY");
+
+    setTimeout(() => {
+      loaderEl.classList.add('hidden');
+      setTimeout(() => loaderEl.style.display = 'none', 400);
+    }, 500);
+
+  })();
+</script>
+</body>
+</html>tWS();
+
+    await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
+    setProgress(100, "READY");
+
+    setTimeout(() => {
+      loaderEl.classList.add('hidden');
+      setTimeout(() => loaderEl.style.display = 'none', 400);
+    }, 500);
+
+  })();
+</script>
+</body>
+</html>))]);
+    setProgress(100, "READY");
+
+    setTimeout(() => {
+      loaderEl.classList.add('hidden');
+      setTimeout(() => loaderEl.style.display = 'none', 400);
+    }, 500);
+
+  })();
+</script>
+</body>
+</html>();
 </script>
 </body>
 </html>
