@@ -11,7 +11,6 @@
 
   <style>
     /* ————— CORE STYLES ————— */
-    .hidden { display: none !important; }
     :root {
       --bg: #0B0E11;
       --panel: #1E2329;
@@ -202,7 +201,7 @@
 
     .pos-header { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; font-weight: 700; align-items: center; }
     .pos-pair { font-size: 15px; letter-spacing: 0.5px; }
-    .pos-type-badge { font-size: 14px; padding: 2px 6px; border-radius: 4px; margin-left: 8px; opacity: 1; }
+    .pos-type-badge { font-size: 13px; padding: 3px 8px; border-radius: 4px; margin-left: 8px; opacity: 0.9; font-weight: 700; vertical-align: middle; display: inline-flex; align-items: center; }
 
     /* New Stats Grid */
     .pos-stats-grid {
@@ -220,10 +219,8 @@
     .risk-track { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
     .risk-fill { height: 100%; width: 0%; background: var(--accent-green); transition: width 0.3s, background 0.3s; }
 
-    .pos-details { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); }
-    .pd-col { display: flex; flex-direction: column; gap: 2px; }
-    .pd-label { font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 600; }
-    .pd-val { font-size: 12px; color: var(--white); font-family: 'Roboto Mono'; font-weight: 700; }
+    .pos-details { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px; color: var(--muted); margin-top: 10px; }
+    .pos-val { color: var(--white); font-family: 'Roboto Mono'; text-align: center; }
 
     .close-btn {
       background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--accent-red);
@@ -406,12 +403,6 @@
     @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
     .loader-bar-bg { width: 140px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
     .loader-bar-fill { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.2s; }
-
-    /* TIMEFRAME SELECTOR */
-    .tf-selector { display: flex; gap: 2px; background: rgba(255,255,255,0.03); padding: 2px; border-radius: 6px; height: fit-content; }
-    .tf-opt { padding: 4px 8px; font-size: 10px; color: var(--muted); border-radius: 4px; cursor: pointer; font-weight: 600; transition: 0.2s; user-select: none; }
-    .tf-opt:hover { color: var(--white); background: rgba(255,255,255,0.05); }
-    .tf-opt.active { background: var(--panel-light); color: var(--gold); }
   </style>
 </head>
 
@@ -457,15 +448,6 @@
             <div>
               <div style="color:var(--muted); font-size:11px; margin-bottom:4px;">Market Price</div>
               <div class="price-display text-green" id="priceDisplay">--.--</div>
-            </div>
-            <div style="display:flex; align-items:flex-end; gap:10px;">
-                <div class="tf-selector hidden" id="tfSelector" style="margin-bottom: 2px;">
-                  <div class="tf-opt active" data-tf="60">1m</div>
-                  <div class="tf-opt" data-tf="300">5m</div>
-                  <div class="tf-opt" data-tf="900">15m</div>
-                  <div class="tf-opt" data-tf="3600">1h</div>
-                </div>
-                <img src="https://i.postimg.cc/7ZdJJp1f/574854.png" id="btnChartSettings" style="width:20px; height:20px; cursor:pointer; opacity:0.6; margin-bottom: 4px;" alt="Settings">
             </div>
           </div>
           <div class="chart-container" id="chartCard"><div id="chart" style="width: 100%; height: 100%;"></div></div>
@@ -661,10 +643,6 @@
     let currentUserId = null;
     let selectedPair = "BTC-USD";
     let marketPrices = {};
-    let currentTimeframe = 60; // Default 1m
-    let localCandles = [];
-    let isLoadingHistory = false;
-    let allHistoryLoaded = false;
 
     let profile = { balance: 0, name: "Trader", id: 0, photo: "" };
     let currentLeverage = 10;
@@ -905,23 +883,8 @@
       chart.priceScale('right').applyOptions({ autoScale: true });
 
       if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "subscribe", pair: newPair, timeframe: currentTimeframe }));
+        socket.send(JSON.stringify({ type: "subscribe", pair: newPair }));
       }
-    }
-
-    // ————————————————————————————————————————————
-    // CHART SETTINGS
-    // ————————————————————————————————————————————
-    const btnSettings = $('btnChartSettings');
-    const tfSel = $('tfSelector');
-    if(btnSettings && tfSel) {
-        btnSettings.onclick = (e) => {
-            e.stopPropagation();
-            tfSel.classList.toggle('hidden');
-        };
-        document.addEventListener('click', (e) => {
-             if(!tfSel.contains(e.target) && e.target !== btnSettings) tfSel.classList.add('hidden');
-        });
     }
 
     // ————————————————————————————————————————————
@@ -942,28 +905,6 @@
       upColor: '#0ECB81', borderUpColor: '#0ECB81', wickUpColor: '#0ECB81',
       downColor: '#F6465D', borderDownColor: '#F6465D', wickDownColor: '#F6465D'
     });
-
-    // Lazy Loading
-    function onVisibleLogicalRangeChanged(newVisibleLogicalRange) {
-        if (newVisibleLogicalRange === null) return;
-        if (isLoadingHistory || allHistoryLoaded) return;
-
-        // If we scrolled near the start (left)
-        if (newVisibleLogicalRange.from < 10) {
-            isLoadingHistory = true;
-            const oldestTime = localCandles.length > 0 ? localCandles[0].time : Math.floor(Date.now()/1000);
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: "loadMore",
-                    pair: selectedPair,
-                    timeframe: currentTimeframe,
-                    until: oldestTime
-                }));
-            }
-        }
-    }
-
-    chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleLogicalRangeChanged);
 
     new ResizeObserver(entries => {
       if (entries.length === 0 || entries[0].target !== chartEl) { return; }
@@ -1094,58 +1035,18 @@
           return;
         }
 
-        if (msg.type === "moreHistory") {
-             if (!msg.data || msg.data.length === 0) {
-                 allHistoryLoaded = true;
-                 isLoadingHistory = false;
-                 return;
-             }
-             const newOldCandles = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
-
-             // Merge with localCandles
-             // Since newOldCandles are older, they go first
-             localCandles = [...newOldCandles, ...localCandles];
-
-             // Deduplicate just in case
-             localCandles = localCandles.filter((v,i,a)=>a.findIndex(t=>(t.time===v.time))===i).sort((a,b)=>a.time-b.time);
-
-             candleSeries.setData(localCandles);
-             isLoadingHistory = false;
-             return;
-        }
-
         if (msg.type === "history") {
           const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
-          localCandles = data;
           candleSeries.setData(data);
           chart.timeScale().fitContent();
           chart.priceScale('right').applyOptions({ autoScale: true });
 
           if (data.length) {
-            const lastDataCandle = data[data.length-1];
-
-            const now = Math.floor(Date.now()/1000);
-            const currentCandleTime = now - (now % currentTimeframe);
-
-            if (lastDataCandle.time >= currentCandleTime) {
-                lastCandle = lastDataCandle;
-            } else {
-                 lastCandle = {
-                    time: currentCandleTime,
-                    open: lastDataCandle.close,
-                    high: lastDataCandle.close,
-                    low: lastDataCandle.close,
-                    close: lastDataCandle.close
-                };
-                candleSeries.update(lastCandle);
-                localCandles.push(lastCandle);
-            }
-
+            lastCandle = data[data.length-1];
             marketPrices[selPairNorm] = lastCandle.close;
             $('priceDisplay').textContent = formatPrice(lastCandle.close);
           }
           if (historyResolve) { historyResolve(); historyResolve = null; }
-          isLoadingHistory = false;
           return;
         }
 
@@ -1220,7 +1121,7 @@
           // MEXC STYLE LAYOUT
           div.innerHTML = `
                         <div class="pos-header">
-                            <div style="display:flex; align-items:center; gap:6px;">
+                            <div>
                                 <span class="${type==='LONG'?'text-green':'text-red'}">${type}</span>
                                 <span class="pos-pair">${pair}</span>
                                 <span class="pos-type-badge ${type==='LONG'?'text-green':'text-red'}">x${lev}</span>
@@ -1233,32 +1134,24 @@
                                 <span class="stat-label">ROE %</span>
                                 <span class="stat-val" id="roe-${id}">0.00%</span>
                             </div>
-                            <div class="stat-col" style="align-items: center;">
+                            <div class="stat-col">
                                 <span class="stat-label">Margin Ratio</span>
                                 <span class="stat-val" id="ratio-${id}">0.00%</span>
                             </div>
-                            <div class="stat-col" style="align-items: flex-end;">
+                            <div class="stat-col">
                                 <span class="stat-label">Risk</span>
                                 <span class="stat-val" id="risk-val-${id}">0.0%</span>
-                                <div class="risk-wrap" style="width: 100%;">
+                                <div class="risk-wrap">
                                     <div class="risk-track"><div class="risk-fill" id="risk-bar-${id}"></div></div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="pos-details">
-                            <div class="pd-col">
-                                <span class="pd-label">Entry Price</span>
-                                <span class="pd-val">${formatPrice(entry)}</span>
-                            </div>
-                            <div class="pd-col" style="align-items: center;">
-                                <span class="pd-label">Size / Mark</span>
-                                <span class="pd-val">${size.toFixed(0)} / <span id="mark-${id}">--.--</span></span>
-                            </div>
-                            <div class="pd-col" style="align-items: flex-end;">
-                                <span class="pd-label">Liquidation Price</span>
-                                <span class="pd-val text-red" id="liq-${id}">--.--</span>
-                            </div>
+                            <div>Size <div class="pos-val">${size.toFixed(0)}</div></div>
+                            <div>Entry <div class="pos-val">${formatPrice(entry)}</div></div>
+                            <div>Mark <div class="pos-val" id="mark-${id}">--.--</div></div>
+                            <div>Liquidation <div class="pos-val text-red" id="liq-${id}">--.--</div></div>
                         </div>
 
                         <button class="close-btn" data-id="${id}">Close Position</button>
