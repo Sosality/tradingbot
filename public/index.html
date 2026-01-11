@@ -11,6 +11,7 @@
 
   <style>
     /* ————— CORE STYLES ————— */
+    .hidden { display: none !important; }
     :root {
       --bg: #0B0E11;
       --panel: #1E2329;
@@ -457,6 +458,15 @@
               <div style="color:var(--muted); font-size:11px; margin-bottom:4px;">Market Price</div>
               <div class="price-display text-green" id="priceDisplay">--.--</div>
             </div>
+            <div style="display:flex; align-items:flex-end; gap:10px;">
+                <div class="tf-selector hidden" id="tfSelector" style="margin-bottom: 2px;">
+                  <div class="tf-opt active" data-tf="60">1m</div>
+                  <div class="tf-opt" data-tf="300">5m</div>
+                  <div class="tf-opt" data-tf="900">15m</div>
+                  <div class="tf-opt" data-tf="3600">1h</div>
+                </div>
+                <img src="https://i.postimg.cc/7ZdJJp1f/574854.png" id="btnChartSettings" style="width:20px; height:20px; cursor:pointer; opacity:0.6; margin-bottom: 4px;" alt="Settings">
+            </div>
           </div>
           <div class="chart-container" id="chartCard"><div id="chart" style="width: 100%; height: 100%;"></div></div>
           <div class="controls-area">
@@ -897,6 +907,21 @@
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: "subscribe", pair: newPair, timeframe: currentTimeframe }));
       }
+    }
+
+    // ————————————————————————————————————————————
+    // CHART SETTINGS
+    // ————————————————————————————————————————————
+    const btnSettings = $('btnChartSettings');
+    const tfSel = $('tfSelector');
+    if(btnSettings && tfSel) {
+        btnSettings.onclick = (e) => {
+            e.stopPropagation();
+            tfSel.classList.toggle('hidden');
+        };
+        document.addEventListener('click', (e) => {
+             if(!tfSel.contains(e.target) && e.target !== btnSettings) tfSel.classList.add('hidden');
+        });
     }
 
     // ————————————————————————————————————————————
@@ -1459,68 +1484,6 @@
     }, 500);
 
   })();
-</script>
-</body>
-</html>tWS();
-
-    await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
-    setProgress(100, "READY");
-
-    setTimeout(() => {
-      loaderEl.classList.add('hidden');
-      setTimeout(() => loaderEl.style.display = 'none', 400);
-    }, 500);
-
-  })();
-</script>
-</body>
-</html>———
-    const loaderEl = $('app-loader');
-    const loaderBar = $('loaderBar');
-    function setProgress(pct, txt) { loaderBar.style.width = pct + '%'; $('loaderText').textContent = txt; }
-
-    setProgress(20, "AUTH...");
-    await initSession();
-
-    setProgress(50, "STREAM...");
-    connectWS();
-
-    await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
-    setProgress(100, "READY");
-
-    setTimeout(() => {
-      loaderEl.classList.add('hidden');
-      setTimeout(() => loaderEl.style.display = 'none', 400);
-    }, 500);
-
-  })();
-</script>
-</body>
-</html>tWS();
-
-    await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
-    setProgress(100, "READY");
-
-    setTimeout(() => {
-      loaderEl.classList.add('hidden');
-      setTimeout(() => loaderEl.style.display = 'none', 400);
-    }, 500);
-
-  })();
-</script>
-</body>
-</html>))]);
-    setProgress(100, "READY");
-
-    setTimeout(() => {
-      loaderEl.classList.add('hidden');
-      setTimeout(() => loaderEl.style.display = 'none', 400);
-    }, 500);
-
-  })();
-</script>
-</body>
-</html>();
 </script>
 </body>
 </html>
