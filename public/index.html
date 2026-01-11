@@ -1014,6 +1014,7 @@
 
       // Send request to server for older candles
       if (socket && socket.readyState === WebSocket.OPEN) {
+        console.log(`[Chart] Requesting history before: ${new Date(oldestTime * 1000).toISOString()}`);
         socket.send(JSON.stringify({
           type: "loadMore",
           pair: selectedPair,
@@ -1021,9 +1022,10 @@
           until: oldestTime
         }));
         // Will receive "moreHistory" message in socket.onmessage
+        // Flag will be reset there, NOT here!
+      } else {
+        isLoadingMoreHistory = false;
       }
-
-      isLoadingMoreHistory = false;
     }
 
     // ————————————————————————————————————————————
@@ -1152,7 +1154,10 @@
         }
 
         if (msg.type === "moreHistory") {
+             console.log(`[Chart] Received moreHistory: ${msg.data?.length || 0} candles`);
+
              if (!msg.data || msg.data.length === 0) {
+                 console.log("[Chart] No more history available - all data loaded");
                  allOlderHistoryLoaded = true;
                  isLoadingMoreHistory = false;
                  return;
@@ -1166,6 +1171,7 @@
              // Deduplicate just in case
              localCandles = localCandles.filter((v,i,a)=>a.findIndex(t=>(t.time===v.time))===i).sort((a,b)=>a.time-b.time);
 
+             console.log(`[Chart] Updated total candles: ${localCandles.length}`);
              candleSeries.setData(localCandles);
              isLoadingMoreHistory = false;
              return;
