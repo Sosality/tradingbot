@@ -899,6 +899,9 @@
 
       candleSeries.setData([]);
       lastCandle = null;
+      localCandles = [];
+      isLoadingMoreHistory = false;
+      allOlderHistoryLoaded = false;
       chart.timeScale().fitContent();
       chart.priceScale('right').applyOptions({ autoScale: true });
 
@@ -927,6 +930,8 @@
       localCandles = [];
       isLoadingHistory = false;
       allHistoryLoaded = false;
+      isLoadingMoreHistory = false;
+      allOlderHistoryLoaded = false;
 
       chart.timeScale().fitContent();
       chart.priceScale('right').applyOptions({ autoScale: true });
@@ -968,6 +973,58 @@
       const newRect = entries[0].contentRect;
       chart.applyOptions({ width: newRect.width, height: newRect.height });
     }).observe(chartEl);
+
+    // ————————————————————————————————————————————
+    // LAZY LOAD HISTORY WHEN SCROLLING LEFT
+    // ————————————————————————————————————————————
+    chart.timeScale().subscribeVisibleTimeRangeChange(timeRange => {
+      if (!timeRange || allOlderHistoryLoaded || isLoadingMoreHistory) return;
+
+      // Get the leftmost visible candle time
+      const visibleFrom = timeRange.from;
+
+      // Check if we have candles loaded
+      if (!localCandles || localCandles.length === 0) return;
+
+      // Get the timestamp of the first (oldest) loaded candle
+      const oldestLoadedTime = localCandles[0].time;
+
+      // Calculate the threshold - request more if user scrolls to show ~5% of the left edge
+      const visibleRange = timeRange.to - timeRange.from;
+      const threshold = oldestLoadedTime + (visibleRange * 0.05);
+
+      // If user is approaching the left edge of loaded data
+      if (visibleFrom <= threshold) {
+        requestMoreHistory();
+      }
+    });
+
+    async function requestMoreHistory() {
+      if (isLoadingMoreHistory || allOlderHistoryLoaded) return;
+
+      isLoadingMoreHistory = true;
+
+      // Get the oldest candle timestamp
+      if (!localCandles || localCandles.length === 0) {
+        isLoadingMoreHistory = false;
+        return;
+      }
+
+      const oldestTime = localCandles[0].time;
+
+      // Send request to server for older candles
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type: "loadMore",
+          pair: selectedPair,
+          timeframe: currentTimeframe,
+          until: oldestTime
+        }));
+        // Will receive "moreHistory" message in socket.onmessage
+      }
+
+      isLoadingMoreHistory = false;
+    }
 
     // ————————————————————————————————————————————
     // LEVERAGE & UI
@@ -1039,6 +1096,8 @@
     // ————————————————————————————————————————————
     let socket = null;
     let lastCandle = null;
+    let isLoadingMoreHistory = false; // Flag to prevent multiple requests
+    let allOlderHistoryLoaded = false; // Flag to prevent requesting when all history is loaded
 
     function connectWS() {
       socket = new WebSocket(WSS_PRICE_URL);
@@ -1094,8 +1153,8 @@
 
         if (msg.type === "moreHistory") {
              if (!msg.data || msg.data.length === 0) {
-                 allHistoryLoaded = true;
-                 isLoadingHistory = false;
+                 allOlderHistoryLoaded = true;
+                 isLoadingMoreHistory = false;
                  return;
              }
              const newOldCandles = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
@@ -1108,7 +1167,7 @@
              localCandles = localCandles.filter((v,i,a)=>a.findIndex(t=>(t.time===v.time))===i).sort((a,b)=>a.time-b.time);
 
              candleSeries.setData(localCandles);
-             isLoadingHistory = false;
+             isLoadingMoreHistory = false;
              return;
         }
 
