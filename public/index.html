@@ -902,6 +902,7 @@
       localCandles = [];
       isLoadingMoreHistory = false;
       allOlderHistoryLoaded = false;
+      lastLoadMoreUntil = null;
       chart.timeScale().fitContent();
       chart.priceScale('right').applyOptions({ autoScale: true });
 
@@ -932,6 +933,7 @@
       allHistoryLoaded = false;
       isLoadingMoreHistory = false;
       allOlderHistoryLoaded = false;
+      lastLoadMoreUntil = null;
 
       chart.timeScale().fitContent();
       chart.priceScale('right').applyOptions({ autoScale: true });
@@ -1011,6 +1013,13 @@
       }
 
       const oldestTime = localCandles[0].time;
+
+      // Prevent spamming the same request when visible range change fires multiple times
+      if (lastLoadMoreUntil === oldestTime) {
+        isLoadingMoreHistory = false;
+        return;
+      }
+      lastLoadMoreUntil = oldestTime;
 
       // Send request to server for older candles
       if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1100,6 +1109,7 @@
     let lastCandle = null;
     let isLoadingMoreHistory = false; // Flag to prevent multiple requests
     let allOlderHistoryLoaded = false; // Flag to prevent requesting when all history is loaded
+    let lastLoadMoreUntil = null; // Prevent repeated identical loadMore requests
 
     function connectWS() {
       socket = new WebSocket(WSS_PRICE_URL);
@@ -1154,30 +1164,49 @@
         }
 
         if (msg.type === "moreHistory") {
-             console.log(`[Chart] Received moreHistory: ${msg.data?.length || 0} candles`);
+          console.log(`[Chart] Received moreHistory: ${msg.data?.length || 0} candles`);
 
-             if (!msg.data || msg.data.length === 0) {
-                 console.log("[Chart] No more history available - all data loaded");
-                 allOlderHistoryLoaded = true;
-                 isLoadingMoreHistory = false;
-                 return;
-             }
-             const newOldCandles = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
+          // Ignore stale responses (e.g. timeframe switched while request was in-flight)
+          if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) {
+            console.log(`[Chart] Ignoring moreHistory for timeframe=${msg.timeframe}, current=${currentTimeframe}`);
+            isLoadingMoreHistory = false;
+            return;
+          }
 
-             // Merge with localCandles
-             // Since newOldCandles are older, they go first
-             localCandles = [...newOldCandles, ...localCandles];
+          if (!msg.data || msg.data.length === 0) {
+            console.log("[Chart] No more history available - all data loaded");
+            allOlderHistoryLoaded = true;
+            isLoadingMoreHistory = false;
+            return;
+          }
+          const newOldCandles = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
 
-             // Deduplicate just in case
-             localCandles = localCandles.filter((v,i,a)=>a.findIndex(t=>(t.time===v.time))===i).sort((a,b)=>a.time-b.time);
+          // Preserve viewport so chart doesn't jump after setData
+          const currentRange = chart.timeScale().getVisibleRange();
 
-             console.log(`[Chart] Updated total candles: ${localCandles.length}`);
-             candleSeries.setData(localCandles);
-             isLoadingMoreHistory = false;
-             return;
+          // Merge with localCandles
+          // Since newOldCandles are older, they go first
+          localCandles = [...newOldCandles, ...localCandles];
+
+          // Deduplicate just in case
+          localCandles = localCandles.filter((v,i,a)=>a.findIndex(t=>(t.time===v.time))===i).sort((a,b)=>a.time-b.time);
+
+          console.log(`[Chart] Updated total candles: ${localCandles.length}`);
+          candleSeries.setData(localCandles);
+
+          if (currentRange) {
+            chart.timeScale().setVisibleRange(currentRange);
+          }
+          isLoadingMoreHistory = false;
+          return;
         }
 
         if (msg.type === "history") {
+          // Ignore stale responses (e.g. timeframe switched while request was in-flight)
+          if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) {
+            console.log(`[Chart] Ignoring history for timeframe=${msg.timeframe}, current=${currentTimeframe}`);
+            return;
+          }
           const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
           localCandles = data;
           candleSeries.setData(data);
@@ -1191,17 +1220,17 @@
             const currentCandleTime = now - (now % currentTimeframe);
 
             if (lastDataCandle.time >= currentCandleTime) {
-                lastCandle = lastDataCandle;
+              lastCandle = lastDataCandle;
             } else {
-                 lastCandle = {
-                    time: currentCandleTime,
-                    open: lastDataCandle.close,
-                    high: lastDataCandle.close,
-                    low: lastDataCandle.close,
-                    close: lastDataCandle.close
-                };
-                candleSeries.update(lastCandle);
-                localCandles.push(lastCandle);
+              lastCandle = {
+                time: currentCandleTime,
+                open: lastDataCandle.close,
+                high: lastDataCandle.close,
+                low: lastDataCandle.close,
+                close: lastDataCandle.close
+              };
+              candleSeries.update(lastCandle);
+              localCandles.push(lastCandle);
             }
 
             marketPrices[selPairNorm] = lastCandle.close;
