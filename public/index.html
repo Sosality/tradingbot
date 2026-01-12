@@ -1000,24 +1000,21 @@
     });
 
     async function requestMoreHistory() {
-      console.log(`[Chart] requestMoreHistory called: isLoadingMoreHistory=${isLoadingMoreHistory}, allOlderHistoryLoaded=${allOlderHistoryLoaded}`);
       if (isLoadingMoreHistory || allOlderHistoryLoaded) return;
 
       isLoadingMoreHistory = true;
 
       // Get the oldest candle timestamp
       if (!localCandles || localCandles.length === 0) {
-        console.log(`[Chart] No candles loaded, cannot request more history`);
         isLoadingMoreHistory = false;
         return;
       }
 
       const oldestTime = localCandles[0].time;
-      const oldestTimeISO = new Date(oldestTime * 1000).toISOString();
 
       // Send request to server for older candles
       if (socket && socket.readyState === WebSocket.OPEN) {
-        console.log(`[Chart] Requesting loadMore: pair=${selectedPair}, timeframe=${currentTimeframe}, until=${oldestTime} (${oldestTimeISO}), total_local_candles=${localCandles.length}`);
+        console.log(`[Chart] Requesting history before: ${new Date(oldestTime * 1000).toISOString()}`);
         socket.send(JSON.stringify({
           type: "loadMore",
           pair: selectedPair,
@@ -1027,7 +1024,6 @@
         // Will receive "moreHistory" message in socket.onmessage
         // Flag will be reset there, NOT here!
       } else {
-        console.error(`[Chart] Socket not ready (readyState=${socket?.readyState})`);
         isLoadingMoreHistory = false;
       }
     }
@@ -1150,43 +1146,35 @@
           return;
         }
 
-        if (msg.type === "moreHistory") {
-          console.log(`[Chart] Received moreHistory for pair=${msg.pair}, msgPairNorm=${msgPairNorm}, selPairNorm=${selPairNorm}, candles=${msg.data?.length || 0}`);
-
-          // Only process if it's for the currently selected pair
-          if (msgPairNorm !== selPairNorm) {
-            console.log(`[Chart] Skipping moreHistory - pair mismatch (${msgPairNorm} !== ${selPairNorm})`);
-            return;
-          }
-
-          if (!msg.data || msg.data.length === 0) {
-            console.log("[Chart] No more history available - all data loaded");
-            allOlderHistoryLoaded = true;
-            isLoadingMoreHistory = false;
-            return;
-          }
-          const newOldCandles = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
-
-          console.log(`[Chart] Merging ${newOldCandles.length} old candles with ${localCandles.length} existing candles`);
-
-          // Merge with localCandles
-          // Since newOldCandles are older, they go first
-          localCandles = [...newOldCandles, ...localCandles];
-
-          // Deduplicate just in case
-          localCandles = localCandles.filter((v,i,a)=>a.findIndex(t=>(t.time===v.time))===i).sort((a,b)=>a.time-b.time);
-
-          console.log(`[Chart] Updated total candles: ${localCandles.length}`);
-          candleSeries.setData(localCandles);
-          isLoadingMoreHistory = false;
-          return;
-        }
-
         if (msgPairNorm !== selPairNorm) return;
 
         if (msg.type === "orderBook") {
           renderOrderBook(msg.buy || msg.bids, msg.sell || msg.asks);
           return;
+        }
+
+        if (msg.type === "moreHistory") {
+             console.log(`[Chart] Received moreHistory: ${msg.data?.length || 0} candles`);
+
+             if (!msg.data || msg.data.length === 0) {
+                 console.log("[Chart] No more history available - all data loaded");
+                 allOlderHistoryLoaded = true;
+                 isLoadingMoreHistory = false;
+                 return;
+             }
+             const newOldCandles = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
+
+             // Merge with localCandles
+             // Since newOldCandles are older, they go first
+             localCandles = [...newOldCandles, ...localCandles];
+
+             // Deduplicate just in case
+             localCandles = localCandles.filter((v,i,a)=>a.findIndex(t=>(t.time===v.time))===i).sort((a,b)=>a.time-b.time);
+
+             console.log(`[Chart] Updated total candles: ${localCandles.length}`);
+             candleSeries.setData(localCandles);
+             isLoadingMoreHistory = false;
+             return;
         }
 
         if (msg.type === "history") {
@@ -1203,17 +1191,17 @@
             const currentCandleTime = now - (now % currentTimeframe);
 
             if (lastDataCandle.time >= currentCandleTime) {
-              lastCandle = lastDataCandle;
+                lastCandle = lastDataCandle;
             } else {
-              lastCandle = {
-                time: currentCandleTime,
-                open: lastDataCandle.close,
-                high: lastDataCandle.close,
-                low: lastDataCandle.close,
-                close: lastDataCandle.close
-              };
-              candleSeries.update(lastCandle);
-              localCandles.push(lastCandle);
+                 lastCandle = {
+                    time: currentCandleTime,
+                    open: lastDataCandle.close,
+                    high: lastDataCandle.close,
+                    low: lastDataCandle.close,
+                    close: lastDataCandle.close
+                };
+                candleSeries.update(lastCandle);
+                localCandles.push(lastCandle);
             }
 
             marketPrices[selPairNorm] = lastCandle.close;
