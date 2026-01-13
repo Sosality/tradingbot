@@ -355,6 +355,55 @@
     .hc-val { color: var(--white); font-family: 'Roboto Mono'; }
     .hc-pnl { font-weight: 700; font-family: 'Roboto Mono'; font-size: 14px; }
 
+    /* ————— REFERRALS BLOCK ————— */
+    .ref-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .ref-top { display:flex; justify-content:space-between; align-items:center; gap: 10px; }
+    .ref-title { font-weight: 800; font-size: 14px; }
+    .ref-badge { font-size: 11px; color: var(--muted); background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 999px; border: 1px solid var(--border); }
+    .ref-row { display:flex; gap: 8px; align-items: center; }
+    .ref-input {
+      flex: 1;
+      background: #111;
+      border: 1px solid var(--border);
+      color: var(--white);
+      padding: 12px;
+      border-radius: 10px;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 12px;
+      outline: none;
+      width: 100%;
+    }
+    .ref-btn {
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      color: var(--white);
+      padding: 12px 12px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .ref-btn.primary { background: var(--gold); color: #000; border-color: rgba(240,185,11,0.4); }
+    .ref-help { font-size: 11px; color: var(--muted); line-height: 1.35; }
+    .ref-list { display:flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; padding-right: 2px; }
+    .ref-item { display:flex; justify-content: space-between; align-items:center; gap: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 10px; }
+    .ref-item-left { display:flex; align-items:center; gap: 10px; min-width: 0; }
+    .ref-avatar { width: 28px; height: 28px; border-radius: 50%; background: #333; overflow: hidden; border: 1px solid var(--border); flex-shrink: 0; }
+    .ref-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .ref-name { font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+    .ref-sub { font-size: 10px; color: var(--muted); font-family: monospace; }
+    .ref-date { font-size: 10px; color: var(--muted); font-family: monospace; flex-shrink: 0; }
+    .ref-status { font-size: 10px; color: var(--muted); }
+
     /* ————— REWARDS VIEW STYLES ————— */
     .rewards-container {
       padding: 20px; display: flex; flex-direction: column; gap: 24px;
@@ -572,6 +621,31 @@
         </div>
       </div>
 
+      <!-- REFERRALS BLOCK -->
+      <div class="ref-card" id="refCard">
+        <div class="ref-top">
+          <div class="ref-title">Referrals</div>
+          <div class="ref-badge" id="refCountBadge">Invited: 0</div>
+        </div>
+
+        <div class="ref-row">
+          <input class="ref-input" id="refLinkInput" readonly value="Loading...">
+          <button class="ref-btn primary" id="btnCopyRefLink">Copy link</button>
+        </div>
+        <div class="ref-row">
+          <input class="ref-input" id="refCodeInput" readonly value="">
+          <button class="ref-btn" id="btnCopyRefCode">Copy code</button>
+        </div>
+
+        <div class="ref-help" id="refHelpText">
+          Share the link with friends. When they open the bot using your link, they will be automatically assigned as your referral.
+        </div>
+
+        <div class="ref-list" id="refList">
+          <div class="ref-status" id="refStatus">Loading referrals...</div>
+        </div>
+      </div>
+
       <div class="rewards-banner" id="btnGoRewards">
         <div class="rb-content">
           <h3>Rewards Center</h3>
@@ -760,6 +834,79 @@
       });
     });
 
+    // 3. Referrals: copy handlers
+    function notify(msg) {
+      try {
+        if(tg && typeof tg.showPopup === 'function') {
+          tg.showPopup({ title: 'Info', message: msg, buttons: [{type:'ok'}] });
+          return;
+        }
+      } catch(e) {}
+      console.log(msg);
+    }
+
+    async function copyTextToClipboard(text) {
+      const t = String(text || "");
+      if(!t) return false;
+
+      // Telegram WebApp clipboard (if available)
+      try {
+        if(tg && tg.Clipboard && typeof tg.Clipboard.writeText === 'function') {
+          await tg.Clipboard.writeText(t);
+          return true;
+        }
+      } catch(e) {}
+
+      // Browser clipboard
+      try {
+        if(navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(t);
+          return true;
+        }
+      } catch(e) {}
+
+      // Fallback
+      try {
+        const tmp = document.createElement('textarea');
+        tmp.value = t;
+        tmp.style.position = 'fixed';
+        tmp.style.left = '-9999px';
+        document.body.appendChild(tmp);
+        tmp.focus();
+        tmp.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(tmp);
+        return ok;
+      } catch(e) {
+        return false;
+      }
+    }
+
+    const btnCopyRefLink = $('btnCopyRefLink');
+    if(btnCopyRefLink) {
+      btnCopyRefLink.onclick = async () => {
+        const ok = await copyTextToClipboard($('refLinkInput')?.value);
+        notify(ok ? 'Referral link copied' : 'Copy failed');
+      };
+    }
+
+    const btnCopyRefCode = $('btnCopyRefCode');
+    if(btnCopyRefCode) {
+      btnCopyRefCode.onclick = async () => {
+        const ok = await copyTextToClipboard($('refCodeInput')?.value);
+        notify(ok ? 'Referral code copied' : 'Copy failed');
+      };
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
+    }
+
     async function renderProfile() {
       $('profileName').textContent = profile.name || "Trader";
       $('profileId').textContent = "ID: " + profile.id;
@@ -794,6 +941,78 @@
       $('winRateChart').style.background = `conic-gradient(${chartColor} 0% ${winRate}%, var(--panel-light) ${winRate}% 100%)`;
 
       renderHistoryList();
+
+      // Referrals block
+      await renderReferrals();
+    }
+
+    async function renderReferrals() {
+      const listEl = $('refList');
+      const linkInput = $('refLinkInput');
+      const codeInput = $('refCodeInput');
+      const badge = $('refCountBadge');
+
+      if(!listEl || !linkInput || !codeInput || !badge) return;
+
+      listEl.innerHTML = "<div class='ref-status'>Loading referrals...</div>";
+      linkInput.value = "Loading...";
+      codeInput.value = "";
+      badge.textContent = "Invited: ...";
+
+      try {
+        const res = await fetch(API_BASE + "/api/user/referrals?userId=" + encodeURIComponent(currentUserId));
+        const data = await res.json();
+        if(!data.ok) throw new Error(data.error || 'REFERRALS_ERROR');
+
+        const link = data.referralLink || '';
+        const code = data.referralCode || '';
+        const count = Number(data.invitedCount || 0);
+
+        linkInput.value = link || "";
+        codeInput.value = code || "";
+        badge.textContent = "Invited: " + count;
+
+        const invited = Array.isArray(data.invited) ? data.invited : [];
+        listEl.innerHTML = "";
+
+        if(invited.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'ref-status';
+          empty.textContent = 'No referrals yet';
+          listEl.appendChild(empty);
+          return;
+        }
+
+        invited.slice(0, 50).forEach(u => {
+          const div = document.createElement('div');
+          div.className = 'ref-item';
+
+          const name = (u.first_name || u.username || 'User');
+          const uname = u.username ? ('@' + u.username) : ('ID: ' + (u.user_id || ''));
+          const when = u.invited_at ? new Date(u.invited_at) : (u.created_at ? new Date(u.created_at) : null);
+          const dateStr = when ? when.toLocaleDateString([], {month:'2-digit', day:'2-digit'}) : '--';
+          const photo = u.photo_url || '';
+
+          div.innerHTML = `
+            <div class="ref-item-left">
+              <div class="ref-avatar">${photo ? `<img src="${photo}" alt="">` : ''}</div>
+              <div style="min-width:0;">
+                <div class="ref-name">${escapeHtml(name)}</div>
+                <div class="ref-sub">${escapeHtml(uname)}</div>
+              </div>
+            </div>
+            <div class="ref-date">${dateStr}</div>
+          `;
+          listEl.appendChild(div);
+        });
+      } catch(e) {
+        listEl.innerHTML = "";
+        const err = document.createElement('div');
+        err.className = 'ref-status';
+        err.textContent = 'Failed to load referrals';
+        listEl.appendChild(err);
+        console.error('Referrals fetch error', e);
+      }
     }
 
     function renderHistoryList() {
