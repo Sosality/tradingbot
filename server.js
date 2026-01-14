@@ -591,7 +591,22 @@ app.post("/api/order/close", async (req, res) => {
         const cPrice = Number(closePrice);
         const ePrice = Number(pos.entry_price);
         const pSize = Number(pos.size);
-        const pMargin = Number(pos.margin);
+        const pMarginDb = Number(pos.margin);
+
+        // Margin consistency fix:
+        // Historically some rows could have `margin` stored incorrectly. Since size and leverage
+        // uniquely define margin (margin = size / leverage), we can safely derive it.
+        // We still keep a tolerance to avoid changing behavior if DB is already consistent.
+        const lev = Math.max(1, Number(pos.leverage || 1));
+        const marginFromSize = (Number.isFinite(pSize) && lev > 0) ? (pSize / lev) : NaN;
+        const pMargin = (() => {
+            if (Number.isFinite(marginFromSize) && marginFromSize > 0) {
+                if (!Number.isFinite(pMarginDb) || pMarginDb <= 0) return marginFromSize;
+                const relDiff = Math.abs(pMarginDb - marginFromSize) / marginFromSize;
+                if (relDiff > 0.02) return marginFromSize;
+            }
+            return pMarginDb;
+        })();
 
         // 3. PnL
         const priceChangePct = (cPrice - ePrice) / ePrice;
