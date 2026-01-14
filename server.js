@@ -609,7 +609,11 @@ app.post("/api/order/close", async (req, res) => {
         if (totalReturn <= 0) {
             isLiquidated = true;
             totalReturn = 0;
-            pnl = -pMargin; // Фиксируем убыток равный марже
+            // В модели ликвидации баланс не получает возврат (totalReturn = 0).
+            // Но комиссию при этом хотим показывать реальную.
+            // Так как totalReturn = margin + pnl - commission, при totalReturn=0:
+            // pnl = commission - margin.
+            pnl = commission - pMargin;
         }
 
         // 7. Транзакция
@@ -619,7 +623,8 @@ app.post("/api/order/close", async (req, res) => {
             await db.query("UPDATE users SET balance = balance + $1 WHERE user_id = $2", [totalReturn, user.user_id]);
         }
 
-        const finalCommission = isLiquidated ? 0 : commission;
+        // Записываем реальную комиссию и для обычного закрытия, и для ликвидации.
+        const finalCommission = commission;
 
         await db.query(`
       INSERT INTO trades_history (user_id, pair, type, entry_price, exit_price, size, leverage, pnl, commission)
