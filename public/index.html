@@ -45,7 +45,7 @@
       height: 100%;
       overflow: hidden;
       transition: opacity 0.3s ease, transform 0.3s ease;
-      position: absolute; width: 100%; top:0; left:0; /* Stack views */
+      position: absolute; width: 100%; top:0; left:0;
       background: var(--bg);
     }
 
@@ -124,13 +124,10 @@
       .container { display: grid; grid-template-columns: 1fr 340px; height: calc(100vh - 60px); overflow: hidden; }
       .left-col { overflow-y: auto; padding-right: 4px; }
       .right-col { overflow: hidden; height: 100%; }
-
-      /* Limit height of lists on desktop so they don't stretch */
       .ob-container, .pos-list {
-        max-height: 400px; /* Limit height */
+        max-height: 400px;
         overflow-y: auto;
       }
-      /* Hide extra rows in OB/History to save space on horizontal view */
       .ob-row:nth-child(n+18) { display: none; }
     }
 
@@ -144,6 +141,38 @@
     .price-display { font-family: 'Roboto Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
     .chart-container { height: 350px; width: 100%; border-radius: 8px; overflow: hidden; position: relative; background: #111; }
     @media (min-width: 900px) { .chart-container { height: 50vh; } }
+
+    /* CHART LOADING OVERLAY */
+    .chart-loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(11, 14, 17, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .chart-loading-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .chart-loading-spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: var(--accent-green);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
 
     /* CONTROLS */
     .controls-area { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
@@ -515,7 +544,12 @@
               <div class="tf-opt" data-tf="86400">1d</div>
             </div>
           </div>
-          <div class="chart-container" id="chartCard"><div id="chart" style="width: 100%; height: 100%;"></div></div>
+          <div class="chart-container" id="chartCard">
+            <div id="chart" style="width: 100%; height: 100%;"></div>
+            <div class="chart-loading-overlay" id="chartLoadingOverlay">
+              <div class="chart-loading-spinner"></div>
+            </div>
+          </div>
           <div class="controls-area">
             <div class="input-group">
               <span class="input-label">Margin (VP)</span>
@@ -723,9 +757,6 @@
   (async function(){
     const $ = (id) => document.getElementById(id);
 
-    // ————————————————————————————————————————————
-    // CONFIG & STATE
-    // ————————————————————————————————————————————
     const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com";
     const API_BASE = "https://tradingbot-p9n8.onrender.com";
     const ALL_PAIRS = ["BTC-USD", "ETH-USD"];
@@ -733,7 +764,7 @@
     let currentUserId = null;
     let selectedPair = "BTC-USD";
     let marketPrices = {};
-    let currentTimeframe = 60; // Default 1m
+    let currentTimeframe = 60;
     let localCandles = [];
     let isLoadingHistory = false;
     let allHistoryLoaded = false;
@@ -743,9 +774,8 @@
     let localTrades = [];
     let remoteHistory = [];
 
-    // NEW: Profile State
     let isBalanceHidden = false;
-    let historyFilterMode = 'all'; // 'all', 'day', 'week'
+    let historyFilterMode = 'all';
     const ICON_EYE_OPEN = "https://img.icons8.com/ios-glyphs/60/ffffff/visible.png";
     const ICON_EYE_CLOSED = "https://img.icons8.com/ios-glyphs/60/ffffff/hide.png";
 
@@ -758,9 +788,6 @@
       tg.enableClosingConfirmation();
     }
 
-    // ————————————————————————————————————————————
-    // UTILS
-    // ————————————————————————————————————————————
     function formatPrice(val) {
       const num = Number(val);
       if(isNaN(num)) return "--.--";
@@ -774,9 +801,6 @@
       return String(p).trim().replace("/", "-").toUpperCase();
     }
 
-    // ————————————————————————————————————————————
-    // NAVIGATION & VIEWS
-    // ————————————————————————————————————————————
     const viewTrade = $('view-trade');
     const viewProfile = $('view-profile');
     const viewRewards = $('view-rewards');
@@ -809,11 +833,6 @@
       });
     }
 
-    // ————————————————————————————————————————————
-    // PROFILE LOGIC
-    // ————————————————————————————————————————————
-
-    // 1. Balance Toggle
     const btnEye = $('btnToggleBalance');
     if(btnEye) {
       btnEye.onclick = (e) => {
@@ -824,7 +843,6 @@
       };
     }
 
-    // 2. History Filters
     document.querySelectorAll('.h-filter').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.h-filter').forEach(b => b.classList.remove('active'));
@@ -834,7 +852,6 @@
       });
     });
 
-    // 3. Referrals: copy handlers
     function notify(msg) {
       try {
         if(tg && typeof tg.showPopup === 'function') {
@@ -849,7 +866,6 @@
       const t = String(text || "");
       if(!t) return false;
 
-      // Telegram WebApp clipboard (if available)
       try {
         if(tg && tg.Clipboard && typeof tg.Clipboard.writeText === 'function') {
           await tg.Clipboard.writeText(t);
@@ -857,7 +873,6 @@
         }
       } catch(e) {}
 
-      // Browser clipboard
       try {
         if(navigator.clipboard && navigator.clipboard.writeText) {
           await navigator.clipboard.writeText(t);
@@ -865,7 +880,6 @@
         }
       } catch(e) {}
 
-      // Fallback
       try {
         const tmp = document.createElement('textarea');
         tmp.value = t;
@@ -941,8 +955,6 @@
       $('winRateChart').style.background = `conic-gradient(${chartColor} 0% ${winRate}%, var(--panel-light) ${winRate}% 100%)`;
 
       renderHistoryList();
-
-      // Referrals block
       await renderReferrals();
     }
 
@@ -1024,7 +1036,6 @@
         return;
       }
 
-      // Filter Logic
       const now = Date.now();
       const oneDay = 24 * 60 * 60 * 1000;
       const oneWeek = 7 * 24 * 60 * 60 * 1000;
@@ -1042,11 +1053,10 @@
         return;
       }
 
-      // Limit render to 50 items for performance
       filtered.slice(0, 50).forEach(h => {
         const pnlVal = Number(h.pnl);
         const sizeVal = Number(h.size);
-        const commVal = Number(h.commission || 0); // Получаем комиссию
+        const commVal = Number(h.commission || 0);
         const entryVal = Number(h.entry_price);
         const exitVal = Number(h.exit_price);
 
@@ -1077,9 +1087,6 @@
       });
     }
 
-    // ————————————————————————————————————————————
-    // PAIR SELECTOR
-    // ————————————————————————————————————————————
     const pairDropdown = $('pairDropdown');
     const pairTrigger = $('pairTrigger');
     const triggerText = $('triggerText');
@@ -1122,6 +1129,8 @@
       isLoadingMoreHistory = false;
       allOlderHistoryLoaded = false;
       lastLoadMoreUntil = null;
+      lockedLeftBoundary = null;
+      hideChartLoadingOverlay();
       chart.timeScale().fitContent();
       chart.priceScale('right').applyOptions({ autoScale: true });
 
@@ -1130,21 +1139,16 @@
       }
     }
 
-    // ————————————————————————————————————————————
-    // TIMEFRAME SWITCHING
-    // ————————————————————————————————————————————
     function changeTimeframe(newTimeframe) {
       newTimeframe = parseInt(newTimeframe);
       if (currentTimeframe === newTimeframe) return;
 
       currentTimeframe = newTimeframe;
 
-      // Update UI
       document.querySelectorAll('.tf-opt').forEach(opt => {
         opt.classList.toggle('active', parseInt(opt.dataset.tf) === currentTimeframe);
       });
 
-      // Reset chart
       candleSeries.setData([]);
       lastCandle = null;
       localCandles = [];
@@ -1153,27 +1157,26 @@
       isLoadingMoreHistory = false;
       allOlderHistoryLoaded = false;
       lastLoadMoreUntil = null;
+      lockedLeftBoundary = null;
+      hideChartLoadingOverlay();
 
       chart.timeScale().fitContent();
       chart.priceScale('right').applyOptions({ autoScale: true });
 
-      // Request new history with new timeframe
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: "subscribe", pair: selectedPair, timeframe: currentTimeframe }));
       }
     }
 
-    // Attach timeframe selector listeners
     document.querySelectorAll('.tf-opt').forEach(opt => {
       opt.addEventListener('click', () => {
         changeTimeframe(opt.dataset.tf);
       });
     });
 
-    // ————————————————————————————————————————————
-    // CHART SETUP
-    // ————————————————————————————————————————————
     const chartEl = $('chart');
+    const chartLoadingOverlay = $('chartLoadingOverlay');
+
     const chart = LightweightCharts.createChart(chartEl, {
       width: chartEl.clientWidth,
       height: chartEl.clientHeight,
@@ -1195,27 +1198,49 @@
       chart.applyOptions({ width: newRect.width, height: newRect.height });
     }).observe(chartEl);
 
-    // ————————————————————————————————————————————
-    // LAZY LOAD HISTORY WHEN SCROLLING LEFT
-    // ————————————————————————————————————————————
+    let isLoadingMoreHistory = false;
+    let allOlderHistoryLoaded = false;
+    let lastLoadMoreUntil = null;
+    let lockedLeftBoundary = null;
+
+    function showChartLoadingOverlay() {
+      if (chartLoadingOverlay) {
+        chartLoadingOverlay.classList.add('active');
+      }
+    }
+
+    function hideChartLoadingOverlay() {
+      if (chartLoadingOverlay) {
+        chartLoadingOverlay.classList.remove('active');
+      }
+    }
+
     chart.timeScale().subscribeVisibleTimeRangeChange(timeRange => {
-      if (!timeRange || allOlderHistoryLoaded || isLoadingMoreHistory) return;
+      if (!timeRange) return;
 
-      // Get the leftmost visible candle time
-      const visibleFrom = timeRange.from;
+      if (isLoadingMoreHistory && lockedLeftBoundary !== null) {
+        if (timeRange.from < lockedLeftBoundary) {
+          const currentRange = chart.timeScale().getVisibleRange();
+          if (currentRange) {
+            const rangeDuration = currentRange.to - currentRange.from;
+            chart.timeScale().setVisibleRange({
+              from: lockedLeftBoundary,
+              to: lockedLeftBoundary + rangeDuration
+            });
+          }
+          return;
+        }
+      }
 
-      // Check if we have candles loaded
+      if (allOlderHistoryLoaded || isLoadingMoreHistory) return;
+
       if (!localCandles || localCandles.length === 0) return;
 
-      // Get the timestamp of the first (oldest) loaded candle
       const oldestLoadedTime = localCandles[0].time;
-
-      // Calculate the threshold - request more if user scrolls to show ~5% of the left edge
       const visibleRange = timeRange.to - timeRange.from;
       const threshold = oldestLoadedTime + (visibleRange * 0.05);
 
-      // If user is approaching the left edge of loaded data
-      if (visibleFrom <= threshold) {
+      if (timeRange.from <= threshold) {
         requestMoreHistory();
       }
     });
@@ -1223,24 +1248,21 @@
     async function requestMoreHistory() {
       if (isLoadingMoreHistory || allOlderHistoryLoaded) return;
 
-      isLoadingMoreHistory = true;
-
-      // Get the oldest candle timestamp
       if (!localCandles || localCandles.length === 0) {
-        isLoadingMoreHistory = false;
         return;
       }
 
       const oldestTime = localCandles[0].time;
 
-      // Prevent spamming the same request when visible range change fires multiple times
       if (lastLoadMoreUntil === oldestTime) {
-        isLoadingMoreHistory = false;
         return;
       }
       lastLoadMoreUntil = oldestTime;
 
-      // Send request to server for older candles
+      isLoadingMoreHistory = true;
+      lockedLeftBoundary = oldestTime;
+      showChartLoadingOverlay();
+
       if (socket && socket.readyState === WebSocket.OPEN) {
         console.log(`[Chart] Requesting history before: ${new Date(oldestTime * 1000).toISOString()}`);
         socket.send(JSON.stringify({
@@ -1249,16 +1271,13 @@
           timeframe: currentTimeframe,
           until: oldestTime
         }));
-        // Will receive "moreHistory" message in socket.onmessage
-        // Flag will be reset there, NOT here!
       } else {
         isLoadingMoreHistory = false;
+        lockedLeftBoundary = null;
+        hideChartLoadingOverlay();
       }
     }
 
-    // ————————————————————————————————————————————
-    // LEVERAGE & UI
-    // ————————————————————————————————————————————
     const slider = $('leverageSlider');
     const levDisplay = $('leverageValText');
     const levChips = document.querySelectorAll('.chip');
@@ -1281,7 +1300,6 @@
     function updateBalanceUI() {
       const val = profile.balance.toFixed(2);
 
-      // Masking logic
       const displayVal = isBalanceHidden ? "******" : (val + " VP");
       const displayValPure = isBalanceHidden ? "****" : val;
 
@@ -1291,7 +1309,7 @@
       if(elProBal) elProBal.textContent = displayValPure;
 
       const elApprox = $('profileBalanceApprox');
-      if(elApprox) elApprox.textContent = isBalanceHidden ? "≈ $****" : `≈ $${val}`; // Assuming 1:1 for simplicity
+      if(elApprox) elApprox.textContent = isBalanceHidden ? "≈ $****" : `≈ $${val}`;
     }
 
     async function initSession() {
@@ -1321,14 +1339,8 @@
       } catch(e) { console.error(e); }
     }
 
-    // ————————————————————————————————————————————
-    // WEBSOCKET & DATA STREAM
-    // ————————————————————————————————————————————
     let socket = null;
     let lastCandle = null;
-    let isLoadingMoreHistory = false; // Flag to prevent multiple requests
-    let allOlderHistoryLoaded = false; // Flag to prevent requesting when all history is loaded
-    let lastLoadMoreUntil = null; // Prevent repeated identical loadMore requests
 
     function connectWS() {
       socket = new WebSocket(WSS_PRICE_URL);
@@ -1354,7 +1366,6 @@
             const currentPrice = Number(msg.price);
             $('priceDisplay').textContent = formatPrice(currentPrice);
 
-            // 🔥 ВЫЗЫВАЕМ ОБНОВЛЕНИЕ СТАТИСТИКИ ПОЗИЦИЙ
             updatePositionsDynamic();
 
             if (lastCandle) {
@@ -1371,7 +1382,6 @@
               }
             }
           }
-          // renderPositions(false); // Убрал лишний рендер, теперь обновляем динамически
           return;
         }
 
@@ -1385,10 +1395,11 @@
         if (msg.type === "moreHistory") {
           console.log(`[Chart] Received moreHistory: ${msg.data?.length || 0} candles`);
 
-          // Ignore stale responses (e.g. timeframe switched while request was in-flight)
           if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) {
             console.log(`[Chart] Ignoring moreHistory for timeframe=${msg.timeframe}, current=${currentTimeframe}`);
             isLoadingMoreHistory = false;
+            lockedLeftBoundary = null;
+            hideChartLoadingOverlay();
             return;
           }
 
@@ -1396,18 +1407,16 @@
             console.log("[Chart] No more history available - all data loaded");
             allOlderHistoryLoaded = true;
             isLoadingMoreHistory = false;
+            lockedLeftBoundary = null;
+            hideChartLoadingOverlay();
             return;
           }
           const newOldCandles = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
 
-          // Preserve viewport so chart doesn't jump after setData
           const currentRange = chart.timeScale().getVisibleRange();
 
-          // Merge with localCandles
-          // Since newOldCandles are older, they go first
           localCandles = [...newOldCandles, ...localCandles];
 
-          // Deduplicate just in case
           localCandles = localCandles.filter((v,i,a)=>a.findIndex(t=>(t.time===v.time))===i).sort((a,b)=>a.time-b.time);
 
           console.log(`[Chart] Updated total candles: ${localCandles.length}`);
@@ -1416,12 +1425,14 @@
           if (currentRange) {
             chart.timeScale().setVisibleRange(currentRange);
           }
+
           isLoadingMoreHistory = false;
+          lockedLeftBoundary = null;
+          hideChartLoadingOverlay();
           return;
         }
 
         if (msg.type === "history") {
-          // Ignore stale responses (e.g. timeframe switched while request was in-flight)
           if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) {
             console.log(`[Chart] Ignoring history for timeframe=${msg.timeframe}, current=${currentTimeframe}`);
             return;
@@ -1472,11 +1483,6 @@
       socket.onclose = () => setTimeout(connectWS, 2000);
     }
 
-    // ————————————————————————————————————————————
-    // UI RENDERERS (POSITIONS & MATH)
-    // ————————————————————————————————————————————
-
-    // 1. РЕНДЕР HTML СТРУКТУРЫ (Вызывается только при открытии/закрытии)
     function renderPositions(forceRebuild = false) {
       const list = $('positionsList');
       if (!window._positions) window._positions = [];
@@ -1495,7 +1501,6 @@
         list.innerHTML = "";
       }
 
-      // Clean up old
       const existingIds = Array.from(list.querySelectorAll('.pos-item')).map(el => el.dataset.id);
       const currentIds = positions.map(p => String(p.id || p._id));
 
@@ -1511,7 +1516,6 @@
         return;
       }
 
-      // Add new
       [...positions].reverse().forEach(pos => {
         const id = String(pos.id || pos._id);
         const pair = normalizePair(pos.pair || "BTC-USD");
@@ -1528,7 +1532,6 @@
           div.id = 'pos-item-' + id;
           div.dataset.id = id;
 
-          // MEXC STYLE LAYOUT
           div.innerHTML = `
                         <div class="pos-header">
                             <div style="display:flex; align-items:center; gap:6px;">
@@ -1579,11 +1582,9 @@
         }
       });
 
-      // Сразу запускаем расчет цифр
       updatePositionsDynamic();
     }
 
-    // 2. ДИНАМИЧЕСКИЙ РАСЧЕТ (MATH & UI UPDATES)
     function updatePositionsDynamic() {
       if (!window._positions || window._positions.length === 0) return;
 
@@ -1598,28 +1599,20 @@
         const margin = Number(pos.margin);
         const type = (pos.type || "LONG").toUpperCase();
 
-        // 1. PnL
         let diff = (currentPrice - entry) / entry;
         if (type === "SHORT") diff = -diff;
         const pnl = diff * size;
 
-        // 2. ROE (Return on Equity)
         const roe = (pnl / margin) * 100;
 
-        // 3. Risk Calculation
-        // Риск растет, когда мы теряем маржу.
-        // Если PnL = -Margin, значит риск 100% (ликвидация).
         let riskPercent = 1.0;
         if (pnl < 0) {
           const loss = Math.abs(pnl);
-          // Обычно ликвидация происходит не при 100% потери маржи, а раньше (на maintenance margin).
-          // Для UI сделаем так: Risk = (Loss / Margin) * 100.
           riskPercent = (loss / (margin * 0.9)) * 100;
         }
         if (riskPercent < 1) riskPercent = 1;
         if (riskPercent > 100) riskPercent = 100;
 
-        // 4. UI Updates via ID
         const pnlEl = document.getElementById(`pnl-${id}`);
         const roeEl = document.getElementById(`roe-${id}`);
         const ratioEl = document.getElementById(`ratio-${id}`);
@@ -1652,15 +1645,12 @@
         }
 
         if (ratioEl) {
-          // Margin Ratio - показатель нагрузки. Пусть он коррелирует с риском для наглядности
           ratioEl.textContent = (riskPercent / 2).toFixed(2) + "%";
         }
 
         if (markEl) markEl.textContent = formatPrice(currentPrice);
 
         if (liqEl) {
-          // Примитивный расчет цены ликвидации для UI
-          // (когда PnL съест 90% маржи)
           const liqDist = (margin * 0.90) / size * entry;
           const liqP = type === "LONG" ? (entry - liqDist) : (entry + liqDist);
           liqEl.textContent = formatPrice(liqP);
@@ -1713,9 +1703,6 @@
       el.innerHTML = html;
     }
 
-    // ————————————————————————————————————————————
-    // ACTIONS
-    // ————————————————————————————————————————————
     async function openPosition(type) {
       const margin = Number($('sizeInput').value);
       const currentPrice = marketPrices[selectedPair];
@@ -1773,9 +1760,6 @@
     $('openLong').onclick = () => openPosition("LONG");
     $('openShort').onclick = () => openPosition("SHORT");
 
-    // ————————————————————————————————————————————
-    // INIT
-    // ————————————————————————————————————————————
     const loaderEl = $('app-loader');
     const loaderBar = $('loaderBar');
     function setProgress(pct, txt) { loaderBar.style.width = pct + '%'; $('loaderText').textContent = txt; }
