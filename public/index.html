@@ -460,6 +460,39 @@
     .tf-opt { padding: 4px 8px; font-size: 10px; color: var(--muted); border-radius: 4px; cursor: pointer; font-weight: 600; transition: 0.2s; user-select: none; }
     .tf-opt:hover { color: var(--white); background: rgba(255,255,255,0.05); }
     .tf-opt.active { background: var(--panel-light); color: var(--gold); }
+
+    /* ————— CHART BLOCKER ————— */
+    .chart-blocker {
+      position: absolute;
+      inset: 0;
+      background: rgba(60, 64, 68, 0.6); /* gray semi-transparent */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      backdrop-filter: blur(2px);
+      transition: opacity 0.2s ease;
+      opacity: 0;
+      pointer-events: none; /* by default not blocking interactions */
+    }
+    .chart-blocker.visible {
+      opacity: 1;
+      /* pointer-events will be managed dynamically in JS to allow directional passthrough */
+    }
+    .chart-blocker .spinner {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: 5px solid rgba(255,255,255,0.12);
+      border-top-color: rgba(255,255,255,0.9);
+      animation: spin 1s linear infinite;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      background: rgba(255,255,255,0.02);
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); } to { transform: rotate(360deg); }
+    }
+
   </style>
 </head>
 
@@ -515,7 +548,12 @@
               <div class="tf-opt" data-tf="86400">1d</div>
             </div>
           </div>
-          <div class="chart-container" id="chartCard"><div id="chart" style="width: 100%; height: 100%;"></div></div>
+          <div class="chart-container" id="chartCard">
+            <div id="chart" style="width: 100%; height: 100%;"></div>
+            <div class="chart-blocker" id="chartBlocker" aria-hidden="true">
+              <div class="spinner" role="status" aria-label="Loading"></div>
+            </div>
+          </div>
           <div class="controls-area">
             <div class="input-group">
               <span class="input-label">Margin (VP)</span>
@@ -791,9 +829,9 @@
       target.classList.add('active');
 
       if(viewId === 'view-profile') {
-        if(tg) tg.BackButton.show();
+        if(tg && tg.BackButton) try { tg.BackButton.show(); } catch(e) {}
       } else if (viewId === 'view-trade') {
-        if(tg) tg.BackButton.hide();
+        if(tg && tg.BackButton) try { tg.BackButton.hide(); } catch(e) {}
       }
     }
 
@@ -802,11 +840,13 @@
     $('btnGoRewards').onclick = () => showView('view-rewards');
     $('btnBackFromRewards').onclick = () => showView('view-profile');
 
-    if(tg) {
-      tg.BackButton.onClick(() => {
-        if(viewRewards.classList.contains('active')) showView('view-profile');
-        else if(viewProfile.classList.contains('active')) showView('view-trade');
-      });
+    if(tg && tg.BackButton) {
+      try {
+        tg.BackButton.onClick(() => {
+          if(viewRewards.classList.contains('active')) showView('view-profile');
+          else if(viewProfile.classList.contains('active')) showView('view-trade');
+        });
+      } catch(e){}
     }
 
     // ————————————————————————————————————————————
@@ -916,7 +956,7 @@
       try {
         const res = await fetch(API_BASE + "/api/user/history?userId=" + currentUserId);
         const data = await res.json();
-        if(data.ok) remoteHistory = data.history;
+        if(data.ok) remoteHistory = data.history || [];
       } catch(e) { console.error("History fetch error", e); }
 
       let totalPnL = 0;
@@ -1189,6 +1229,146 @@
       downColor: '#F6465D', borderDownColor: '#F6465D', wickDownColor: '#F6465D'
     });
 
+    // ———————— HISTORY LOAD BLOCKER STATE ————————
+    let prevVisibleRange = null;
+    let isResettingVisibleRange = false;
+    const chartBlockerEl = document.getElementById('chartBlocker');
+
+    // Manage blocker gesture behavior:
+    // While loading older history we show a visual blocker. However we want to:
+    //  - block further scrolling to older data (left) while load in progress
+    //  - still allow scrolling to newer data (right) that is already loaded even while older load is in progress
+    // Implementation: overlay visible as indicator, but pointer-events are controlled based on user's gesture direction.
+    let _blockerAttached = false;
+    let _blockerStartX = null;
+    let _blockerActive = false;
+    function showChartBlocker() {
+      try {
+        if (!chartBlockerEl) return;
+        chartBlockerEl.classList.add('visible');
+        chartBlockerEl.setAttribute('aria-hidden', 'false');
+        // Start capturing touches by default to detect direction. We'll set pointerEvents to 'auto' initially
+        // and switch to 'none' when user indicates they want to swipe to newer (right).
+        chartBlockerEl.style.pointerEvents = 'auto';
+        attachBlockerGestures();
+      } catch(e){}
+    }
+    function hideChartBlocker() {
+      try {
+        if (!chartBlockerEl) return;
+        chartBlockerEl.classList.remove('visible');
+        chartBlockerEl.setAttribute('aria-hidden', 'true');
+        // Ensure overlay does not block interactions when hidden
+        chartBlockerEl.style.pointerEvents = 'none';
+        detachBlockerGestures();
+        _blockerStartX = null;
+        _blockerActive = false;
+      } catch(e){}
+    }
+
+    function attachBlockerGestures() {
+      if (!chartBlockerEl || _blockerAttached) return;
+      _blockerAttached = true;
+
+      // Touch events
+      chartBlockerEl.addEventListener('touchstart', blocker_touchstart, {passive: false});
+      chartBlockerEl.addEventListener('touchmove', blocker_touchmove, {passive: false});
+      chartBlockerEl.addEventListener('touchend', blocker_touchend, {passive: true});
+      // Mouse events for desktop
+      chartBlockerEl.addEventListener('mousedown', blocker_mousedown, {passive: false});
+      document.addEventListener('mousemove', blocker_mousemove, {passive: false});
+      document.addEventListener('mouseup', blocker_mouseup, {passive: true});
+    }
+
+    function detachBlockerGestures() {
+      if (!chartBlockerEl || !_blockerAttached) return;
+      _blockerAttached = false;
+      try {
+        chartBlockerEl.removeEventListener('touchstart', blocker_touchstart);
+        chartBlockerEl.removeEventListener('touchmove', blocker_touchmove);
+        chartBlockerEl.removeEventListener('touchend', blocker_touchend);
+        chartBlockerEl.removeEventListener('mousedown', blocker_mousedown);
+        document.removeEventListener('mousemove', blocker_mousemove);
+        document.removeEventListener('mouseup', blocker_mouseup);
+      } catch(e){}
+    }
+
+    function blocker_touchstart(e) {
+      if (!isLoadingMoreHistory) return;
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      _blockerStartX = t.clientX;
+      _blockerActive = true;
+      // Keep overlay blocking until we detect rightwards motion
+      chartBlockerEl.style.pointerEvents = 'auto';
+      // Prevent chart from processing this initial touch until we decide
+      e.preventDefault();
+    }
+
+    function blocker_touchmove(e) {
+      if (!_blockerActive || !isLoadingMoreHistory) return;
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      const dx = t.clientX - (_blockerStartX || 0);
+      // dx > 0 => finger moved to the right => user intends to go to newer data
+      // dx < 0 => finger moved leftwards => user intends to go older data (block this)
+      if (dx > 12) {
+        // Allow interactions to pass through to chart for rightwards scrolling
+        chartBlockerEl.style.pointerEvents = 'none';
+        // Once pointer events are none, the overlay no longer receives move events;
+        // that's ok — the underlying chart will get the gesture to move right.
+      } else if (dx < -12) {
+        // Keep blocking leftwards gestures
+        chartBlockerEl.style.pointerEvents = 'auto';
+        // Prevent default to stop chart from reacting
+        e.preventDefault();
+      }
+    }
+
+    function blocker_touchend(e) {
+      // On end, if still loading, ensure overlay still blocks left swipes but not interfere otherwise
+      _blockerStartX = null;
+      _blockerActive = false;
+      if (isLoadingMoreHistory) {
+        // Keep overlay visible; default to blocking interactions until user initiates a right gesture again
+        chartBlockerEl.style.pointerEvents = 'auto';
+      } else {
+        hideChartBlocker();
+      }
+    }
+
+    // Mouse handlers (desktop)
+    let _mouseDownOnBlocker = false;
+    function blocker_mousedown(e) {
+      if (!isLoadingMoreHistory) return;
+      _mouseDownOnBlocker = true;
+      _blockerStartX = e.clientX;
+      _blockerActive = true;
+      chartBlockerEl.style.pointerEvents = 'auto';
+      e.preventDefault();
+    }
+    function blocker_mousemove(e) {
+      if (!_mouseDownOnBlocker || !_blockerActive || !isLoadingMoreHistory) return;
+      const dx = e.clientX - (_blockerStartX || 0);
+      if (dx > 12) {
+        chartBlockerEl.style.pointerEvents = 'none';
+        // Let chart handle the rest
+      } else if (dx < -12) {
+        chartBlockerEl.style.pointerEvents = 'auto';
+        e.preventDefault();
+      }
+    }
+    function blocker_mouseup(e) {
+      _mouseDownOnBlocker = false;
+      _blockerActive = false;
+      _blockerStartX = null;
+      if (isLoadingMoreHistory) {
+        chartBlockerEl.style.pointerEvents = 'auto';
+      } else {
+        hideChartBlocker();
+      }
+    }
+
     new ResizeObserver(entries => {
       if (entries.length === 0 || entries[0].target !== chartEl) { return; }
       const newRect = entries[0].contentRect;
@@ -1199,7 +1379,22 @@
     // LAZY LOAD HISTORY WHEN SCROLLING LEFT
     // ————————————————————————————————————————————
     chart.timeScale().subscribeVisibleTimeRangeChange(timeRange => {
-      if (!timeRange || allOlderHistoryLoaded || isLoadingMoreHistory) return;
+      if (!timeRange || allOlderHistoryLoaded) return;
+
+      // Ignore programmatic resets
+      if (isResettingVisibleRange) {
+        // allow one cycle to pass after resetting
+        isResettingVisibleRange = false;
+        return;
+      }
+
+      // Determine direction by comparing to previous range
+      let direction = null;
+      if (prevVisibleRange && prevVisibleRange.from != null) {
+        if (timeRange.from < prevVisibleRange.from) direction = 'left';
+        else if (timeRange.from > prevVisibleRange.from) direction = 'right';
+      }
+      prevVisibleRange = timeRange;
 
       // Get the leftmost visible candle time
       const visibleFrom = timeRange.from;
@@ -1216,7 +1411,29 @@
 
       // If user is approaching the left edge of loaded data
       if (visibleFrom <= threshold) {
-        requestMoreHistory();
+        // If not currently loading, trigger load and show blocker
+        if (!isLoadingMoreHistory && !allOlderHistoryLoaded) {
+          requestMoreHistory();
+          showChartBlocker();
+        } else if (isLoadingMoreHistory) {
+          // User is trying to scroll further left while a load is in progress.
+          // Prevent further left scrolling by snapping view to oldestLoadedTime and show blocker.
+          if (direction === 'left') {
+            try {
+              isResettingVisibleRange = true;
+              const newFrom = Math.max(oldestLoadedTime, visibleFrom);
+              const newTo = newFrom + visibleRange;
+              chart.timeScale().setVisibleRange({ from: newFrom, to: newTo });
+              showChartBlocker();
+            } catch(e){}
+          }
+        }
+      } else {
+        // User moved away from left edge (to newer data)
+        // If not actively loading more history, hide any blocker
+        if (!isLoadingMoreHistory) {
+          hideChartBlocker();
+        }
       }
     });
 
@@ -1251,8 +1468,10 @@
         }));
         // Will receive "moreHistory" message in socket.onmessage
         // Flag will be reset there, NOT here!
+        try{ showChartBlocker(); }catch(e){}
       } else {
         isLoadingMoreHistory = false;
+        try{ hideChartBlocker(); }catch(e){}
       }
     }
 
@@ -1335,7 +1554,9 @@
 
       socket.onopen = () => {
         ALL_PAIRS.forEach(pair => {
-          socket.send(JSON.stringify({ type: "subscribe", pair: pair, timeframe: currentTimeframe }));
+          try {
+            socket.send(JSON.stringify({ type: "subscribe", pair: pair, timeframe: currentTimeframe }));
+          } catch(e){}
         });
       };
 
@@ -1389,6 +1610,7 @@
           if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) {
             console.log(`[Chart] Ignoring moreHistory for timeframe=${msg.timeframe}, current=${currentTimeframe}`);
             isLoadingMoreHistory = false;
+            try{ hideChartBlocker(); }catch(e){}
             return;
           }
 
@@ -1396,6 +1618,7 @@
             console.log("[Chart] No more history available - all data loaded");
             allOlderHistoryLoaded = true;
             isLoadingMoreHistory = false;
+            try{ hideChartBlocker(); }catch(e){}
             return;
           }
           const newOldCandles = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
@@ -1414,9 +1637,12 @@
           candleSeries.setData(localCandles);
 
           if (currentRange) {
-            chart.timeScale().setVisibleRange(currentRange);
+            try {
+              chart.timeScale().setVisibleRange(currentRange);
+            } catch(e){}
           }
           isLoadingMoreHistory = false;
+          try{ hideChartBlocker(); }catch(e){}
           return;
         }
 
@@ -1426,7 +1652,7 @@
             console.log(`[Chart] Ignoring history for timeframe=${msg.timeframe}, current=${currentTimeframe}`);
             return;
           }
-          const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
+          const data = (msg.data || []).map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
           localCandles = data;
           candleSeries.setData(data);
           chart.timeScale().fitContent();
@@ -1470,6 +1696,10 @@
       };
 
       socket.onclose = () => setTimeout(connectWS, 2000);
+      socket.onerror = (e) => {
+        console.error('Socket error', e);
+        try { socket.close(); } catch(e){}
+      };
     }
 
     // ————————————————————————————————————————————
@@ -1575,7 +1805,8 @@
                         <button class="close-btn" data-id="${id}">Close Position</button>
                     `;
           list.appendChild(div);
-          div.querySelector('.close-btn').onclick = () => closePosition(id, pair);
+          const closeBtn = div.querySelector('.close-btn');
+          if (closeBtn) closeBtn.onclick = () => closePosition(id, pair);
         }
       });
 
@@ -1707,94 +1938,24 @@
       let html = "";
       trades.forEach(t => {
         const color = t.side === 'buy' ? 'text-green' : 'text-red';
-        const timeStr = new Date(t.time).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        const timeStr = t.time ? new Date(t.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : '--';
         html += `<div class="ob-row"><span class="${color}">${formatPrice(t.price)}</span><span class="trade-time">${timeStr}</span></div>`;
       });
       el.innerHTML = html;
     }
 
-    // ————————————————————————————————————————————
-    // ACTIONS
-    // ————————————————————————————————————————————
-    async function openPosition(type) {
-      const margin = Number($('sizeInput').value);
-      const currentPrice = marketPrices[selectedPair];
-
-      if(!margin || margin <= 0) return alert("Enter margin");
-      if(!currentPrice) return alert("Waiting for price...");
-
-      const size = margin * currentLeverage;
-      if(tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-
+    function closePosition(id, pair) {
       try {
-        const res = await fetch(API_BASE + "/api/order/open", {
-          method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ userId: currentUserId, pair: selectedPair, type, size, leverage: currentLeverage, entryPrice: currentPrice })
-        });
-        const data = await res.json();
-        if(data.ok) {
-          window._positions.push(data.position);
-          if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
-          renderPositions(true);
-          if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        } else {
-          alert(data.error || "Error");
-        }
+        fetch(API_BASE + "/api/position/close", { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id, pair, userId: currentUserId })});
       } catch(e) { console.error(e); }
     }
 
-    async function closePosition(id, pair) {
-      const pos = window._positions.find(p => (p.id == id || p._id == id));
-      if(!pos) return;
-      const closePrice = marketPrices[pair || pos.pair];
-
-      if(!closePrice) return alert("Price not available for " + pair);
-
-      if(!confirm("Close position?")) return;
-      try {
-        const res = await fetch(API_BASE + "/api/order/close", {
-          method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ userId: currentUserId, positionId: id, closePrice: closePrice })
-        });
-        const data = await res.json();
-        if(data.ok) {
-          window._positions = window._positions.filter(p => (p.id!=id && p._id!=id));
-          if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
-
-          const el = document.getElementById('pos-item-' + id);
-          if(el) el.remove();
-          renderPositions(false);
-
-          if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        }
-      } catch(e) { console.error(e); }
-    }
-
-    $('openLong').onclick = () => openPosition("LONG");
-    $('openShort').onclick = () => openPosition("SHORT");
-
-    // ————————————————————————————————————————————
-    // INIT
-    // ————————————————————————————————————————————
-    const loaderEl = $('app-loader');
-    const loaderBar = $('loaderBar');
-    function setProgress(pct, txt) { loaderBar.style.width = pct + '%'; $('loaderText').textContent = txt; }
-
-    setProgress(20, "AUTH...");
-    await initSession();
-
-    setProgress(50, "STREAM...");
+    // Start WS
     connectWS();
-
-    await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
-    setProgress(100, "READY");
-
-    setTimeout(() => {
-      loaderEl.classList.add('hidden');
-      setTimeout(() => loaderEl.style.display = 'none', 400);
-    }, 500);
+    initSession();
 
   })();
 </script>
+
 </body>
 </html>
