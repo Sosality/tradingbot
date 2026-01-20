@@ -460,6 +460,39 @@
     .tf-opt { padding: 4px 8px; font-size: 10px; color: var(--muted); border-radius: 4px; cursor: pointer; font-weight: 600; transition: 0.2s; user-select: none; }
     .tf-opt:hover { color: var(--white); background: rgba(255,255,255,0.05); }
     .tf-opt.active { background: var(--panel-light); color: var(--gold); }
+
+    /* ————— CHART BLOCKER ————— */
+    .chart-blocker {
+      position: absolute;
+      inset: 0;
+      background: rgba(60, 64, 68, 0.6); /* gray semi-transparent */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      backdrop-filter: blur(2px);
+      transition: opacity 0.2s ease;
+      opacity: 0;
+      pointer-events: none; /* allow chart interactions by default */
+    }
+    .chart-blocker.visible {
+      opacity: 1;
+      pointer-events: auto; /* block interactions when visible */
+    }
+    .chart-blocker .spinner {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: 5px solid rgba(255,255,255,0.12);
+      border-top-color: rgba(255,255,255,0.9);
+      animation: spin 1s linear infinite;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      background: rgba(255,255,255,0.02);
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); } to { transform: rotate(360deg); }
+    }
+
   </style>
 </head>
 
@@ -515,7 +548,7 @@
               <div class="tf-opt" data-tf="86400">1d</div>
             </div>
           </div>
-          <div class="chart-container" id="chartCard"><div id="chart" style="width: 100%; height: 100%;"></div></div>
+          <div class="chart-container" id="chartCard"><div id="chart" style="width: 100%; height: 100%;"></div><div class="chart-blocker" id="chartBlocker" aria-hidden="true"><div class="spinner" role="status" aria-label="Loading"></div></div></div>
           <div class="controls-area">
             <div class="input-group">
               <span class="input-label">Margin (VP)</span>
@@ -1189,6 +1222,22 @@
       downColor: '#F6465D', borderDownColor: '#F6465D', wickDownColor: '#F6465D'
     });
 
+    // ———————— HISTORY LOAD BLOCKER STATE ————————
+    let prevVisibleRange = null;
+    let isResettingVisibleRange = false;
+    const chartBlockerEl = document.getElementById('chartBlocker');
+
+    function showChartBlocker() {
+      try {
+        chartBlockerEl.classList.add('visible');
+      } catch(e){}
+    }
+    function hideChartBlocker() {
+      try {
+        chartBlockerEl.classList.remove('visible');
+      } catch(e){}
+    }
+
     new ResizeObserver(entries => {
       if (entries.length === 0 || entries[0].target !== chartEl) { return; }
       const newRect = entries[0].contentRect;
@@ -1199,7 +1248,22 @@
     // LAZY LOAD HISTORY WHEN SCROLLING LEFT
     // ————————————————————————————————————————————
     chart.timeScale().subscribeVisibleTimeRangeChange(timeRange => {
-      if (!timeRange || allOlderHistoryLoaded || isLoadingMoreHistory) return;
+      if (!timeRange || allOlderHistoryLoaded) return;
+
+      // Ignore programmatic resets
+      if (isResettingVisibleRange) {
+        // allow one cycle to pass after resetting
+        isResettingVisibleRange = false;
+        return;
+      }
+
+      // Determine direction by comparing to previous range
+      let direction = null;
+      if (prevVisibleRange && prevVisibleRange.from != null) {
+        if (timeRange.from < prevVisibleRange.from) direction = 'left';
+        else if (timeRange.from > prevVisibleRange.from) direction = 'right';
+      }
+      prevVisibleRange = timeRange;
 
       // Get the leftmost visible candle time
       const visibleFrom = timeRange.from;
@@ -1216,7 +1280,29 @@
 
       // If user is approaching the left edge of loaded data
       if (visibleFrom <= threshold) {
-        requestMoreHistory();
+        // If not currently loading, trigger load and show blocker
+        if (!isLoadingMoreHistory && !allOlderHistoryLoaded) {
+          requestMoreHistory();
+          showChartBlocker();
+        } else if (isLoadingMoreHistory) {
+          // User is trying to scroll further left while a load is in progress.
+          // Prevent further left scrolling by snapping view to oldestLoadedTime and show blocker.
+          if (direction === 'left') {
+            try {
+              isResettingVisibleRange = true;
+              const newFrom = Math.max(oldestLoadedTime, visibleFrom);
+              const newTo = newFrom + visibleRange;
+              chart.timeScale().setVisibleRange({ from: newFrom, to: newTo });
+              showChartBlocker();
+            } catch(e){}
+          }
+        }
+      } else {
+        // User moved away from left edge (to newer data)
+        // If not actively loading more history, hide any blocker
+        if (!isLoadingMoreHistory) {
+          hideChartBlocker();
+        }
       }
     });
 
@@ -1251,8 +1337,10 @@
         }));
         // Will receive "moreHistory" message in socket.onmessage
         // Flag will be reset there, NOT here!
+        try{ showChartBlocker(); }catch(e){}
       } else {
         isLoadingMoreHistory = false;
+        try{ hideChartBlocker(); }catch(e){}
       }
     }
 
@@ -1389,6 +1477,7 @@
           if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) {
             console.log(`[Chart] Ignoring moreHistory for timeframe=${msg.timeframe}, current=${currentTimeframe}`);
             isLoadingMoreHistory = false;
+            try{ hideChartBlocker(); }catch(e){}
             return;
           }
 
@@ -1396,6 +1485,7 @@
             console.log("[Chart] No more history available - all data loaded");
             allOlderHistoryLoaded = true;
             isLoadingMoreHistory = false;
+            try{ hideChartBlocker(); }catch(e){}
             return;
           }
           const newOldCandles = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close }));
@@ -1417,6 +1507,7 @@
             chart.timeScale().setVisibleRange(currentRange);
           }
           isLoadingMoreHistory = false;
+          try{ hideChartBlocker(); }catch(e){}
           return;
         }
 
@@ -1707,94 +1798,24 @@
       let html = "";
       trades.forEach(t => {
         const color = t.side === 'buy' ? 'text-green' : 'text-red';
-        const timeStr = new Date(t.time).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        const timeStr = t.time ? new Date(t.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : '--';
         html += `<div class="ob-row"><span class="${color}">${formatPrice(t.price)}</span><span class="trade-time">${timeStr}</span></div>`;
       });
       el.innerHTML = html;
     }
 
-    // ————————————————————————————————————————————
-    // ACTIONS
-    // ————————————————————————————————————————————
-    async function openPosition(type) {
-      const margin = Number($('sizeInput').value);
-      const currentPrice = marketPrices[selectedPair];
-
-      if(!margin || margin <= 0) return alert("Enter margin");
-      if(!currentPrice) return alert("Waiting for price...");
-
-      const size = margin * currentLeverage;
-      if(tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-
+    function closePosition(id, pair) {
       try {
-        const res = await fetch(API_BASE + "/api/order/open", {
-          method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ userId: currentUserId, pair: selectedPair, type, size, leverage: currentLeverage, entryPrice: currentPrice })
-        });
-        const data = await res.json();
-        if(data.ok) {
-          window._positions.push(data.position);
-          if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
-          renderPositions(true);
-          if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        } else {
-          alert(data.error || "Error");
-        }
+        fetch(API_BASE + "/api/position/close", { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id, pair, userId: currentUserId })});
       } catch(e) { console.error(e); }
     }
 
-    async function closePosition(id, pair) {
-      const pos = window._positions.find(p => (p.id == id || p._id == id));
-      if(!pos) return;
-      const closePrice = marketPrices[pair || pos.pair];
-
-      if(!closePrice) return alert("Price not available for " + pair);
-
-      if(!confirm("Close position?")) return;
-      try {
-        const res = await fetch(API_BASE + "/api/order/close", {
-          method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ userId: currentUserId, positionId: id, closePrice: closePrice })
-        });
-        const data = await res.json();
-        if(data.ok) {
-          window._positions = window._positions.filter(p => (p.id!=id && p._id!=id));
-          if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
-
-          const el = document.getElementById('pos-item-' + id);
-          if(el) el.remove();
-          renderPositions(false);
-
-          if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        }
-      } catch(e) { console.error(e); }
-    }
-
-    $('openLong').onclick = () => openPosition("LONG");
-    $('openShort').onclick = () => openPosition("SHORT");
-
-    // ————————————————————————————————————————————
-    // INIT
-    // ————————————————————————————————————————————
-    const loaderEl = $('app-loader');
-    const loaderBar = $('loaderBar');
-    function setProgress(pct, txt) { loaderBar.style.width = pct + '%'; $('loaderText').textContent = txt; }
-
-    setProgress(20, "AUTH...");
-    await initSession();
-
-    setProgress(50, "STREAM...");
+    // Start WS
     connectWS();
-
-    await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
-    setProgress(100, "READY");
-
-    setTimeout(() => {
-      loaderEl.classList.add('hidden');
-      setTimeout(() => loaderEl.style.display = 'none', 400);
-    }, 500);
+    initSession();
 
   })();
 </script>
+
 </body>
 </html>
