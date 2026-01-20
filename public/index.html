@@ -7,7 +7,6 @@
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
-  <script src="https://unpkg.com/@adsgram/web-sdk@1.0.0/dist/index.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
   <style>
@@ -750,14 +749,6 @@
     const ICON_EYE_OPEN = "https://img.icons8.com/ios-glyphs/60/ffffff/visible.png";
     const ICON_EYE_CLOSED = "https://img.icons8.com/ios-glyphs/60/ffffff/hide.png";
 
-    // NEW: Ad Reward System
-    let adStats = {
-        adsWatched: 0,
-        totalRewards: 0,
-        level: 1,
-        totalPoints: 0
-    };
-
     const tg = window.Telegram?.WebApp;
     if(tg) {
       tg.ready();
@@ -909,11 +900,11 @@
 
     function escapeHtml(str) {
       return String(str)
-              .replaceAll('&','&amp;')
-              .replaceAll('<','&lt;')
-              .replaceAll('>','&gt;')
-              .replaceAll('"','&quot;')
-              .replaceAll("'",'&#039;');
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
     }
 
     async function renderProfile() {
@@ -921,9 +912,6 @@
       $('profileId').textContent = "ID: " + profile.id;
       updateBalanceUI();
       if(profile.photo) $('profileAvatarBig').src = profile.photo;
-
-      // Load ad statistics
-      await loadAdStats();
 
       try {
         const res = await fetch(API_BASE + "/api/user/history?userId=" + currentUserId);
@@ -1805,147 +1793,6 @@
       loaderEl.classList.add('hidden');
       setTimeout(() => loaderEl.style.display = 'none', 400);
     }, 500);
-
-    // ======================== AD REWARD FUNCTIONS ========================
-
-    async function loadAdStats() {
-      try {
-        const res = await fetch(API_BASE + "/api/user/ad-stats?userId=" + currentUserId);
-        const data = await res.json();
-        if(data.ok) {
-          adStats = data.stats;
-          updateRewardsUI();
-        }
-      } catch(e) {
-        console.error("Error loading ad stats:", e);
-      }
-    }
-
-    function updateRewardsUI() {
-      // Update progress bar
-      const progFill = document.querySelector('.prog-fill');
-      const progInfo = document.querySelector('.prog-info');
-      
-      if(progFill && progInfo) {
-        const progressPercent = Math.min((adStats.adsWatched / 10) * 100, 100);
-        progFill.style.width = progressPercent + '%';
-        
-        progInfo.innerHTML = `
-          <span>Level ${adStats.level}</span>
-          <span>${adStats.adsWatched} / 10 Ads</span>
-        `;
-      }
-
-      // Update milestones
-      const msItems = document.querySelectorAll('.ms-item');
-      msItems.forEach((item, index) => {
-        if(index === 0) item.classList.add('active'); // Start always active
-        else if(adStats.adsWatched >= index * 5) item.classList.add('active');
-        else item.classList.remove('active');
-      });
-
-      // Update task buttons
-      const watchBtn = document.querySelector('.btn-claim');
-      if(watchBtn) {
-        if(adStats.adsWatched >= 10) {
-          watchBtn.disabled = true;
-          watchBtn.textContent = 'MAX LEVEL';
-        } else {
-          watchBtn.disabled = false;
-          watchBtn.textContent = 'WATCH';
-        }
-      }
-    }
-
-    async function watchAd() {
-      if(!window.Adsgram) {
-        notify("AdsGram SDK not loaded");
-        return;
-      }
-
-      try {
-        // Show loading state
-        const watchBtn = document.querySelector('.btn-claim');
-        const originalText = watchBtn.textContent;
-        watchBtn.textContent = 'LOADING...';
-        watchBtn.disabled = true;
-
-        // Initialize AdsGram
-        const adsgram = window.Adsgram.init({
-          blockId: "3941", // Test block ID, replace with your real one
-          debug: true, // Set to false in production
-          onReward: (data) => {
-            console.log("Ad reward callback:", data);
-            // Reward already given by AdsGram, now sync with our server
-            claimAdReward();
-          },
-          onError: (error) => {
-            console.error("Ad error:", error);
-            notify("Ad failed to load: " + (error?.message || "Unknown error"));
-            resetAdButton();
-          }
-        });
-
-        // Show ad
-        await adsgram.show();
-        
-      } catch(error) {
-        console.error("Ad showing error:", error);
-        notify("Failed to show ad: " + (error?.message || "Unknown error"));
-        resetAdButton();
-      }
-    }
-
-    async function claimAdReward() {
-      try {
-        const res = await fetch(API_BASE + "/api/ad/watch", {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ userId: currentUserId })
-        });
-        
-        const data = await res.json();
-        
-        if(data.ok) {
-          // Update local state
-          profile.balance = data.newBalance;
-          adStats = data.stats;
-          
-          // Update UI
-          updateBalanceUI();
-          updateRewardsUI();
-          
-          notify(`Success! +${data.reward} VP added to your balance`);
-          
-          if(tg?.HapticFeedback) {
-            tg.HapticFeedback.notificationOccurred('success');
-          }
-        } else {
-          notify("Reward claim failed: " + (data.error || "Unknown error"));
-        }
-      } catch(error) {
-        console.error("Reward claim error:", error);
-        notify("Network error claiming reward");
-      } finally {
-        resetAdButton();
-      }
-    }
-
-    function resetAdButton() {
-      const watchBtn = document.querySelector('.btn-claim');
-      if(watchBtn) {
-        watchBtn.disabled = false;
-        watchBtn.textContent = 'WATCH';
-      }
-    }
-
-    // Add event listener to the WATCH button
-    document.addEventListener('DOMContentLoaded', () => {
-      const watchBtn = document.querySelector('.btn-claim');
-      if(watchBtn) {
-        watchBtn.addEventListener('click', watchAd);
-      }
-    });
 
   })();
 </script>
