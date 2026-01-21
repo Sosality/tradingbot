@@ -10,7 +10,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
   <style>
-    /* ————— CORE STYLES ————— */
     :root {
       --bg: #0B0E11;
       --panel: #1E2329;
@@ -29,15 +28,12 @@
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white); font-family: 'Inter', system-ui, sans-serif; overflow: hidden; }
 
-    /* Scrollbar styling */
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 
-    /* ————— LAYOUT & VIEWS ————— */
     .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; position: relative; }
 
-    /* View Switching */
     .view-section {
       flex: 1;
       display: flex;
@@ -62,7 +58,6 @@
       z-index: 10;
     }
 
-    /* HEADER */
     .header {
       flex-shrink: 0;
       display: flex; align-items: center; justify-content: space-between;
@@ -76,7 +71,6 @@
     .header-left { display: flex; align-items: center; gap: 16px; }
     .logo-img { height: 28px; width: auto; display: block; }
 
-    /* CUSTOM DROPDOWN */
     .pair-dropdown { position: relative; font-family: 'Roboto Mono', monospace; }
     .pair-trigger {
       display: flex; align-items: center; gap: 8px;
@@ -104,7 +98,6 @@
     .pair-item.active { background: rgba(255,255,255,0.08); color: var(--white); font-weight: 700; }
     .pair-item.active::after { content: '✓'; color: var(--accent-green); font-size: 12px; }
 
-    /* User Area */
     .user-area { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px 8px; border-radius: 8px; transition: background 0.2s; }
     .user-area:active { background: rgba(255,255,255,0.05); }
     .balance-group { text-align: right; line-height: 1.2; }
@@ -113,13 +106,11 @@
     .avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: #333; overflow: hidden; flex-shrink: 0; border: 1px solid var(--border); }
     .avatar-sm img { width: 100%; height: 100%; object-fit: cover; }
 
-    /* ————— MAIN CONTAINER ————— */
     .container {
       flex: 1; display: flex; flex-direction: column;
       overflow-y: auto; overflow-x: hidden; padding: 12px; gap: 12px;
     }
 
-    /* DESKTOP LAYOUT FIXES */
     @media (min-width: 900px) {
       .container { display: grid; grid-template-columns: 1fr 340px; height: calc(100vh - 60px); overflow: hidden; }
       .left-col { overflow-y: auto; padding-right: 4px; }
@@ -136,13 +127,11 @@
 
     .card { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
 
-    /* MARKET INFO & CHART */
     .market-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
     .price-display { font-family: 'Roboto Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
     .chart-container { height: 350px; width: 100%; border-radius: 8px; overflow: hidden; position: relative; background: #111; }
     @media (min-width: 900px) { .chart-container { height: 50vh; } }
 
-    /* CHART LOADING OVERLAY */
     .chart-loading-overlay {
       position: absolute;
       top: 0;
@@ -174,7 +163,6 @@
       to { transform: rotate(360deg); }
     }
 
-    /* CONTROLS */
     .controls-area { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
     .input-group { position: relative; }
     .input-label { position: absolute; top: 8px; left: 12px; font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 600; }
@@ -184,17 +172,76 @@
     }
     .main-input:focus { border-color: var(--accent-green); }
 
-    .leverage-wrap { background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
-    .lev-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
-    .lev-val { color: var(--accent-green); font-weight: 700; font-family: 'Roboto Mono'; font-size: 14px; }
-    .range-slider { -webkit-appearance: none; width: 100%; height: 4px; background: #2A2F36; border-radius: 2px; outline: none; margin: 10px 0; }
-    .range-slider::-webkit-slider-thumb {
-      -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%;
-      background: var(--white); cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); border: 2px solid var(--accent-green); margin-top: -7px;
+    .slider-wrap { background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
+    .slider-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .slider-val { color: var(--accent-green); font-weight: 700; font-family: 'Roboto Mono'; font-size: 14px; }
+
+    .range-slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(to right, var(--accent-green) 0%, var(--accent-green) 0%, #2A2F36 0%, #2A2F36 100%);
+      border-radius: 2px;
+      outline: none;
+      margin: 10px 0;
     }
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #3a4149 0%, #2A2F36 100%);
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+      border: 2px solid var(--accent-green);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+      box-shadow: 0 2px 12px rgba(14, 203, 129, 0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    .range-slider::-webkit-slider-thumb:active {
+      transform: scale(0.95);
+    }
+    .range-slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #3a4149 0%, #2A2F36 100%);
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+      border: 2px solid var(--accent-green);
+    }
+
     .chips-row { display: flex; justify-content: space-between; gap: 4px; margin-top: 8px; }
     .chip { flex: 1; text-align: center; padding: 6px 0; font-size: 11px; background: #15181b; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); color: var(--muted); transition: 0.2s; }
     .chip.active { background: var(--accent-green-transparent); color: var(--accent-green); border-color: var(--accent-green); font-weight: 700; }
+
+    .margin-slider-wrap { position: relative; padding-bottom: 4px; }
+    .margin-marks {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 2px;
+      margin-top: 4px;
+    }
+    .margin-mark {
+      font-size: 10px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+      transition: 0.2s;
+      user-select: none;
+    }
+    .margin-mark:hover {
+      color: var(--accent-green);
+      background: rgba(14, 203, 129, 0.1);
+    }
+    .margin-mark.active {
+      color: var(--accent-green);
+      font-weight: 600;
+    }
 
     .action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
     .btn-trade {
@@ -206,7 +253,6 @@
     .btn-long { background: var(--accent-green); color: #052e1f; }
     .btn-short { background: var(--accent-red); color: #2d0a0f; }
 
-    /* ————— ORDER BOOK & TRADES ————— */
     .ob-header { display: grid; grid-template-columns: 1fr 1fr; font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; padding: 0 6px; }
     .ob-container { font-size: 12px; font-family: 'Roboto Mono', monospace; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
     .ob-row { position: relative; display: grid; grid-template-columns: 1fr 1fr; align-items: center; height: 20px; padding: 0 6px; line-height: 1; white-space: nowrap; overflow: hidden; }
@@ -219,7 +265,6 @@
     .text-green { color: var(--accent-green); }
     .text-red   { color: var(--accent-red); }
 
-    /* ————— POSITIONS (NEW MEXC STYLE) ————— */
     .pos-list { display: flex; flex-direction: column; gap: 8px; }
     .pos-item {
       background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px;
@@ -232,7 +277,6 @@
     .pos-pair { font-size: 15px; letter-spacing: 0.5px; }
     .pos-type-badge { font-size: 14px; padding: 2px 6px; border-radius: 4px; margin-left: 8px; opacity: 1; }
 
-    /* New Stats Grid */
     .pos-stats-grid {
       display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
       margin: 8px 0; padding: 8px 0;
@@ -243,7 +287,6 @@
     .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 600; }
     .stat-val { font-size: 13px; font-weight: 700; font-family: 'Roboto Mono'; }
 
-    /* Risk Meter */
     .risk-wrap { margin-top: 4px; width: 100%; }
     .risk-track { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
     .risk-fill { height: 100%; width: 0%; background: var(--accent-green); transition: width 0.3s, background 0.3s; }
@@ -260,7 +303,6 @@
     }
     .close-btn:active { background: var(--accent-red); color: #fff; }
 
-    /* ————— NEW PROFILE DESIGN ————— */
     .profile-container {
       flex: 1; display: flex; flex-direction: column;
       padding: 16px; overflow-y: auto; gap: 20px;
@@ -292,7 +334,6 @@
     }
     .asset-label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 
-    /* Eye Button Styles */
     .eye-btn {
       width: 20px; height: 20px; cursor: pointer; opacity: 0.7; transition: opacity 0.2s;
       margin-left: 6px; display: block;
@@ -384,7 +425,6 @@
     .hc-val { color: var(--white); font-family: 'Roboto Mono'; }
     .hc-pnl { font-weight: 700; font-family: 'Roboto Mono'; font-size: 14px; }
 
-    /* ————— REFERRALS BLOCK ————— */
     .ref-card {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -433,7 +473,6 @@
     .ref-date { font-size: 10px; color: var(--muted); font-family: monospace; flex-shrink: 0; }
     .ref-status { font-size: 10px; color: var(--muted); }
 
-    /* ————— REWARDS VIEW STYLES ————— */
     .rewards-container {
       padding: 20px; display: flex; flex-direction: column; gap: 24px;
     }
@@ -472,7 +511,6 @@
       z-index: 900;
     }
 
-    /* ————— LOADER ————— */
     #app-loader {
       position: fixed; inset: 0; background: var(--bg); z-index: 9999;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -484,7 +522,6 @@
     .loader-bar-bg { width: 140px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
     .loader-bar-fill { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.2s; }
 
-    /* TIMEFRAME SELECTOR */
     .tf-selector { display: flex; gap: 2px; background: rgba(255,255,255,0.03); padding: 2px; border-radius: 6px; height: fit-content; }
     .tf-opt { padding: 4px 8px; font-size: 10px; color: var(--muted); border-radius: 4px; cursor: pointer; font-weight: 600; transition: 0.2s; user-select: none; }
     .tf-opt:hover { color: var(--white); background: rgba(255,255,255,0.05); }
@@ -555,8 +592,21 @@
               <span class="input-label">Margin (VP)</span>
               <input type="number" id="sizeInput" class="main-input" value="100" placeholder="10-10000" />
             </div>
-            <div class="leverage-wrap">
-              <div class="lev-header"><span>Leverage</span><span class="lev-val" id="leverageValText">10x</span></div>
+            <div class="slider-wrap">
+              <div class="slider-header"><span>Margin %</span><span class="slider-val" id="marginPercentText">0%</span></div>
+              <div class="margin-slider-wrap">
+                <input type="range" class="range-slider" id="marginSlider" min="0" max="100" step="1" value="0">
+                <div class="margin-marks">
+                  <span class="margin-mark" data-pct="0">0%</span>
+                  <span class="margin-mark" data-pct="25">25%</span>
+                  <span class="margin-mark" data-pct="50">50%</span>
+                  <span class="margin-mark" data-pct="75">75%</span>
+                  <span class="margin-mark" data-pct="100">100%</span>
+                </div>
+              </div>
+            </div>
+            <div class="slider-wrap">
+              <div class="slider-header"><span>Leverage</span><span class="slider-val" id="leverageValText">10x</span></div>
               <input type="range" class="range-slider" id="leverageSlider" min="1" max="50" step="1" value="10">
               <div class="chips-row" id="leverageChips">
                 <div class="chip" data-v="1">1x</div>
@@ -655,7 +705,6 @@
         </div>
       </div>
 
-      <!-- REFERRALS BLOCK -->
       <div class="ref-card" id="refCard">
         <div class="ref-top">
           <div class="ref-title">Referrals</div>
@@ -1278,21 +1327,66 @@
       }
     }
 
-    const slider = $('leverageSlider');
+    const leverageSlider = $('leverageSlider');
     const levDisplay = $('leverageValText');
     const levChips = document.querySelectorAll('.chip');
 
+    function updateSliderTrack(slider, pct) {
+      slider.style.background = `linear-gradient(to right, var(--accent-green) 0%, var(--accent-green) ${pct}%, #2A2F36 ${pct}%, #2A2F36 100%)`;
+    }
+
     function updateLeverageUI(val) {
       currentLeverage = parseInt(val);
-      slider.value = currentLeverage;
+      leverageSlider.value = currentLeverage;
       levDisplay.textContent = currentLeverage + 'x';
       levChips.forEach(chip => {
         chip.classList.toggle('active', parseInt(chip.dataset.v) === currentLeverage);
       });
+      const pct = ((currentLeverage - 1) / (50 - 1)) * 100;
+      updateSliderTrack(leverageSlider, pct);
     }
-    slider.addEventListener('input', (e) => updateLeverageUI(e.target.value));
+    leverageSlider.addEventListener('input', (e) => updateLeverageUI(e.target.value));
     levChips.forEach(chip => chip.addEventListener('click', () => updateLeverageUI(chip.dataset.v)));
     updateLeverageUI(10);
+
+    const marginSlider = $('marginSlider');
+    const marginPercentText = $('marginPercentText');
+    const sizeInput = $('sizeInput');
+    const marginMarks = document.querySelectorAll('.margin-mark');
+
+    function updateMarginSliderUI(pct, fromInput = false) {
+      pct = Math.max(0, Math.min(100, parseInt(pct) || 0));
+      marginSlider.value = pct;
+      marginPercentText.textContent = pct + '%';
+      updateSliderTrack(marginSlider, pct);
+
+      marginMarks.forEach(mark => {
+        mark.classList.toggle('active', parseInt(mark.dataset.pct) === pct);
+      });
+
+      if (!fromInput && profile.balance > 0) {
+        const marginVal = Math.floor((profile.balance * pct) / 100);
+        sizeInput.value = marginVal > 0 ? marginVal : '';
+      }
+    }
+
+    marginSlider.addEventListener('input', (e) => updateMarginSliderUI(e.target.value));
+
+    marginMarks.forEach(mark => {
+      mark.addEventListener('click', () => {
+        updateMarginSliderUI(mark.dataset.pct);
+      });
+    });
+
+    sizeInput.addEventListener('input', () => {
+      if (profile.balance > 0) {
+        const val = Number(sizeInput.value) || 0;
+        const pct = Math.min(100, Math.round((val / profile.balance) * 100));
+        updateMarginSliderUI(pct, true);
+      }
+    });
+
+    updateMarginSliderUI(0);
 
     let historyResolve = null;
     const historyPromise = new Promise(r => historyResolve = r);
@@ -1310,6 +1404,11 @@
 
       const elApprox = $('profileBalanceApprox');
       if(elApprox) elApprox.textContent = isBalanceHidden ? "≈ $****" : `≈ $${val}`;
+
+      const currentMarginPct = parseInt(marginSlider.value) || 0;
+      if (currentMarginPct > 0) {
+        updateMarginSliderUI(currentMarginPct);
+      }
     }
 
     async function initSession() {
