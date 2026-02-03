@@ -17,7 +17,11 @@ app.use(cors({
     origin: true,
     credentials: true
 }));
-app.use(express.json());
+app.use(express.json({
+    verify: (req, res, buf) => {
+        req.rawBody = buf;
+    }
+}));
 app.use(express.static("public"));
 
 // ======================== RATE LIMITING (ЗАЩИТА ОТ БОТОВ) ========================
@@ -75,6 +79,10 @@ const db = new Pool({
 // WEBAPP_SHORT_NAME=YourWebAppShortName (из настроек BotFather)
 const BOT_USERNAME = process.env.BOT_USERNAME || "";
 const WEBAPP_SHORT_NAME = process.env.WEBAPP_SHORT_NAME || "";
+const ADSGRAM_TOKEN = process.env.ADSGRAM_TOKEN || "";
+const ADSGRAM_SIGNATURE_SECRET = process.env.ADSGRAM_SIGNATURE_SECRET || "";
+const ADSGRAM_REWARD_COOLDOWN_MINUTES = Number(process.env.ADSGRAM_REWARD_COOLDOWN_MINUTES || 10);
+const ADSGRAM_DEFAULT_REWARD = Number(process.env.ADSGRAM_DEFAULT_REWARD || 0);
 
 // ======================== REFERRAL HELPERS ========================
 const REFERRAL_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // без 0/O/1/I
@@ -156,6 +164,50 @@ function verifySessionCookieValue(val) {
     return mac === expected ? userId : false;
 }
 
+// ======================== ADSGRAM AUTH HELPERS ========================
+function timingSafeEqualStr(a, b) {
+    if (typeof a !== "string" || typeof b !== "string") return false;
+    const aBuf = Buffer.from(a);
+    const bBuf = Buffer.from(b);
+    if (aBuf.length !== bBuf.length) return false;
+    return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
+function getAdsgramSignature(req) {
+    const headerSig = req.headers["x-adsgram-signature"];
+    if (typeof headerSig === "string" && headerSig.trim()) return headerSig.trim();
+    if (req.query && typeof req.query.signature === "string") return req.query.signature.trim();
+    return "";
+}
+
+function getAdsgramToken(req) {
+    const headerToken = req.headers["x-adsgram-token"];
+    if (typeof headerToken === "string" && headerToken.trim()) return headerToken.trim();
+    if (req.query && typeof req.query.token === "string") return req.query.token.trim();
+    return "";
+}
+
+function verifyAdsgramRequest(req) {
+    const signature = getAdsgramSignature(req);
+    const token = getAdsgramToken(req);
+
+    if (ADSGRAM_SIGNATURE_SECRET && signature && req.rawBody) {
+        const expected = crypto
+            .createHmac("sha256", ADSGRAM_SIGNATURE_SECRET)
+            .update(req.rawBody)
+            .digest("hex");
+        if (timingSafeEqualStr(expected, signature)) return true;
+        return false;
+    }
+
+    if (ADSGRAM_TOKEN) {
+        return timingSafeEqualStr(ADSGRAM_TOKEN, token);
+    }
+
+    console.warn("⚠️ ADSGRAM auth not configured (ADSGRAM_TOKEN/ADSGRAM_SIGNATURE_SECRET). Allowing request.");
+    return true;
+}
+
 // ======================== HELPER: GET IP ========================
 function getClientIp(req) {
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
@@ -176,6 +228,7 @@ async function initDB() {
         photo_url TEXT,
         balance NUMERIC NOT NULL DEFAULT 1000,
         last_ip TEXT,
+        last_reward_at TIMESTAMP,
         referral_code TEXT,
         invited_by TEXT,
         invited_at TIMESTAMP,
@@ -186,6 +239,7 @@ async function initDB() {
 
         // Миграция IP
         try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip TEXT`); } catch(e) {}
+        try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_reward_at TIMESTAMP`); } catch(e) {}
 
         // Миграции для рефералов
         try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`); } catch(e) {}
@@ -195,6 +249,15 @@ async function initDB() {
         // Индексы для рефералов
         await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_uidx ON users(referral_code) WHERE referral_code IS NOT NULL;`);
         await db.query(`CREATE INDEX IF NOT EXISTS users_invited_by_idx ON users(invited_by);`);
+
+        // 1.1 Таблица Adsgram events для идемпотентности
+        await db.query(`
+      CREATE TABLE IF NOT EXISTS adsgram_events (
+        event_id TEXT PRIMARY KEY,
+        user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
+        rewarded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
         // 2. Таблица Positions
         await db.query(`
@@ -526,6 +589,69 @@ app.get("/api/user/history", async (req, res) => {
     }
 });
 
+// ======================== ADSGRAM WEBHOOK ========================
+app.post("/api/adsgram/reward", async (req, res) => {
+    try {
+        if (!verifyAdsgramRequest(req)) {
+            return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
+        }
+
+        const payload = req.body || {};
+        const userId = String(
+            payload.user_id ||
+            payload.userId ||
+            payload.tg_user_id ||
+            payload.telegram_user_id ||
+            ""
+        ).trim();
+        const eventIdRaw = payload.event_id || payload.eventId || payload.event || payload.id || "";
+        const eventId = String(eventIdRaw || "").trim();
+        const rewardAmount = Number(payload.reward || payload.amount || ADSGRAM_DEFAULT_REWARD || 0);
+
+        if (!userId) return res.status(400).json({ ok: false, error: "NO_USER_ID" });
+        if (!Number.isFinite(rewardAmount) || rewardAmount <= 0) {
+            return res.status(400).json({ ok: false, error: "INVALID_REWARD" });
+        }
+
+        await db.query("BEGIN");
+
+        const userRes = await db.query(
+            "SELECT user_id, balance, last_reward_at FROM users WHERE user_id = $1 FOR UPDATE",
+            [userId]
+        );
+        if (!userRes.rows.length) {
+            await db.query("ROLLBACK");
+            return res.status(404).json({ ok: false, error: "NO_USER" });
+        }
+
+        if (eventId) {
+            const insertRes = await db.query(
+                "INSERT INTO adsgram_events (event_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING event_id",
+                [eventId, userId]
+            );
+            if (!insertRes.rows.length) {
+                await db.query("ROLLBACK");
+                return res.json({ ok: true, duplicate: true });
+            }
+        } else {
+            const lastRewardAt = userRes.rows[0].last_reward_at;
+            if (lastRewardAt) {
+                const diffMs = Date.now() - new Date(lastRewardAt).getTime();
+                const cooldownMs = ADSGRAM_REWARD_COOLDOWN_MINUTES * 60 * 1000;
+                if (diffMs < cooldownMs) {
+                    await db.query("ROLLBACK");
+                    return res.json({
+                        ok: true,
+                        skipped: "COOLDOWN",
+                        nextAllowedInMs: Math.max(cooldownMs - diffMs, 0)
+                    });
+                }
+            }
+        }
+
+        await db.query(
+            "UPDATE users SET balance = balance + $1, last_reward_at = CURRENT_TIMESTAMP WHERE user_id = $2",
+            [rewardAmount, userId]
 app.get("/api/adsgram/reward", async (req, res) => {
     try {
         const userId = req.query?.userid ? String(req.query.userid) : null;
@@ -563,6 +689,16 @@ app.get("/api/adsgram/reward", async (req, res) => {
 
         await db.query("COMMIT");
 
+        const balanceRes = await db.query("SELECT balance FROM users WHERE user_id = $1", [userId]);
+        res.json({
+            ok: true,
+            reward: rewardAmount,
+            newBalance: Number(balanceRes.rows[0].balance),
+            eventId: eventId || null
+        });
+    } catch (err) {
+        try { await db.query("ROLLBACK"); } catch (e) {}
+        console.error("❌ Adsgram reward error:", err.message);
         res.json({
             ok: true,
             reward: rewardRes.rows[0],
