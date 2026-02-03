@@ -21,7 +21,6 @@ app.use(express.json());
 app.use(express.static("public"));
 
 // ======================== RATE LIMITING (ЗАЩИТА ОТ БОТОВ) ========================
-// Ограничение: 100 запросов за 15 минут с одного IP
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100,
@@ -33,15 +32,21 @@ const limiter = rateLimit({
 // Применяем лимит ко всем API запросам
 app.use('/api/', limiter);
 
-// === 🛡️ СИСТЕМА ANTI-SLEEP (ВСТАВИТЬ ГДЕ УГОДНО ПОСЛЕ СОЗДАНИЯ app) 🛡️ ===
-// Сюда вставь ссылку на твой ПЕРВЫЙ сервер (Price/Liquidation)
-const PRICE_SERVER_URL = "https://tradingbot-backend-2yws.onrender.com"; // <-- ЗАМЕНИ НА СВОЙ URL
+// Строгий лимитер для Adsgram callback (защита от DDoS на награды)
+const adsgramLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 минута
+    max: 10, // максимум 10 запросов в минуту с одного IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: "TOO_MANY_REQUESTS"
+});
 
-// Запускаем задачу каждые 10 минут
+// === 🛡️ СИСТЕМА ANTI-SLEEP ===
+const PRICE_SERVER_URL = "https://tradingbot-backend-2yws.onrender.com";
+
 cron.schedule("*/10 * * * *", async () => {
     console.log("⏰ Anti-Sleep: Pinging Price Server...");
     try {
-        // Пингуем endpoint /health первого сервера
         const response = await fetch(`${PRICE_SERVER_URL}/health`);
         if (response.ok) console.log("✅ Price Server is awake");
         else console.log("⚠️ Price Server responded with " + response.status);
@@ -53,14 +58,23 @@ cron.schedule("*/10 * * * *", async () => {
 // ======================== КОНФИГУРАЦИЯ БД ========================
 const CONNECTION_STRING = "postgresql://neondb_owner:npg_igxGcyUQmX52@ep-ancient-sky-a9db2z9z-pooler.gwc.azure.neon.tech/neondb?sslmode=require&channel_binding=require";
 
-// ======================== ЛОГИРОВАНИЕ ENV ========================
+// Adsgram секрет для защиты от накрутки.
+// ВАЖНО: Задайте эту переменную в Render (ADSGRAM_SECRET)
+// и используйте ТО ЖЕ значение в ссылке настроек Adsgram.
+const ADSGRAM_SECRET = process.env.ADSGRAM_SECRET || "";
+const AD_REWARD_AMOUNT = 1; // VP за просмотр рекламы
+
 console.log("=== ENV CHECK ===");
 console.log("BOT_TOKEN set:", !!process.env.BOT_TOKEN);
+console.log("ADSGRAM_SECRET set:", !!ADSGRAM_SECRET);
 console.log("Using provided NeonDB connection string");
 console.log("==================");
 
 if (!process.env.BOT_TOKEN) {
     console.warn("⚠️  BOT_TOKEN not set! Signature verification will fail.");
+}
+if (!ADSGRAM_SECRET) {
+    console.warn("⚠️  ADSGRAM_SECRET not set! Ad reward endpoint will be vulnerable.");
 }
 
 // ======================== ПОДКЛЮЧЕНИЕ К БД ========================
@@ -70,9 +84,6 @@ const db = new Pool({
 });
 
 // ======================== REFERRALS CONFIG ========================
-// Для корректной deep-link ссылки на WebApp желательно указать:
-// BOT_USERNAME=YourBot (без @)
-// WEBAPP_SHORT_NAME=YourWebAppShortName (из настроек BotFather)
 const BOT_USERNAME = process.env.BOT_USERNAME || "";
 const WEBAPP_SHORT_NAME = process.env.WEBAPP_SHORT_NAME || "";
 
@@ -80,7 +91,6 @@ const WEBAPP_SHORT_NAME = process.env.WEBAPP_SHORT_NAME || "";
 const REFERRAL_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // без 0/O/1/I
 
 function makeReferralCode(len = 8) {
-    // Генерация человекочитаемого кода (A-Z + 2-9)
     const bytes = crypto.randomBytes(len);
     let out = "";
     for (let i = 0; i < len; i++) {
@@ -90,13 +100,11 @@ function makeReferralCode(len = 8) {
 }
 
 async function generateUniqueReferralCode() {
-    // Уникальность обеспечивается проверкой + уникальным индексом (на случай гонок)
     for (let attempt = 0; attempt < 20; attempt++) {
         const code = makeReferralCode(8);
         const check = await db.query("SELECT 1 FROM users WHERE referral_code = $1 LIMIT 1", [code]);
         if (!check.rows.length) return code;
     }
-    // fallback: более длинный
     for (let attempt = 0; attempt < 20; attempt++) {
         const code = makeReferralCode(12);
         const check = await db.query("SELECT 1 FROM users WHERE referral_code = $1 LIMIT 1", [code]);
@@ -110,7 +118,6 @@ function buildReferralLink(code) {
         return `https://t.me/${BOT_USERNAME}/${WEBAPP_SHORT_NAME}?startapp=${encodeURIComponent(code)}`;
     }
     if (BOT_USERNAME) {
-        // fallback (для обычного бота). Для авто-атрибуции в WebApp лучше startapp.
         return `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(code)}`;
     }
     return code;
@@ -141,6 +148,7 @@ function checkTelegramAuthInitData(initData) {
 
 // ======================== COOKIE HELPERS ========================
 const COOKIE_NAME = "tg_session";
+
 function makeSessionCookieValue(userId) {
     const secret = process.env.COOKIE_SECRET || process.env.BOT_TOKEN || "fallback_secret";
     const mac = crypto.createHmac("sha256", secret).update(String(userId)).digest("hex");
@@ -169,76 +177,78 @@ async function initDB() {
 
         // 1. Таблица Users
         await db.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        user_id TEXT PRIMARY KEY,
-        first_name TEXT,
-        username TEXT,
-        photo_url TEXT,
-        balance NUMERIC NOT NULL DEFAULT 1000,
-        last_ip TEXT,
-        referral_code TEXT,
-        invited_by TEXT,
-        invited_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+            CREATE TABLE IF NOT EXISTS users (
+                user_id TEXT PRIMARY KEY,
+                first_name TEXT,
+                username TEXT,
+                photo_url TEXT,
+                balance NUMERIC NOT NULL DEFAULT 1000,
+                last_ip TEXT,
+                referral_code TEXT,
+                invited_by TEXT,
+                invited_at TIMESTAMP,
+                ad_views_count INT NOT NULL DEFAULT 0,
+                last_ad_reward_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
 
-        // Миграция IP
+        // Миграции
         try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip TEXT`); } catch(e) {}
-
-        // Миграции для рефералов
         try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`); } catch(e) {}
         try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_by TEXT`); } catch(e) {}
         try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_at TIMESTAMP`); } catch(e) {}
+        
+        // Adsgram миграции
+        try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ad_views_count INT NOT NULL DEFAULT 0`); } catch(e) {}
+        try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ad_reward_at TIMESTAMP`); } catch(e) {}
 
-        // Индексы для рефералов
+        // Индексы
         await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_uidx ON users(referral_code) WHERE referral_code IS NOT NULL;`);
         await db.query(`CREATE INDEX IF NOT EXISTS users_invited_by_idx ON users(invited_by);`);
 
         // 2. Таблица Positions
         await db.query(`
-      CREATE TABLE IF NOT EXISTS positions (
-        id BIGSERIAL PRIMARY KEY,
-        user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
-        pair TEXT NOT NULL DEFAULT 'BTC-USD',
-        type TEXT NOT NULL,
-        entry_price NUMERIC NOT NULL,
-        margin NUMERIC NOT NULL,
-        leverage INT NOT NULL,
-        size NUMERIC NOT NULL,
-        warning_sent BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+            CREATE TABLE IF NOT EXISTS positions (
+                id BIGSERIAL PRIMARY KEY,
+                user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
+                pair TEXT NOT NULL DEFAULT 'BTC-USD',
+                type TEXT NOT NULL,
+                entry_price NUMERIC NOT NULL,
+                margin NUMERIC NOT NULL,
+                leverage INT NOT NULL,
+                size NUMERIC NOT NULL,
+                warning_sent BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
 
-        // Миграции для positions
         try { await db.query(`ALTER TABLE positions ADD COLUMN IF NOT EXISTS pair TEXT DEFAULT 'BTC-USD'`); } catch(e) {}
         try { await db.query(`ALTER TABLE positions ADD COLUMN IF NOT EXISTS warning_sent BOOLEAN DEFAULT FALSE`); } catch(e) {}
 
         // 3. Таблица trades_history
         await db.query(`
-      CREATE TABLE IF NOT EXISTS trades_history (
-        id BIGSERIAL PRIMARY KEY,
-        user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
-        pair TEXT NOT NULL,
-        type TEXT NOT NULL,
-        entry_price NUMERIC NOT NULL,
-        exit_price NUMERIC NOT NULL,
-        size NUMERIC NOT NULL,
-        leverage INT NOT NULL,
-        pnl NUMERIC NOT NULL,
-        commission NUMERIC DEFAULT 0,
-        closed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+            CREATE TABLE IF NOT EXISTS trades_history (
+                id BIGSERIAL PRIMARY KEY,
+                user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
+                pair TEXT NOT NULL,
+                type TEXT NOT NULL,
+                entry_price NUMERIC NOT NULL,
+                exit_price NUMERIC NOT NULL,
+                size NUMERIC NOT NULL,
+                leverage INT NOT NULL,
+                pnl NUMERIC NOT NULL,
+                commission NUMERIC DEFAULT 0,
+                closed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
 
-        // Миграция для комиссии
         try { await db.query(`ALTER TABLE trades_history ADD COLUMN IF NOT EXISTS commission NUMERIC DEFAULT 0`); } catch(e) {}
 
         console.log("✅ DB tables ready!");
 
-        // Backfill referral_code для существующих пользователей
+        // Backfill referral_code
         try {
             const missing = await db.query("SELECT user_id FROM users WHERE referral_code IS NULL");
             if (missing.rows.length) {
@@ -269,7 +279,7 @@ async function upsertUserFromObj(userObj, ipAddress, startParamRaw) {
         await db.query("BEGIN");
 
         const existingRes = await db.query(
-            "SELECT user_id, referral_code, invited_by FROM users WHERE user_id = $1 FOR UPDATE",
+            "SELECT user_id, referral_code, invited_by, ad_views_count FROM users WHERE user_id = $1 FOR UPDATE",
             [userId]
         );
 
@@ -281,7 +291,6 @@ async function upsertUserFromObj(userObj, ipAddress, startParamRaw) {
             referralCode = await generateUniqueReferralCode();
         }
 
-        // Привязка реферала выполняется только один раз (если ещё не был приглашён)
         if (!invitedBy && startParam) {
             const inviterRes = await db.query(
                 "SELECT user_id FROM users WHERE referral_code = $1 LIMIT 1",
@@ -296,9 +305,9 @@ async function upsertUserFromObj(userObj, ipAddress, startParamRaw) {
 
         if (!existingRes.rows.length) {
             await db.query(`
-        INSERT INTO users (user_id, first_name, username, photo_url, last_ip, referral_code, invited_by, invited_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      `, [
+                INSERT INTO users (user_id, first_name, username, photo_url, last_ip, referral_code, invited_by, invited_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            `, [
                 userId,
                 userObj.first_name || null,
                 userObj.username || null,
@@ -310,17 +319,17 @@ async function upsertUserFromObj(userObj, ipAddress, startParamRaw) {
             ]);
         } else {
             await db.query(`
-        UPDATE users SET
-          first_name = $2,
-          username = $3,
-          photo_url = $4,
-          last_ip = $5,
-          referral_code = $6,
-          invited_by = COALESCE(users.invited_by, $7),
-          invited_at = COALESCE(users.invited_at, $8),
-          updated_at = CURRENT_TIMESTAMP
-        WHERE user_id = $1
-      `, [
+                UPDATE users SET
+                    first_name = $2,
+                    username = $3,
+                    photo_url = $4,
+                    last_ip = $5,
+                    referral_code = $6,
+                    invited_by = COALESCE(users.invited_by, $7),
+                    invited_at = COALESCE(users.invited_at, $8),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = $1
+            `, [
                 userId,
                 userObj.first_name || null,
                 userObj.username || null,
@@ -335,7 +344,7 @@ async function upsertUserFromObj(userObj, ipAddress, startParamRaw) {
         await db.query("COMMIT");
 
         const res = await db.query(
-            "SELECT user_id, first_name, username, photo_url, balance, referral_code, invited_by, invited_at FROM users WHERE user_id = $1",
+            "SELECT user_id, first_name, username, photo_url, balance, referral_code, invited_by, invited_at, ad_views_count FROM users WHERE user_id = $1",
             [userId]
         );
         return res.rows[0];
@@ -348,7 +357,6 @@ async function upsertUserFromObj(userObj, ipAddress, startParamRaw) {
 
 // ======================== ROUTES ========================
 
-// Логирование запросов с IP
 app.use((req, res, next) => {
     const ip = getClientIp(req);
     console.log(`\n📡 [${new Date().toISOString()}] ${req.method} ${req.path} [IP: ${ip}]`);
@@ -381,7 +389,6 @@ app.post("/api/init", async (req, res) => {
             const rawUser = params.get("user");
             if (!rawUser) return res.status(400).json({ ok: false, error: "NO_USER" });
 
-            // Telegram WebApp deep-link param: start_param (из ?startapp=...)
             const startParam = params.get("start_param") || referralCodeFromBody || "";
 
             let userObj;
@@ -391,10 +398,8 @@ app.post("/api/init", async (req, res) => {
                 return res.status(400).json({ ok: false, error: "INVALID_USER_JSON" });
             }
 
-            // Сохраняем юзера вместе с IP + фиксируем приглашение
             userRow = await upsertUserFromObj(userObj, ip, startParam);
         } else {
-            // Cookie fallback
             const cookieHeader = req.headers.cookie || "";
             const cookies = Object.fromEntries(
                 cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
@@ -405,7 +410,7 @@ app.post("/api/init", async (req, res) => {
             if (!userId) return res.status(401).json({ ok: false, error: "NO_SESSION" });
 
             const ures = await db.query(
-                "SELECT user_id, first_name, username, photo_url, balance FROM users WHERE user_id = $1",
+                "SELECT user_id, first_name, username, photo_url, balance, ad_views_count FROM users WHERE user_id = $1",
                 [userId]
             );
             if (!ures.rows.length) return res.status(404).json({ ok: false, error: "NO_USER" });
@@ -419,9 +424,6 @@ app.post("/api/init", async (req, res) => {
 
         const cookieVal = makeSessionCookieValue(userRow.user_id);
         const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
-
-        // SameSite=None требует Secure, иначе браузер отклонит cookie.
-        // В дев-режиме на http лучше Lax.
         const sameSite = isSecure ? "SameSite=None" : "SameSite=Lax";
         const cookieParts = [`${COOKIE_NAME}=${cookieVal}`, `Path=/`, `HttpOnly`, sameSite, `Max-Age=${60 * 60 * 24 * 30}`];
         if (isSecure) cookieParts.push("Secure");
@@ -435,9 +437,117 @@ app.post("/api/init", async (req, res) => {
     }
 });
 
-// ======================== REFERRALS API ========================
+// ======================== ADSGRAM REWARD CALLBACK ========================
+app.get("/api/adsgram/reward", adsgramLimiter, async (req, res) => {
+    const ip = getClientIp(req);
+    console.log(`\n🎬 Adsgram Reward Callback [IP: ${ip}]`);
+    console.log("Query params:", req.query);
+
+    try {
+        const { userId, secret } = req.query;
+
+        // 1. Проверка секретного ключа (Защита от накрутки)
+        if (!ADSGRAM_SECRET) {
+            console.error("❌ ADSGRAM_SECRET not configured on server");
+            return res.status(500).send("SERVER_CONFIG_ERROR");
+        }
+
+        if (!secret || secret !== ADSGRAM_SECRET) {
+            console.warn(`⚠️ Invalid secret from IP: ${ip}`);
+            return res.status(403).send("INVALID_SECRET");
+        }
+
+        // 2. Проверка userId
+        if (!userId) {
+            console.warn("⚠️ Missing userId in callback");
+            return res.status(400).send("MISSING_USER_ID");
+        }
+
+        const userIdStr = String(userId).trim();
+
+        // 3. Проверка существования пользователя
+        const userRes = await db.query(
+            "SELECT user_id, balance, ad_views_count, last_ad_reward_at FROM users WHERE user_id = $1",
+            [userIdStr]
+        );
+
+        if (!userRes.rows.length) {
+            console.warn(`⚠️ User not found: ${userIdStr}`);
+            return res.status(404).send("USER_NOT_FOUND");
+        }
+
+        const user = userRes.rows[0];
+
+        // 4. Защита от слишком частых наград (Rate Limit на стороне БД)
+        // Разрешаем награду только раз в 5 секунд
+        if (user.last_ad_reward_at) {
+            const lastRewardTime = new Date(user.last_ad_reward_at).getTime();
+            const now = Date.now();
+            const diffSeconds = (now - lastRewardTime) / 1000;
+
+            if (diffSeconds < 5) {
+                console.warn(`⚠️ Too fast reward request for user ${userIdStr}: ${diffSeconds.toFixed(1)}s ago`);
+                return res.status(429).send("TOO_FAST");
+            }
+        }
+
+        // 5. Начисление награды
+        await db.query("BEGIN");
+
+        await db.query(`
+            UPDATE users 
+            SET balance = balance + $1,
+                ad_views_count = ad_views_count + 1,
+                last_ad_reward_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $2
+        `, [AD_REWARD_AMOUNT, userIdStr]);
+
+        await db.query("COMMIT");
+
+        const newAdViews = (user.ad_views_count || 0) + 1;
+        console.log(`✅ Reward granted to user ${userIdStr}: +${AD_REWARD_AMOUNT} VP (total ads: ${newAdViews})`);
+
+        // Adsgram ожидает HTTP 200 для подтверждения успешной обработки
+        res.status(200).send("OK");
+
+    } catch (err) {
+        try { await db.query("ROLLBACK"); } catch (e) {}
+        console.error("❌ Error processing ad reward:", err.message);
+        res.status(500).send("SERVER_ERROR");
+    }
+});
+
+// ======================== USER REWARDS STATS ========================
+app.get("/api/user/rewards", async (req, res) => {
+    try {
+        const userId = await getAuthenticatedUserId(req);
+        if (!userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
+
+        const userRes = await db.query(
+            "SELECT balance, ad_views_count FROM users WHERE user_id = $1",
+            [userId]
+        );
+
+        if (!userRes.rows.length) {
+            return res.status(404).json({ ok: false, error: "USER_NOT_FOUND" });
+        }
+
+        const user = userRes.rows[0];
+
+        res.json({
+            ok: true,
+            balance: Number(user.balance),
+            adViewsCount: Number(user.ad_views_count || 0)
+        });
+    } catch (err) {
+        console.error("Error fetching rewards:", err);
+        res.status(500).json({ ok: false, error: "SERVER_ERROR" });
+    }
+});
+
+// ======================== HELPERS FOR AUTH ========================
 async function getAuthenticatedUserId(req) {
-    // Поддержка: cookie / body.userId / query.userId (как в текущем фронте)
     if (req.body && req.body.userId) return String(req.body.userId);
     if (req.query && req.query.userId) return String(req.query.userId);
 
@@ -450,12 +560,12 @@ async function getAuthenticatedUserId(req) {
     return userId ? String(userId) : null;
 }
 
+// ======================== REFERRALS API ========================
 app.get("/api/user/referrals", async (req, res) => {
     try {
         const userId = await getAuthenticatedUserId(req);
         if (!userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
 
-        // Убедимся, что у пользователя есть referral_code (на случай старых записей)
         const userRes = await db.query(
             "SELECT user_id, referral_code FROM users WHERE user_id = $1",
             [userId]
@@ -559,10 +669,10 @@ app.post("/api/order/open", async (req, res) => {
         );
 
         const posRes = await db.query(`
-      INSERT INTO positions (user_id, pair, type, entry_price, margin, leverage, size)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *
-    `, [user.user_id, pair, type, entryPrice, margin, leverage, size]);
+            INSERT INTO positions (user_id, pair, type, entry_price, margin, leverage, size)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING *
+        `, [user.user_id, pair, type, entryPrice, margin, leverage, size]);
 
         res.json({ ok: true, position: posRes.rows[0], newBalance: Number(user.balance) - margin });
     } catch (err) {
@@ -578,7 +688,6 @@ app.post("/api/order/close", async (req, res) => {
 
         if (!positionId || !closePrice) return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
 
-        // 1. Получаем позицию
         const posRes = await db.query(
             "SELECT * FROM positions WHERE id = $1 AND user_id = $2",
             [positionId, user.user_id]
@@ -587,49 +696,37 @@ app.post("/api/order/close", async (req, res) => {
         if (!posRes.rows.length) return res.status(404).json({ ok: false, error: "POSITION_NOT_FOUND" });
         const pos = posRes.rows[0];
 
-        // 2. Расчёты
         const cPrice = Number(closePrice);
         const ePrice = Number(pos.entry_price);
         const pSize = Number(pos.size);
         const pMargin = Number(pos.margin);
 
-        // 3. PnL
         const priceChangePct = (cPrice - ePrice) / ePrice;
         let pnl = priceChangePct * pSize;
         if (pos.type === "SHORT") pnl = -pnl;
 
-        // 4. Комиссия (0.03%)
         const commission = pSize * 0.0003;
-
-        // 5. Итоговый возврат
         let totalReturn = pMargin + pnl - commission;
 
-        // 6. Проверка на Ликвидацию
         let isLiquidated = false;
         if (totalReturn <= 0) {
             isLiquidated = true;
             totalReturn = 0;
-            // В модели ликвидации баланс не получает возврат (totalReturn = 0).
-            // Но комиссию при этом хотим показывать реальную.
-            // Так как totalReturn = margin + pnl - commission, при totalReturn=0:
-            // pnl = commission - margin.
             pnl = commission - pMargin;
         }
 
-        // 7. Транзакция
         await db.query("BEGIN");
 
         if (totalReturn > 0) {
             await db.query("UPDATE users SET balance = balance + $1 WHERE user_id = $2", [totalReturn, user.user_id]);
         }
 
-        // Записываем реальную комиссию и для обычного закрытия, и для ликвидации.
         const finalCommission = commission;
 
         await db.query(`
-      INSERT INTO trades_history (user_id, pair, type, entry_price, exit_price, size, leverage, pnl, commission)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    `, [user.user_id, pos.pair || 'BTC-USD', pos.type, ePrice, cPrice, pSize, pos.leverage, pnl, finalCommission]);
+            INSERT INTO trades_history (user_id, pair, type, entry_price, exit_price, size, leverage, pnl, commission)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `, [user.user_id, pos.pair || 'BTC-USD', pos.type, ePrice, cPrice, pSize, pos.leverage, pnl, finalCommission]);
 
         await db.query("DELETE FROM positions WHERE id = $1", [positionId]);
 
