@@ -218,25 +218,38 @@
     .chip { flex: 1; text-align: center; padding: 6px 0; font-size: 11px; background: #15181b; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); color: var(--muted); transition: 0.2s; }
     .chip.active { background: var(--accent-green-transparent); color: var(--accent-green); border-color: var(--accent-green); font-weight: 700; }
 
-    .margin-slider-wrap { position: relative; padding-bottom: 4px; }
+    .margin-slider-wrap { 
+      position: relative; 
+      padding: 0 10px;
+    }
+    .margin-slider-wrap .range-slider {
+      width: 100%;
+    }
     .margin-marks {
       display: flex;
       justify-content: space-between;
-      padding: 0 2px;
       margin-top: 4px;
+      position: relative;
     }
     .margin-mark {
       font-size: 10px;
       color: var(--muted);
       cursor: pointer;
-      padding: 2px 4px;
+      padding: 2px 0;
       border-radius: 3px;
       transition: 0.2s;
       user-select: none;
+      text-align: center;
+      min-width: 28px;
+    }
+    .margin-mark:first-child {
+      text-align: left;
+    }
+    .margin-mark:last-child {
+      text-align: right;
     }
     .margin-mark:hover {
       color: var(--accent-green);
-      background: rgba(14, 203, 129, 0.1);
     }
     .margin-mark.active {
       color: var(--accent-green);
@@ -469,7 +482,6 @@
     .ref-avatar { width: 28px; height: 28px; border-radius: 50%; background: #333; overflow: hidden; border: 1px solid var(--border); flex-shrink: 0; }
     .ref-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .ref-name { font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
-    .ref-sub { font-size: 10px; color: var(--muted); font-family: monospace; }
     .ref-date { font-size: 10px; color: var(--muted); font-family: monospace; flex-shrink: 0; }
     .ref-status { font-size: 10px; color: var(--muted); }
 
@@ -713,11 +725,7 @@
 
         <div class="ref-row">
           <input class="ref-input" id="refLinkInput" readonly value="Loading...">
-          <button class="ref-btn primary" id="btnCopyRefLink">Copy link</button>
-        </div>
-        <div class="ref-row">
-          <input class="ref-input" id="refCodeInput" readonly value="">
-          <button class="ref-btn" id="btnCopyRefCode">Copy code</button>
+          <button class="ref-btn primary" id="btnCopyRefLink">Copy</button>
         </div>
 
         <div class="ref-help" id="refHelpText">
@@ -953,14 +961,6 @@
       };
     }
 
-    const btnCopyRefCode = $('btnCopyRefCode');
-    if(btnCopyRefCode) {
-      btnCopyRefCode.onclick = async () => {
-        const ok = await copyTextToClipboard($('refCodeInput')?.value);
-        notify(ok ? 'Referral code copied' : 'Copy failed');
-      };
-    }
-
     function escapeHtml(str) {
       return String(str)
         .replaceAll('&','&amp;')
@@ -1010,14 +1010,12 @@
     async function renderReferrals() {
       const listEl = $('refList');
       const linkInput = $('refLinkInput');
-      const codeInput = $('refCodeInput');
       const badge = $('refCountBadge');
 
-      if(!listEl || !linkInput || !codeInput || !badge) return;
+      if(!listEl || !linkInput || !badge) return;
 
       listEl.innerHTML = "<div class='ref-status'>Loading referrals...</div>";
       linkInput.value = "Loading...";
-      codeInput.value = "";
       badge.textContent = "Invited: ...";
 
       try {
@@ -1026,11 +1024,9 @@
         if(!data.ok) throw new Error(data.error || 'REFERRALS_ERROR');
 
         const link = data.referralLink || '';
-        const code = data.referralCode || '';
         const count = Number(data.invitedCount || 0);
 
         linkInput.value = link || "";
-        codeInput.value = code || "";
         badge.textContent = "Invited: " + count;
 
         const invited = Array.isArray(data.invited) ? data.invited : [];
@@ -1048,19 +1044,15 @@
           const div = document.createElement('div');
           div.className = 'ref-item';
 
-          const name = (u.first_name || u.username || 'User');
-          const uname = u.username ? ('@' + u.username) : ('ID: ' + (u.user_id || ''));
+          const name = (u.first_name || 'User');
           const when = u.invited_at ? new Date(u.invited_at) : (u.created_at ? new Date(u.created_at) : null);
-          const dateStr = when ? when.toLocaleDateString([], {month:'2-digit', day:'2-digit'}) : '--';
+          const dateStr = when ? when.toLocaleDateString([], {month:'2-digit', day:'2-digit', year:'2-digit'}) : '--';
           const photo = u.photo_url || '';
 
           div.innerHTML = `
             <div class="ref-item-left">
               <div class="ref-avatar">${photo ? `<img src="${photo}" alt="">` : ''}</div>
-              <div style="min-width:0;">
-                <div class="ref-name">${escapeHtml(name)}</div>
-                <div class="ref-sub">${escapeHtml(uname)}</div>
-              </div>
+              <div class="ref-name">${escapeHtml(name)}</div>
             </div>
             <div class="ref-date">${dateStr}</div>
           `;
@@ -1354,8 +1346,25 @@
     const sizeInput = $('sizeInput');
     const marginMarks = document.querySelectorAll('.margin-mark');
 
-    function updateMarginSliderUI(pct, fromInput = false) {
+    const SNAP_POINTS = [0, 25, 50, 75, 100];
+    const SNAP_THRESHOLD = 4;
+
+    function snapToMagneticPoint(value) {
+      for (const point of SNAP_POINTS) {
+        if (Math.abs(value - point) <= SNAP_THRESHOLD) {
+          return point;
+        }
+      }
+      return value;
+    }
+
+    function updateMarginSliderUI(pct, fromInput = false, skipSnap = false) {
       pct = Math.max(0, Math.min(100, parseInt(pct) || 0));
+      
+      if (!skipSnap && !fromInput) {
+        pct = snapToMagneticPoint(pct);
+      }
+
       marginSlider.value = pct;
       marginPercentText.textContent = pct + '%';
       updateSliderTrack(marginSlider, pct);
@@ -1370,11 +1379,30 @@
       }
     }
 
-    marginSlider.addEventListener('input', (e) => updateMarginSliderUI(e.target.value));
+    let lastSnappedValue = null;
+
+    marginSlider.addEventListener('input', (e) => {
+      const rawValue = parseInt(e.target.value);
+      const snappedValue = snapToMagneticPoint(rawValue);
+      
+      if (snappedValue !== rawValue && snappedValue !== lastSnappedValue) {
+        if (tg?.HapticFeedback) {
+          tg.HapticFeedback.impactOccurred('light');
+        }
+        lastSnappedValue = snappedValue;
+      } else if (snappedValue === rawValue) {
+        lastSnappedValue = null;
+      }
+      
+      updateMarginSliderUI(snappedValue, false, true);
+    });
 
     marginMarks.forEach(mark => {
       mark.addEventListener('click', () => {
-        updateMarginSliderUI(mark.dataset.pct);
+        updateMarginSliderUI(mark.dataset.pct, false, true);
+        if (tg?.HapticFeedback) {
+          tg.HapticFeedback.impactOccurred('light');
+        }
       });
     });
 
@@ -1407,7 +1435,7 @@
 
       const currentMarginPct = parseInt(marginSlider.value) || 0;
       if (currentMarginPct > 0) {
-        updateMarginSliderUI(currentMarginPct);
+        updateMarginSliderUI(currentMarginPct, false, true);
       }
     }
 
