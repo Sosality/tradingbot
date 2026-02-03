@@ -652,6 +652,24 @@ app.post("/api/adsgram/reward", async (req, res) => {
         await db.query(
             "UPDATE users SET balance = balance + $1, last_reward_at = CURRENT_TIMESTAMP WHERE user_id = $2",
             [rewardAmount, userId]
+        );
+
+        await db.query("COMMIT");
+
+        const balanceRes = await db.query("SELECT balance FROM users WHERE user_id = $1", [userId]);
+        return res.json({
+            ok: true,
+            reward: rewardAmount,
+            newBalance: Number(balanceRes.rows[0].balance),
+            eventId: eventId || null
+        });
+    } catch (err) {
+        try { await db.query("ROLLBACK"); } catch (e) {}
+        console.error("Error processing Adsgram reward:", err.message);
+        return res.status(500).json({ ok: false, error: "SERVER_ERROR" });
+    }
+});
+
 app.get("/api/adsgram/reward", async (req, res) => {
     try {
         const userId = req.query?.userid ? String(req.query.userid) : null;
@@ -689,25 +707,15 @@ app.get("/api/adsgram/reward", async (req, res) => {
 
         await db.query("COMMIT");
 
-        const balanceRes = await db.query("SELECT balance FROM users WHERE user_id = $1", [userId]);
-        res.json({
-            ok: true,
-            reward: rewardAmount,
-            newBalance: Number(balanceRes.rows[0].balance),
-            eventId: eventId || null
-        });
-    } catch (err) {
-        try { await db.query("ROLLBACK"); } catch (e) {}
-        console.error("❌ Adsgram reward error:", err.message);
-        res.json({
+        return res.json({
             ok: true,
             reward: rewardRes.rows[0],
             newBalance: Number(newBalanceRes.rows[0].balance)
         });
     } catch (err) {
         try { await db.query("ROLLBACK"); } catch (e) {}
-        console.error("Error processing Adsgram reward:", err.message);
-        res.status(500).json({ ok: false, error: "SERVER_ERROR" });
+        console.error("❌ Adsgram reward error:", err.message);
+        return res.status(500).json({ ok: false, error: "SERVER_ERROR" });
     }
 });
 
