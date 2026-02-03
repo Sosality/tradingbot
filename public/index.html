@@ -7,7 +7,6 @@
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
-  <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
   <style>
@@ -29,14 +28,14 @@
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body { height: 100%; margin: 0; background: var(--bg); color: var(--white); font-family: 'Inter', system-ui, sans-serif; overflow: hidden; }
 
-    ::-webkit-scrollbar { width:4px; height:4px; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius:4px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 
     .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; position: relative; }
 
     .view-section {
-      flex:1;
+      flex: 1;
       display: flex;
       flex-direction: column;
       height: 100%;
@@ -488,8 +487,6 @@
 
     .rewards-container {
       padding: 20px; display: flex; flex-direction: column; gap: 24px;
-      overflow-y: auto;
-      height: 100%;
     }
     .rewards-header { text-align: center; padding: 20px 0; }
     .rh-title { font-size: 22px; font-weight: 700; color: var(--white); margin-bottom: 8px; }
@@ -508,30 +505,22 @@
     .ms-item.active .ms-dot { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px rgba(240, 185, 11, 0.4); }
     .ms-val { font-size: 10px; color: var(--muted); }
 
-    .task-list { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; padding-bottom: 80px; }
+    .task-list { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
     .task-item {
-      background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center;
+      background: rgba(255,255,255,0.03); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center;
     }
     .task-left h4 { margin: 0 0 4px; font-size: 14px; }
     .task-left p { margin: 0; font-size: 11px; color: var(--muted); }
     .btn-claim {
-      background: var(--gold); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer;
-      transition: all 0.2s;
+      background: var(--gold); color: #000; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer;
     }
-    .btn-claim:hover { filter: brightness(1.1); }
-    .btn-claim:active { transform: scale(0.95); }
     .btn-claim:disabled { background: var(--panel-light); color: var(--muted); cursor: not-allowed; }
-    .btn-claim.loading {
-      pointer-events: none;
-      opacity: 0.7;
-    }
 
     .btn-back-float {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
       background: var(--panel-light); border: 1px solid var(--border); color: var(--white);
       padding: 12px 24px; border-radius: 20px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
       z-index: 900;
-      cursor: pointer;
     }
 
     #app-loader {
@@ -549,18 +538,6 @@
     .tf-opt { padding: 4px 8px; font-size: 10px; color: var(--muted); border-radius: 4px; cursor: pointer; font-weight: 600; transition: 0.2s; user-select: none; }
     .tf-opt:hover { color: var(--white); background: rgba(255,255,255,0.05); }
     .tf-opt.active { background: var(--panel-light); color: var(--gold); }
-
-    .reward-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: var(--accent-green-transparent);
-      color: var(--accent-green);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 600;
-    }
   </style>
 </head>
 
@@ -586,7 +563,7 @@
           </div>
           <div class="pair-menu">
             <div class="pair-item active" data-pair="BTC-USD">BTC/USD</div>
-            <div class="pair-item" data-pair="ETH-USD">ETH-USD</div>
+            <div class="pair-item" data-pair="ETH-USD">ETH/USD</div>
           </div>
         </div>
       </div>
@@ -791,41 +768,39 @@
   <div id="view-rewards" class="view-section hidden">
     <div class="rewards-container">
       <div class="rewards-header">
-        <div class="rh-title">Rewards Center</div>
-        <div class="rh-sub">Watch ads to earn VP points</div>
+        <div class="rh-title">Achievement Progress</div>
+        <div class="rh-sub">Watch ads & trade to level up</div>
       </div>
 
       <div class="progress-card">
         <div class="prog-info">
-          <span id="rewardsLevelText">Level 1</span>
-          <span id="rewardsAdsCount">0 / 10 Ads</span>
+          <span>Level 1</span>
+          <span>1 / 10 Ads</span>
         </div>
         <div class="prog-track">
-          <div class="prog-fill" id="rewardsProgressFill" style="width: 0%;"></div>
+          <div class="prog-fill" style="width: 10%;"></div>
         </div>
         <div class="milestones">
-          <div class="ms-item" id="ms-0"><div class="ms-dot"></div><span class="ms-val">0</span></div>
-          <div class="ms-item" id="ms-5"><div class="ms-dot"></div><span class="ms-val">5</span></div>
-          <div class="ms-item" id="ms-10"><div class="ms-dot"></div><span class="ms-val">10</span></div>
-          <div class="ms-item" id="ms-25"><div class="ms-dot"></div><span class="ms-val">25</span></div>
-          <div class="ms-item" id="ms-50"><div class="ms-dot"></div><span class="ms-val">50</span></div>
+          <div class="ms-item active"><div class="ms-dot"></div><span class="ms-val">Start</span></div>
+          <div class="ms-item"><div class="ms-dot"></div><span class="ms-val">5 Ads</span></div>
+          <div class="ms-item"><div class="ms-dot"></div><span class="ms-val">10 Ads</span></div>
         </div>
       </div>
 
       <div class="task-list">
         <div class="task-item">
           <div class="task-left">
-            <h4>Watch Ad</h4>
-            <p>Reward: <span class="reward-badge">+1 VP</span></p>
+            <h4>Watch Daily Ad</h4>
+            <p>Get +1 Progress Point</p>
           </div>
-          <button class="btn-claim" id="btnWatchAd">WATCH</button>
+          <button class="btn-claim">WATCH</button>
         </div>
-        <div class="task-item" style="opacity: 0.5;">
+        <div class="task-item">
           <div class="task-left">
-            <h4>Daily Bonus</h4>
-            <p>Coming soon</p>
+            <h4>Make 5 Trades</h4>
+            <p>Reward: 50 VP Bonus</p>
           </div>
-          <button class="btn-claim" disabled>SOON</button>
+          <button class="btn-claim" disabled>LOCKED</button>
         </div>
       </div>
 
@@ -843,10 +818,6 @@
     const API_BASE = "https://tradingbot-p9n8.onrender.com";
     const ALL_PAIRS = ["BTC-USD", "ETH-USD"];
 
-    // ADSGRAM CONFIG
-    // ВАЖНО: Замените 'YOUR_ADSGRAM_BLOCK_ID' на реальный ID вашего блока в Adsgram
-    const ADSGRAM_BLOCK_ID = "22326"; 
-
     let currentUserId = null;
     let selectedPair = "BTC-USD";
     let marketPrices = {};
@@ -855,7 +826,7 @@
     let isLoadingHistory = false;
     let allHistoryLoaded = false;
 
-    let profile = { balance: 0, name: "Trader", id: 0, photo: "", adViewsCount: 0 };
+    let profile = { balance: 0, name: "Trader", id: 0, photo: "" };
     let currentLeverage = 10;
     let localTrades = [];
     let remoteHistory = [];
@@ -865,8 +836,6 @@
     const ICON_EYE_OPEN = "https://img.icons8.com/ios-glyphs/60/ffffff/visible.png";
     const ICON_EYE_CLOSED = "https://img.icons8.com/ios-glyphs/60/ffffff/hide.png";
 
-    let AdController = null;
-
     const tg = window.Telegram?.WebApp;
     if(tg) {
       tg.ready();
@@ -874,18 +843,6 @@
       tg.setHeaderColor('#1E2329');
       tg.setBackgroundColor('#0B0E11');
       tg.enableClosingConfirmation();
-    }
-
-    // Инициализация Adsgram
-    function initAdsgram() {
-      if (typeof Adsgram !== 'undefined') {
-        try {
-          AdController = Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
-          console.log("✅ Adsgram initialized");
-        } catch (e) {
-          console.error("❌ Adsgram init error:", e);
-        }
-      }
     }
 
     function formatPrice(val) {
@@ -918,9 +875,6 @@
         if(tg) tg.BackButton.show();
       } else if (viewId === 'view-trade') {
         if(tg) tg.BackButton.hide();
-      } else if (viewId === 'view-rewards') {
-        if(tg) tg.BackButton.show();
-        fetchRewardsData();
       }
     }
 
@@ -934,92 +888,6 @@
         if(viewRewards.classList.contains('active')) showView('view-profile');
         else if(viewProfile.classList.contains('active')) showView('view-trade');
       });
-    }
-
-    // Rewards UI Update
-    function updateRewardsUI() {
-      const count = profile.adViewsCount || 0;
-      // Логика уровней: каждые 10 просмотров новый уровень (просто пример)
-      const level = Math.floor(count / 10) + 1;
-      
-      // Прогресс бар на основе "Mod 50" для визуализации заполнения текущего уровня
-      const progressInLevel = count % 50;
-      const progressPercent = Math.min((progressInLevel / 50) * 100, 100);
-
-      $('rewardsLevelText').textContent = `Level ${level}`;
-      $('rewardsAdsCount').textContent = `${count} / 50 Ads`;
-      $('rewardsProgressFill').style.width = `${progressPercent}%`;
-
-      // Update milestones
-      const milestones = [0, 5, 10, 25, 50];
-      milestones.forEach(ms => {
-        const el = $(`ms-${ms}`);
-        if (el) {
-          if (count >= ms) {
-            el.classList.add('active');
-          } else {
-            el.classList.remove('active');
-          }
-        }
-      });
-    }
-
-    async function fetchRewardsData() {
-      try {
-        const res = await fetch(`${API_BASE}/api/user/rewards?userId=${currentUserId}`);
-        const data = await res.json();
-        if (data.ok) {
-          profile.adViewsCount = data.adViewsCount || 0;
-          profile.balance = data.balance || profile.balance;
-          updateRewardsUI();
-          updateBalanceUI();
-        }
-      } catch (e) {
-        console.error("Error fetching rewards:", e);
-      }
-    }
-
-    // Watch Ad Handler
-    const btnWatchAd = $('btnWatchAd');
-    if (btnWatchAd) {
-      btnWatchAd.onclick = async () => {
-        if (!AdController) {
-          notify("Ads not available. Please try again later.");
-          return;
-        }
-
-        btnWatchAd.classList.add('loading');
-        btnWatchAd.textContent = 'LOADING...';
-
-        try {
-          // Adsgram.show() открывает модальное окно
-          await AdController.show();
-          
-          // В случае успеха Adsgram сам отправит callback на сервер.
-          // Мы ждем немного, чтобы сервер успел обработать запрос.
-          console.log("✅ Ad watched successfully (assumed)");
-          
-          if (tg?.HapticFeedback) {
-            tg.HapticFeedback.notificationOccurred('success');
-          }
-          
-          setTimeout(async () => {
-            await fetchRewardsData();
-            notify("Reward received! +1 VP");
-          }, 2000); // Задержка для обновления UI
-          
-        } catch (e) {
-          console.log("Ad not completed:", e);
-          
-          // Если пользователь закрыл рекламу до конца
-          if (e && e.error !== 'render_failed') {
-            notify("Watch the full ad to receive reward");
-          }
-        } finally {
-          btnWatchAd.classList.remove('loading');
-          btnWatchAd.textContent = 'WATCH';
-        }
-      };
     }
 
     const btnEye = $('btnToggleBalance');
@@ -1048,7 +916,7 @@
           return;
         }
       } catch(e) {}
-      alert(msg);
+      console.log(msg);
     }
 
     async function copyTextToClipboard(text) {
@@ -1499,7 +1367,7 @@
 
       marginSlider.value = pct;
       marginPercentText.textContent = pct + '%';
-      updateSliderTrack(marginSlider, pop);
+      updateSliderTrack(marginSlider, pct);
 
       marginMarks.forEach(mark => {
         mark.classList.toggle('active', parseInt(mark.dataset.pct) === pct);
@@ -1533,7 +1401,7 @@
       mark.addEventListener('click', () => {
         updateMarginSliderUI(mark.dataset.pct, false, true);
         if (tg?.HapticFeedback) {
-          tg.HapticFeedback.ightFeedback.impactOccurred('light');
+          tg.HapticFeedback.impactOccurred('light');
         }
       });
     });
@@ -1584,7 +1452,6 @@
           profile.balance = Number(data.user.balance || 0);
           profile.name = (data.user.first_name || "User");
           profile.id = data.user.user_id;
-          profile.adViewsCount = Number(data.user.ad_views_count || 0);
 
           window._positions = data.positions || [];
           if(data.user.photo_url) {
@@ -1592,10 +1459,6 @@
             $('avatarImg').src = data.user.photo_url;
             $('avatarImg').style.display = 'block';
           }
-          
-          // Инициализация Adsgram после получения User ID
-          initAdsgram();
-          
           updateBalanceUI();
 
           renderPositions(true);
@@ -1904,7 +1767,7 @@
           } else if (riskPercent < 80) {
             riskValEl.style.color = "#F0B90B"; riskBarEl.style.background = "#F0B90B";
           } else {
-            riskValEl.style.color: "#F6465D"; riskBarEl.style.background = "#F6465D";
+            riskValEl.style.color = "#F6465D"; riskBarEl.style.background = "#F6465D";
           }
         }
 
@@ -2009,7 +1872,7 @@
         });
         const data = await res.json();
         if(data.ok) {
-          window._position = window._positions.filter(p => (p.id!=id && p._id!=id));
+          window._positions = window._positions.filter(p => (p.id!=id && p._id!=id));
           if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
 
           const el = document.getElementById('pos-item-' + id);
