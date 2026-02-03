@@ -236,6 +236,16 @@ async function initDB() {
         // Миграция для комиссии
         try { await db.query(`ALTER TABLE trades_history ADD COLUMN IF NOT EXISTS commission NUMERIC DEFAULT 0`); } catch(e) {}
 
+        // 4. Таблица Adsgram rewards/views
+        await db.query(`
+      CREATE TABLE IF NOT EXISTS adsgram_rewards (
+        id BIGSERIAL PRIMARY KEY,
+        user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
+        rewarded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        source TEXT
+      );
+    `);
+
         console.log("✅ DB tables ready!");
 
         // Backfill referral_code для существующих пользователей
@@ -512,6 +522,55 @@ app.get("/api/user/history", async (req, res) => {
         res.json({ ok: true, history: historyRes.rows });
     } catch (err) {
         console.error("Error fetching history:", err);
+        res.status(500).json({ ok: false, error: "SERVER_ERROR" });
+    }
+});
+
+app.get("/api/adsgram/reward", async (req, res) => {
+    try {
+        const userId = req.query?.userid ? String(req.query.userid) : null;
+        const source = req.query?.source ? String(req.query.source) : null;
+
+        if (!userId) {
+            return res.status(400).json({ ok: false, error: "MISSING_USERID" });
+        }
+
+        const userRes = await db.query(
+            "SELECT user_id, balance FROM users WHERE user_id = $1",
+            [userId]
+        );
+        if (!userRes.rows.length) {
+            return res.status(404).json({ ok: false, error: "NO_USER" });
+        }
+
+        await db.query("BEGIN");
+
+        const rewardRes = await db.query(`
+      INSERT INTO adsgram_rewards (user_id, source)
+      VALUES ($1, $2)
+      RETURNING id, user_id, rewarded_at, source
+    `, [userId, source]);
+
+        await db.query(
+            "UPDATE users SET balance = balance + 1 WHERE user_id = $1",
+            [userId]
+        );
+
+        const newBalanceRes = await db.query(
+            "SELECT balance FROM users WHERE user_id = $1",
+            [userId]
+        );
+
+        await db.query("COMMIT");
+
+        res.json({
+            ok: true,
+            reward: rewardRes.rows[0],
+            newBalance: Number(newBalanceRes.rows[0].balance)
+        });
+    } catch (err) {
+        try { await db.query("ROLLBACK"); } catch (e) {}
+        console.error("Error processing Adsgram reward:", err.message);
         res.status(500).json({ ok: false, error: "SERVER_ERROR" });
     }
 });
