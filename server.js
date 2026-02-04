@@ -160,6 +160,7 @@ async function initDB() {
         invited_by TEXT,
         invited_at TIMESTAMP,
         ad_views_count INTEGER NOT NULL DEFAULT 0,
+        daily_ad_views_count INTEGER NOT NULL DEFAULT 0,
         last_ad_view TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -171,6 +172,7 @@ async function initDB() {
         try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_by TEXT`); } catch(e) {}
         try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_at TIMESTAMP`); } catch(e) {}
         try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ad_views_count INTEGER NOT NULL DEFAULT 0`); } catch(e) {}
+        try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_ad_views_count INTEGER NOT NULL DEFAULT 0`); } catch(e) {}
         try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ad_view TIMESTAMP`); } catch(e) {}
 
         await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_uidx ON users(referral_code) WHERE referral_code IS NOT NULL;`);
@@ -243,13 +245,25 @@ async function upsertUserFromObj(userObj, ipAddress, startParamRaw) {
         await db.query("BEGIN");
 
         const existingRes = await db.query(
-            "SELECT user_id, referral_code, invited_by FROM users WHERE user_id = $1 FOR UPDATE",
+            "SELECT user_id, referral_code, invited_by, last_ad_view, daily_ad_views_count FROM users WHERE user_id = $1 FOR UPDATE",
             [userId]
         );
 
         let referralCode = existingRes.rows[0]?.referral_code || null;
         let invitedBy = existingRes.rows[0]?.invited_by || null;
         let invitedAt = null;
+
+        // Daily ad view reset logic on login/upsert
+        let dailyAdViewsCount = existingRes.rows[0]?.daily_ad_views_count || 0;
+        const lastAdView = existingRes.rows[0]?.last_ad_view;
+
+        if (lastAdView) {
+            const today = new Date().toISOString().split('T')[0];
+            const lastViewDate = new Date(lastAdView).toISOString().split('T')[0];
+            if (today !== lastViewDate) {
+                dailyAdViewsCount = 0;
+            }
+        }
 
         if (!referralCode) {
             referralCode = await generateUniqueReferralCode();
@@ -291,6 +305,7 @@ async function upsertUserFromObj(userObj, ipAddress, startParamRaw) {
           referral_code = $6,
           invited_by = COALESCE(users.invited_by, $7),
           invited_at = COALESCE(users.invited_at, $8),
+          daily_ad_views_count = $9,
           updated_at = CURRENT_TIMESTAMP
         WHERE user_id = $1
       `, [
@@ -301,14 +316,15 @@ async function upsertUserFromObj(userObj, ipAddress, startParamRaw) {
                 ipAddress,
                 referralCode,
                 invitedBy,
-                invitedAt
+                invitedAt,
+                dailyAdViewsCount
             ]);
         }
 
         await db.query("COMMIT");
 
         const res = await db.query(
-            "SELECT user_id, first_name, username, photo_url, balance, referral_code, invited_by, invited_at, ad_views_count FROM users WHERE user_id = $1",
+            "SELECT user_id, first_name, username, photo_url, balance, referral_code, invited_by, invited_at, ad_views_count, daily_ad_views_count FROM users WHERE user_id = $1",
             [userId]
         );
         return res.rows[0];
@@ -371,12 +387,23 @@ app.post("/api/init", async (req, res) => {
 
             if (!userId) return res.status(401).json({ ok: false, error: "NO_SESSION" });
 
+            // On init via session, we should check daily reset logic
             const ures = await db.query(
-                "SELECT user_id, first_name, username, photo_url, balance, ad_views_count FROM users WHERE user_id = $1",
+                "SELECT * FROM users WHERE user_id = $1",
                 [userId]
             );
             if (!ures.rows.length) return res.status(404).json({ ok: false, error: "NO_USER" });
             userRow = ures.rows[0];
+
+            // Manual check for day change
+            if (userRow.last_ad_view) {
+                const today = new Date().toISOString().split('T')[0];
+                const lastViewDate = new Date(userRow.last_ad_view).toISOString().split('T')[0];
+                if (today !== lastViewDate && userRow.daily_ad_views_count > 0) {
+                     await db.query("UPDATE users SET daily_ad_views_count = 0 WHERE user_id = $1", [userId]);
+                     userRow.daily_ad_views_count = 0;
+                }
+            }
         }
 
         const positionsRes = await db.query(
@@ -478,8 +505,9 @@ app.get("/api/user/history", async (req, res) => {
     }
 });
 
-// ======================== ADSGRAM REWARD ENDPOINT ========================
+// ======================== ADSGRAM REWARD ENDPOINT (UPDATED) ========================
 const AD_REWARD_AMOUNT = 1;
+const DAILY_LIMIT = 5;
 
 app.get("/api/adsgram/reward", async (req, res) => {
     console.log("\n🎬 /api/adsgram/reward called!");
@@ -488,57 +516,75 @@ app.get("/api/adsgram/reward", async (req, res) => {
     try {
         const { userid, secret } = req.query;
 
-        if (!userid) {
-            console.log("❌ Missing userid parameter");
-            return res.status(400).json({ ok: false, error: "MISSING_USERID" });
-        }
-
-        if (!secret) {
-            console.log("❌ Missing secret parameter");
-            return res.status(400).json({ ok: false, error: "MISSING_SECRET" });
-        }
+        if (!userid) return res.status(400).json({ ok: false, error: "MISSING_USERID" });
+        if (!secret) return res.status(400).json({ ok: false, error: "MISSING_SECRET" });
 
         const expectedSecret = process.env.ADSGRAM_SECRET;
-        if (!expectedSecret) {
-            console.error("❌ ADSGRAM_SECRET not configured on server");
-            return res.status(500).json({ ok: false, error: "SERVER_CONFIG_ERROR" });
-        }
-
-        if (secret !== expectedSecret) {
-            console.log("❌ Invalid secret provided");
-            return res.status(403).json({ ok: false, error: "INVALID_SECRET" });
-        }
+        if (!expectedSecret) return res.status(500).json({ ok: false, error: "SERVER_CONFIG_ERROR" });
+        if (secret !== expectedSecret) return res.status(403).json({ ok: false, error: "INVALID_SECRET" });
 
         const userId = String(userid).trim();
 
-        const userCheck = await db.query("SELECT user_id, balance, ad_views_count FROM users WHERE user_id = $1", [userId]);
+        await db.query("BEGIN user_ad_update");
+
+        // Lock row
+        const userCheck = await db.query(
+            "SELECT user_id, balance, ad_views_count, daily_ad_views_count, last_ad_view FROM users WHERE user_id = $1 FOR UPDATE", 
+            [userId]
+        );
         if (!userCheck.rows.length) {
-            console.log(`❌ User ${userId} not found in database`);
+            await db.query("ROLLBACK user_ad_update");
             return res.status(404).json({ ok: false, error: "USER_NOT_FOUND" });
         }
+
+        const user = userCheck.rows[0];
+        let currentDaily = user.daily_ad_views_count || 0;
+        const lastDate = user.last_ad_view ? new Date(user.last_ad_view).toISOString().split('T')[0] : null;
+        const today = new Date().toISOString().split('T')[0];
+
+        // Reset if new day
+        if (lastDate !== today) {
+            currentDaily = 0;
+        }
+
+        // Check Limit
+        if (currentDaily >= DAILY_LIMIT) {
+             await db.query("ROLLBACK user_ad_update");
+             console.log(`❌ User ${userId} reached daily limit (${currentDaily}/${DAILY_LIMIT})`);
+             return res.status(400).json({ ok: false, error: "DAILY_LIMIT_REACHED" });
+        }
+
+        const newDaily = currentDaily + 1;
 
         await db.query(`
             UPDATE users 
             SET balance = balance + $1,
                 ad_views_count = ad_views_count + 1,
+                daily_ad_views_count = $2,
                 last_ad_view = CURRENT_TIMESTAMP,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $2
-        `, [AD_REWARD_AMOUNT, userId]);
+            WHERE user_id = $3
+        `, [AD_REWARD_AMOUNT, newDaily, userId]);
 
-        const updatedUser = await db.query("SELECT balance, ad_views_count FROM users WHERE user_id = $1", [userId]);
+        await db.query("COMMIT user_ad_update");
 
-        console.log(`✅ Ad reward granted to user ${userId}: +${AD_REWARD_AMOUNT} VP`);
-        console.log(`   New balance: ${updatedUser.rows[0].balance}, Total views: ${updatedUser.rows[0].ad_views_count}`);
+        const updatedUser = await db.query(
+            "SELECT balance, ad_views_count, daily_ad_views_count FROM users WHERE user_id = $1", 
+            [userId]
+        );
+
+        console.log(`✅ Ad reward granted to user ${userId}: +${AD_REWARD_AMOUNT} VP. Daily: ${newDaily}/${DAILY_LIMIT}`);
 
         res.json({ 
             ok: true, 
             reward: AD_REWARD_AMOUNT,
             newBalance: Number(updatedUser.rows[0].balance),
-            totalViews: Number(updatedUser.rows[0].ad_views_count)
+            totalViews: Number(updatedUser.rows[0].ad_views_count),
+            dailyViews: Number(updatedUser.rows[0].daily_ad_views_count)
         });
 
     } catch (err) {
+        try { await db.query("ROLLBACK user_ad_update"); } catch(e){}
         console.error("💥 Error in /api/adsgram/reward:", err);
         res.status(500).json({ ok: false, error: "SERVER_ERROR" });
     }
@@ -550,7 +596,7 @@ app.get("/api/user/ad-stats", async (req, res) => {
         if (!userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
 
         const userRes = await db.query(
-            "SELECT ad_views_count, last_ad_view, balance FROM users WHERE user_id = $1",
+            "SELECT ad_views_count, daily_ad_views_count, last_ad_view, balance FROM users WHERE user_id = $1",
             [userId]
         );
 
@@ -559,10 +605,18 @@ app.get("/api/user/ad-stats", async (req, res) => {
         }
 
         const user = userRes.rows[0];
+        
+        let daily = Number(user.daily_ad_views_count || 0);
+        if (user.last_ad_view) {
+            const today = new Date().toISOString().split('T')[0];
+            const lastView = new Date(user.last_ad_view).toISOString().split('T')[0];
+            if (today !== lastView) daily = 0;
+        }
 
         res.json({
             ok: true,
             adViewsCount: Number(user.ad_views_count) || 0,
+            dailyAdViewsCount: daily,
             lastAdView: user.last_ad_view,
             balance: Number(user.balance)
         });
