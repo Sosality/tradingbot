@@ -336,12 +336,6 @@
     .prog-track { height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; position: relative; }
     .prog-fill { height: 100%; background: var(--gold-gradient); width: 0%; transition: width 0.5s ease; border-radius: 4px; }
 
-    .milestones { display: flex; justify-content: space-between; margin-top: 12px; }
-    .ms-item { text-align: center; width: 30px; position: relative; }
-    .ms-dot { width: 10px; height: 10px; background: #333; border: 2px solid var(--muted); border-radius: 50%; margin: 0 auto 4px; z-index: 2; position: relative; }
-    .ms-item.active .ms-dot { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px rgba(240, 185, 11, 0.4); }
-    .ms-val { font-size: 10px; color: var(--muted); }
-
     .task-list { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
     .task-item { background: rgba(255,255,255,0.03); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); }
     .task-left h4 { margin: 0 0 4px; font-size: 14px; }
@@ -349,7 +343,7 @@
     .btn-claim { background: var(--gold); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; transition: all 0.2s; }
     .btn-claim:hover { filter: brightness(1.1); }
     .btn-claim:active { transform: scale(0.96); }
-    .btn-claim:disabled { background: var(--panel-light); color: var(--muted); cursor: not-allowed; }
+    .btn-claim:disabled { background: var(--panel-light); color: var(--muted); cursor: not-allowed; filter: none; }
     .btn-claim.loading { opacity: 0.7; pointer-events: none; }
 
     .btn-back-float {
@@ -596,7 +590,7 @@
         <div class="stats-row">
           <div class="stat-item">
             <div class="stat-number" id="totalAdsWatched">0</div>
-            <div class="stat-desc">Ads Watched</div>
+            <div class="stat-desc">Total Watched</div>
           </div>
           <div class="stat-item">
             <div class="stat-number" id="totalEarnedFromAds">0</div>
@@ -607,17 +601,13 @@
 
       <div class="progress-card">
         <div class="prog-info">
-          <span id="currentLevelText">Level 1</span>
-          <span id="adsProgressText">0 / 10 Ads</span>
+          <span>Daily Limit</span>
+          <span id="adsProgressText">0 / 5</span>
         </div>
         <div class="prog-track">
           <div class="prog-fill" id="adsProgressBar" style="width: 0%;"></div>
         </div>
-        <div class="milestones">
-          <div class="ms-item active" id="ms-start"><div class="ms-dot"></div><span class="ms-val">Start</span></div>
-          <div class="ms-item" id="ms-5"><div class="ms-dot"></div><span class="ms-val">5 Ads</span></div>
-          <div class="ms-item" id="ms-10"><div class="ms-dot"></div><span class="ms-val">10 Ads</span></div>
-        </div>
+        <div style="font-size: 10px; color: var(--muted); margin-top: 8px; text-align: center;"> Limits reset daily at 00:00 UTC </div>
       </div>
 
       <div class="task-list">
@@ -627,13 +617,6 @@
             <p>Earn +1 VP per view</p>
           </div>
           <button class="btn-claim" id="btnWatchAd">WATCH</button>
-        </div>
-        <div class="task-item">
-          <div class="task-left">
-            <h4>Make 5 Trades</h4>
-            <p>Reward: 50 VP Bonus</p>
-          </div>
-          <button class="btn-claim" disabled>LOCKED</button>
         </div>
       </div>
 
@@ -652,7 +635,6 @@
     const ALL_PAIRS = ["BTC-USD", "ETH-USD"];
     
     // ===================== ADSGRAM CONFIG =====================
-    // Замените на ваш реальный blockId из панели Adsgram
     const ADSGRAM_BLOCK_ID = "22326";
 
     let currentUserId = null;
@@ -663,7 +645,7 @@
     let isLoadingHistory = false;
     let allHistoryLoaded = false;
 
-    let profile = { balance: 0, name: "Trader", id: 0, photo: "", adViewsCount: 0 };
+    let profile = { balance: 0, name: "Trader", id: 0, photo: "", adViewsCount: 0, dailyAdViewsCount: 0 };
     let currentLeverage = 10;
     let localTrades = [];
     let remoteHistory = [];
@@ -672,6 +654,9 @@
     let historyFilterMode = 'all';
     const ICON_EYE_OPEN = "https://img.icons8.com/ios-glyphs/60/ffffff/visible.png";
     const ICON_EYE_CLOSED = "https://img.icons8.com/ios-glyphs/60/ffffff/hide.png";
+    
+    // Value of 1 VP in USD
+    const VP_TO_USD_RATE = 0.005;
 
     let AdController = null;
 
@@ -699,6 +684,13 @@
 
     async function showRewardedAd() {
       const btn = $('btnWatchAd');
+      
+      // Check Daily Limit Local
+      if (profile.dailyAdViewsCount >= 5) {
+        notify("Daily limit reached (5/5). Come back tomorrow!");
+        return;
+      }
+
       if (!AdController) {
         notify("Ad system not available");
         return;
@@ -720,7 +712,9 @@
       } catch(e) {
         console.error("Ad error:", e);
         if (e.error) {
-          notify("Ad unavailable. Try again later.");
+           // Provide clearer error message if available
+          const errorMsg = typeof e.error === 'string' ? e.error : "Ad unavailable. Try again later.";
+          notify(errorMsg);
         }
       } finally {
         btn.classList.remove('loading');
@@ -737,6 +731,7 @@
         
         if (data.ok) {
           profile.adViewsCount = data.adViewsCount || 0;
+          profile.dailyAdViewsCount = data.dailyAdViewsCount || 0;
           profile.balance = data.balance || profile.balance;
           updateRewardsUI();
           updateBalanceUI();
@@ -747,20 +742,27 @@
     }
 
     function updateRewardsUI() {
-      const views = profile.adViewsCount || 0;
-      const level = Math.floor(views / 10) + 1;
-      const viewsInLevel = views % 10;
-      const progressPercent = (viewsInLevel / 10) * 100;
+      const totalViews = profile.adViewsCount || 0;
+      const dailyViews = profile.dailyAdViewsCount || 0;
+      const dailyMax = 5;
+      
+      const progressPercent = Math.min(100, (dailyViews / dailyMax) * 100);
 
-      $('totalAdsWatched').textContent = views;
-      $('totalEarnedFromAds').textContent = views;
-      $('currentLevelText').textContent = `Level ${level}`;
-      $('adsProgressText').textContent = `${viewsInLevel} / 10 Ads`;
+      $('totalAdsWatched').textContent = totalViews;
+      $('totalEarnedFromAds').textContent = totalViews;
+      
+      $('adsProgressText').textContent = `${dailyViews} / ${dailyMax}`;
       $('adsProgressBar').style.width = progressPercent + '%';
-
-      $('ms-start').classList.add('active');
-      $('ms-5').classList.toggle('active', viewsInLevel >= 5);
-      $('ms-10').classList.toggle('active', viewsInLevel >= 10);
+      
+      // Update Button State
+      const btn = $('btnWatchAd');
+      if (dailyViews >= dailyMax) {
+          btn.disabled = true;
+          btn.textContent = "LIMIT";
+      } else {
+          btn.disabled = false;
+          btn.textContent = "WATCH";
+      }
     }
 
     function formatPrice(val) {
@@ -1269,11 +1271,16 @@
       const val = profile.balance.toFixed(2);
       const displayVal = isBalanceHidden ? "******" : (val + " VP");
       const displayValPure = isBalanceHidden ? "****" : val;
+      
+      const approxUsd = (profile.balance * VP_TO_USD_RATE).toFixed(2);
+      
       $('headerBalance').textContent = displayVal;
       const elProBal = $('profileBalance');
       if(elProBal) elProBal.textContent = displayValPure;
+      
       const elApprox = $('profileBalanceApprox');
-      if(elApprox) elApprox.textContent = isBalanceHidden ? "≈ $****" : `≈ $${val}`;
+      if(elApprox) elApprox.textContent = isBalanceHidden ? "≈ $****" : `≈ $${approxUsd}`;
+      
       const currentMarginPct = parseInt(marginSlider.value) || 0;
       if (currentMarginPct > 0) updateMarginSliderUI(currentMarginPct, false, true);
     }
@@ -1292,6 +1299,7 @@
           profile.name = (data.user.first_name || "User");
           profile.id = data.user.user_id;
           profile.adViewsCount = Number(data.user.ad_views_count || 0);
+          profile.dailyAdViewsCount = Number(data.user.daily_ad_views_count || 0); // Need backend to return this
 
           window._positions = data.positions || [];
           if(data.user.photo_url) {
