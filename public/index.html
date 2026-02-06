@@ -102,7 +102,7 @@
     .right-col { display: flex; flex-direction: column; gap: 12px; }
     .card { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
 
-    .market-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
+    .market-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; gap: 8px; }
     .price-display { font-family: 'Roboto Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
 
     .chart-wrapper { position: relative; display: flex; flex-direction: column; gap: 0; }
@@ -134,20 +134,38 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* OHLC Tooltip — shifted right to avoid drawing tools overlap */
+    /* OHLC Tooltip — adaptive layout */
     .ohlc-tooltip {
       position: absolute; top: 8px; left: 46px; z-index: 30;
-      display: flex; align-items: center; gap: 8px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;
       font-family: 'Roboto Mono', monospace; font-size: 10px; color: var(--muted);
       background: rgba(11, 14, 17, 0.85); padding: 4px 8px; border-radius: 4px;
       pointer-events: none; opacity: 0; transition: opacity 0.15s ease;
+      max-width: calc(100% - 54px);
     }
     .ohlc-tooltip.visible { opacity: 1; }
-    .ohlc-tooltip .ohlc-item { display: flex; gap: 2px; }
+    .ohlc-tooltip .ohlc-item { display: flex; gap: 2px; white-space: nowrap; }
     .ohlc-tooltip .ohlc-label { color: var(--muted); }
     .ohlc-tooltip .ohlc-value { color: var(--white); font-weight: 500; }
     .ohlc-tooltip .ohlc-value.up { color: var(--accent-green); }
     .ohlc-tooltip .ohlc-value.down { color: var(--accent-red); }
+    
+    /* OHLC Tooltip wrapped mode — two rows */
+    .ohlc-tooltip.wrapped {
+      flex-wrap: wrap;
+      gap: 4px 8px;
+    }
+    .ohlc-tooltip.wrapped .ohlc-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ohlc-tooltip.wrapped .ohlc-row-main {
+      width: 100%;
+    }
+    .ohlc-tooltip.wrapped .ohlc-row-secondary {
+      width: 100%;
+    }
 
     /* Drawing Tools Menu */
     .drawing-tools-menu {
@@ -528,10 +546,40 @@
     .loader-bar-bg { width: 140px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
     .loader-bar-fill { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.2s; }
 
-    .tf-selector { display: flex; gap: 2px; background: rgba(255,255,255,0.03); padding: 2px; border-radius: 6px; height: fit-content; }
-    .tf-opt { padding: 4px 8px; font-size: 10px; color: var(--muted); border-radius: 4px; cursor: pointer; font-weight: 600; transition: 0.2s; user-select: none; }
+    /* Timeframe Selector — adaptive layout */
+    .tf-selector { 
+      display: flex; 
+      gap: 2px; 
+      background: rgba(255,255,255,0.03); 
+      padding: 2px; 
+      border-radius: 6px; 
+      height: fit-content;
+      flex-shrink: 0;
+    }
+    .tf-opt { 
+      padding: 4px 8px; 
+      font-size: 10px; 
+      color: var(--muted); 
+      border-radius: 4px; 
+      cursor: pointer; 
+      font-weight: 600; 
+      transition: 0.2s; 
+      user-select: none;
+      white-space: nowrap;
+    }
     .tf-opt:hover { color: var(--white); background: rgba(255,255,255,0.05); }
     .tf-opt.active { background: var(--panel-light); color: var(--gold); }
+    
+    /* Timeframe Selector wrapped mode — two rows */
+    .tf-selector.wrapped {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+    }
+    .tf-selector.wrapped .tf-opt {
+      text-align: center;
+      padding: 4px 6px;
+    }
   </style>
 </head>
 
@@ -594,13 +642,13 @@
                 <div class="chart-loading-spinner"></div>
               </div>
 
-              <!-- OHLC Tooltip — shifted right past drawing tools -->
+              <!-- OHLC Tooltip — adaptive layout -->
               <div class="ohlc-tooltip" id="ohlcTooltip">
-                <div class="ohlc-item"><span class="ohlc-label">O:</span><span class="ohlc-value" id="ohlcOpen">-</span></div>
-                <div class="ohlc-item"><span class="ohlc-label">H:</span><span class="ohlc-value" id="ohlcHigh">-</span></div>
-                <div class="ohlc-item"><span class="ohlc-label">L:</span><span class="ohlc-value" id="ohlcLow">-</span></div>
-                <div class="ohlc-item"><span class="ohlc-label">C:</span><span class="ohlc-value" id="ohlcClose">-</span></div>
-                <div class="ohlc-item"><span class="ohlc-label">V:</span><span class="ohlc-value" id="ohlcVol">-</span></div>
+                <div class="ohlc-item" data-ohlc="open"><span class="ohlc-label">O:</span><span class="ohlc-value" id="ohlcOpen">-</span></div>
+                <div class="ohlc-item" data-ohlc="high"><span class="ohlc-label">H:</span><span class="ohlc-value" id="ohlcHigh">-</span></div>
+                <div class="ohlc-item" data-ohlc="low"><span class="ohlc-label">L:</span><span class="ohlc-value" id="ohlcLow">-</span></div>
+                <div class="ohlc-item" data-ohlc="close"><span class="ohlc-label">C:</span><span class="ohlc-value" id="ohlcClose">-</span></div>
+                <div class="ohlc-item" data-ohlc="vol"><span class="ohlc-label">V:</span><span class="ohlc-value" id="ohlcVol">-</span></div>
               </div>
 
               <!-- Drawing Tools Menu -->
@@ -936,6 +984,7 @@
     </div>
   </div>
 </div>
+
 <script>
   (async function(){
     const $ = (id) => document.getElementById(id);
@@ -1009,6 +1058,115 @@
       tg.setHeaderColor('#1E2329');
       tg.setBackgroundColor('#0B0E11');
       tg.enableClosingConfirmation();
+    }
+
+    // ==================== ADAPTIVE LAYOUT CHECKS ====================
+
+    let adaptiveCheckTimeout = null;
+
+    function debounce(fn, delay) {
+      return function(...args) {
+        clearTimeout(adaptiveCheckTimeout);
+        adaptiveCheckTimeout = setTimeout(() => fn.apply(this, args), delay);
+      };
+    }
+
+    // Check if OHLC tooltip overflows chart container
+    function checkOHLCOverflow() {
+      const tooltip = $('ohlcTooltip');
+      const chartContainer = $('chartCard');
+      if (!tooltip || !chartContainer) return;
+
+      // Temporarily remove wrapped class to measure natural width
+      tooltip.classList.remove('wrapped');
+
+      // Get measurements
+      const containerRect = chartContainer.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      
+      // Calculate available width (container width - left offset - right padding)
+      const leftOffset = 46; // Drawing tools offset
+      const rightPadding = 8;
+      const availableWidth = containerRect.width - leftOffset - rightPadding;
+      
+      // Check if tooltip content overflows
+      const tooltipNaturalWidth = tooltip.scrollWidth;
+      
+      if (tooltipNaturalWidth > availableWidth) {
+        tooltip.classList.add('wrapped');
+      }
+    }
+
+    // Check if timeframe selector overflows market header
+    function checkTimeframeSelectorOverflow() {
+      const selector = $('timeframeSelector');
+      const marketHeader = selector?.closest('.market-header');
+      if (!selector || !marketHeader) return;
+
+      // Temporarily remove wrapped class to measure natural width
+      selector.classList.remove('wrapped');
+
+      // Force reflow to get accurate measurements
+      void selector.offsetWidth;
+
+      // Get measurements
+      const headerRect = marketHeader.getBoundingClientRect();
+      const selectorRect = selector.getBoundingClientRect();
+      
+      // Get price display width
+      const priceDisplay = marketHeader.querySelector('.price-display');
+      const priceContainer = priceDisplay?.parentElement;
+      const priceWidth = priceContainer ? priceContainer.getBoundingClientRect().width : 0;
+      
+      // Calculate available width for selector (header width - price width - gaps)
+      const gap = 8;
+      const padding = 24; // Padding on both sides
+      const availableWidth = headerRect.width - priceWidth - gap - padding;
+      
+      // Check if selector natural width exceeds available space
+      const selectorNaturalWidth = selector.scrollWidth;
+      
+      if (selectorNaturalWidth > availableWidth || selectorRect.right > headerRect.right - 12) {
+        selector.classList.add('wrapped');
+      }
+    }
+
+    // Combined check function with debounce
+    const checkAdaptiveLayouts = debounce(function() {
+      checkTimeframeSelectorOverflow();
+      checkOHLCOverflow();
+    }, 100);
+
+    // Setup resize observer for adaptive checks
+    function setupAdaptiveLayoutObserver() {
+      // Initial check
+      checkAdaptiveLayouts();
+
+      // Observe chart container for size changes
+      const chartCard = $('chartCard');
+      if (chartCard) {
+        const resizeObserver = new ResizeObserver(() => {
+          checkAdaptiveLayouts();
+        });
+        resizeObserver.observe(chartCard);
+      }
+
+      // Also observe market header
+      const marketHeader = document.querySelector('.market-header');
+      if (marketHeader) {
+        const headerObserver = new ResizeObserver(() => {
+          checkTimeframeSelectorOverflow();
+        });
+        headerObserver.observe(marketHeader);
+      }
+
+      // Window resize fallback
+      window.addEventListener('resize', checkAdaptiveLayouts);
+
+      // Orientation change
+      window.addEventListener('orientationchange', () => {
+        setTimeout(checkAdaptiveLayouts, 100);
+      });
     }
 
     // ==================== ADSGRAM ====================
@@ -1165,7 +1323,6 @@
       return vwapData;
     }
 
-    // Build volume data from candles ONCE (no random on every call)
     function buildVolumeData(candles) {
       return candles.map(c => ({
         time: c.time,
@@ -1186,7 +1343,6 @@
     }
 
     function updateIndicators() {
-      // EMA
       if (indicatorState.ema) {
         if (!emaSeries) {
           emaSeries = chart.addLineSeries({
@@ -1199,7 +1355,6 @@
         emaSeries = null;
       }
 
-      // SMA
       if (indicatorState.sma) {
         if (!smaSeries) {
           smaSeries = chart.addLineSeries({
@@ -1212,7 +1367,6 @@
         smaSeries = null;
       }
 
-      // VWAP
       if (indicatorState.vwap) {
         if (!vwapSeries) {
           vwapSeries = chart.addLineSeries({
@@ -1225,7 +1379,6 @@
         vwapSeries = null;
       }
 
-      // Volume — separate chart, data from cached localVolumes
       const volContainer = $('volumeContainer');
       const chartCard = $('chartCard');
       if (indicatorState.volume) {
@@ -1349,6 +1502,9 @@
       $('ohlcVol').className = `ohlc-value ${cls}`;
 
       tooltip.classList.add('visible');
+      
+      // Re-check overflow after content update
+      requestAnimationFrame(checkOHLCOverflow);
     }
 
     // ==================== DOUBLE TAP RESET ====================
@@ -1759,7 +1915,6 @@
       chart.timeScale().fitContent();
       chart.priceScale('right').applyOptions({ autoScale: true });
 
-      // Reset overlay indicators
       Object.keys(indicatorState).forEach(key => {
         if (key !== 'volume') { indicatorState[key] = false; }
         const chipId = key === 'ema' ? 'chipEMA' : key === 'sma' ? 'chipSMA' : key === 'vwap' ? 'chipVWAP' : 'chipVolume';
@@ -1824,7 +1979,6 @@
       downColor: '#F6465D', borderDownColor: '#F6465D', wickDownColor: '#F6465D'
     });
 
-    // Separate volume chart instance — own Y axis for volume values
     volumeChartInstance = LightweightCharts.createChart(volumeChartEl, {
       width: volumeChartEl.clientWidth, height: volumeChartEl.clientHeight,
       layout: { background: { type: 'solid', color: '#0B0E11' }, textColor: '#5E6673' },
@@ -1839,7 +1993,6 @@
       priceScaleId: '',
     });
 
-    // Sync timescales: main → volume
     chart.timeScale().subscribeVisibleLogicalRangeChange(range => {
       if (range) volumeChartInstance.timeScale().setVisibleLogicalRange(range);
     });
@@ -1851,6 +2004,7 @@
       if (entries.length === 0 || entries[0].target !== chartEl) return;
       const r = entries[0].contentRect;
       chart.applyOptions({ width: r.width, height: r.height });
+      checkAdaptiveLayouts();
     }).observe(chartEl);
 
     new ResizeObserver(entries => {
@@ -2057,7 +2211,6 @@
                 lastCandle.low = Math.min(lastCandle.low, currentPrice);
                 lastCandle.close = currentPrice;
                 candleSeries.update(lastCandle);
-                // Update last volume bar color only (not value — stable)
                 if (localVolumes.length > 0) {
                   const lastVol = localVolumes[localVolumes.length - 1];
                   if (lastVol.time === candleTime) {
@@ -2336,6 +2489,9 @@
     setProgress(60, "STREAM...");
     connectWS();
 
+    setProgress(70, "LAYOUT...");
+    setupAdaptiveLayoutObserver();
+
     await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
     setProgress(100, "READY");
 
@@ -2346,3 +2502,5 @@
 
   })();
 </script>
+</body>
+</html>
