@@ -102,7 +102,10 @@
     .right-col { display: flex; flex-direction: column; gap: 12px; }
     .card { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
 
-    .market-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; gap: 8px; }
+    .market-header {
+      display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px;
+      gap: 8px; min-width: 0;
+    }
 
     .price-display { font-family: 'Roboto Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
 
@@ -135,7 +138,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* OHLC Tooltip — adaptive layout */
+    /* OHLC Tooltip — shifted right to avoid drawing tools overlap */
     .ohlc-tooltip {
       position: absolute; top: 8px; left: 46px; z-index: 30;
       display: flex; align-items: center; gap: 8px;
@@ -145,25 +148,10 @@
       max-width: calc(100% - 54px);
     }
     .ohlc-tooltip.visible { opacity: 1; }
-    
-    /* OHLC wrapped mode for narrow screens */
-    .ohlc-tooltip.wrapped {
+    .ohlc-tooltip.ohlc-wrapped {
       flex-wrap: wrap;
-      gap: 4px 8px;
     }
-    .ohlc-tooltip .ohlc-row {
-      display: contents;
-    }
-    .ohlc-tooltip.wrapped .ohlc-row {
-      display: flex;
-      gap: 8px;
-      width: 100%;
-    }
-    .ohlc-tooltip.wrapped .ohlc-row:first-child {
-      margin-bottom: 0;
-    }
-    
-    .ohlc-tooltip .ohlc-item { display: flex; gap: 2px; }
+    .ohlc-tooltip .ohlc-item { display: flex; gap: 2px; white-space: nowrap; }
     .ohlc-tooltip .ohlc-label { color: var(--muted); }
     .ohlc-tooltip .ohlc-value { color: var(--white); font-weight: 500; }
     .ohlc-tooltip .ohlc-value.up { color: var(--accent-green); }
@@ -353,7 +341,7 @@
     .donut-val { position: absolute; z-index: 2; font-size: 12px; font-weight: 700; color: var(--white); }
     .an-text { font-size: 12px; color: var(--white); font-weight: 600; margin-top: 4px; }
 
-    /* PnL Details Modal */
+    /* PnL Details Modal — Code 2 style with Code 1 features */
     .pnl-modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.8); z-index: 1000;
@@ -381,7 +369,7 @@
     .pnl-modal-close:hover { background: rgba(255,255,255,0.1); color: var(--white); }
     .pnl-modal-content { padding: 20px; display: flex; flex-direction: column; gap: 24px; }
 
-    /* Stats Metrics Grid */
+    /* Stats Metrics Grid — 4 cards from Code 1 */
     .stats-metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .stats-metric-card {
       background: rgba(255,255,255,0.03); border: 1px solid var(--border);
@@ -413,7 +401,7 @@
       overflow: hidden; position: relative;
     }
 
-    /* Calendar PnL */
+    /* Calendar PnL — Code 1 full version with month nav */
     .calendar-pnl-container { display: flex; flex-direction: column; gap: 8px; }
     .calendar-month-nav {
       display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 8px;
@@ -548,42 +536,18 @@
     .loader-bar-bg { width: 140px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
     .loader-bar-fill { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.2s; }
 
-    /* Timeframe Selector — adaptive layout */
-    .tf-selector { 
-      display: flex; 
-      gap: 2px; 
-      background: rgba(255,255,255,0.03); 
-      padding: 2px; 
-      border-radius: 6px; 
-      height: fit-content;
-      flex-shrink: 0;
+    .tf-selector {
+      display: flex; gap: 2px; background: rgba(255,255,255,0.03); padding: 2px; border-radius: 6px;
+      height: fit-content; flex-shrink: 0; min-width: 0;
     }
-    .tf-opt { 
-      padding: 4px 8px; 
-      font-size: 10px; 
-      color: var(--muted); 
-      border-radius: 4px; 
-      cursor: pointer; 
-      font-weight: 600; 
-      transition: 0.2s; 
-      user-select: none;
-      white-space: nowrap;
+    .tf-selector.tf-wrapped {
+      flex-wrap: wrap;
+      max-width: 50%;
+      justify-content: flex-end;
     }
+    .tf-opt { padding: 4px 8px; font-size: 10px; color: var(--muted); border-radius: 4px; cursor: pointer; font-weight: 600; transition: 0.2s; user-select: none; white-space: nowrap; }
     .tf-opt:hover { color: var(--white); background: rgba(255,255,255,0.05); }
     .tf-opt.active { background: var(--panel-light); color: var(--gold); }
-    
-    /* Timeframe wrapped mode for narrow screens */
-    .tf-selector.wrapped {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 2px;
-      width: auto;
-      min-width: 90px;
-    }
-    .tf-selector.wrapped .tf-opt {
-      text-align: center;
-      padding: 4px 6px;
-    }
   </style>
 </head>
 <body>
@@ -624,7 +588,7 @@
       <div class="left-col">
         <div class="card">
           <div class="market-header" id="marketHeader">
-            <div>
+            <div style="min-width: 0;">
               <div style="color:var(--muted); font-size:11px; margin-bottom:4px;">Market Price</div>
               <div class="price-display text-green" id="priceDisplay">--.--</div>
             </div>
@@ -645,17 +609,13 @@
                 <div class="chart-loading-spinner"></div>
               </div>
 
-              <!-- OHLC Tooltip — with row grouping for wrap support -->
+              <!-- OHLC Tooltip -->
               <div class="ohlc-tooltip" id="ohlcTooltip">
-                <div class="ohlc-row" id="ohlcRow1">
-                  <div class="ohlc-item"><span class="ohlc-label">O:</span><span class="ohlc-value" id="ohlcOpen">-</span></div>
-                  <div class="ohlc-item"><span class="ohlc-label">H:</span><span class="ohlc-value" id="ohlcHigh">-</span></div>
-                  <div class="ohlc-item"><span class="ohlc-label">L:</span><span class="ohlc-value" id="ohlcLow">-</span></div>
-                </div>
-                <div class="ohlc-row" id="ohlcRow2">
-                  <div class="ohlc-item"><span class="ohlc-label">C:</span><span class="ohlc-value" id="ohlcClose">-</span></div>
-                  <div class="ohlc-item"><span class="ohlc-label">V:</span><span class="ohlc-value" id="ohlcVol">-</span></div>
-                </div>
+                <div class="ohlc-item"><span class="ohlc-label">O:</span><span class="ohlc-value" id="ohlcOpen">-</span></div>
+                <div class="ohlc-item"><span class="ohlc-label">H:</span><span class="ohlc-value" id="ohlcHigh">-</span></div>
+                <div class="ohlc-item"><span class="ohlc-label">L:</span><span class="ohlc-value" id="ohlcLow">-</span></div>
+                <div class="ohlc-item"><span class="ohlc-label">C:</span><span class="ohlc-value" id="ohlcClose">-</span></div>
+                <div class="ohlc-item"><span class="ohlc-label">V:</span><span class="ohlc-value" id="ohlcVol">-</span></div>
               </div>
 
               <!-- Drawing Tools Menu -->
@@ -1056,70 +1016,69 @@
       tg.enableClosingConfirmation();
     }
 
-    // ==================== ADAPTIVE LAYOUT CHECKS ====================
+    // ==================== RESPONSIVE OVERFLOW CHECK ====================
 
-    let adaptiveCheckTimeout = null;
-
-    function checkAdaptiveLayouts() {
-      checkTimeframeOverflow();
-      checkOHLCOverflow();
+    function checkResponsiveOverflows() {
+      checkOhlcOverflow();
+      checkTfSelectorOverflow();
     }
 
-    function checkTimeframeOverflow() {
-      const marketHeader = $('marketHeader');
-      const tfSelector = $('timeframeSelector');
-      if (!marketHeader || !tfSelector) return;
-
-      // Temporarily remove wrapped class to measure natural width
-      tfSelector.classList.remove('wrapped');
-
-      // Force reflow to get accurate measurements
-      void tfSelector.offsetWidth;
-
-      const headerRect = marketHeader.getBoundingClientRect();
-      const tfRect = tfSelector.getBoundingClientRect();
-
-      // Check if timeframe selector overflows beyond market header right edge
-      // Add some padding (8px) to account for container padding
-      const overflows = tfRect.right > headerRect.right - 8;
-
-      if (overflows) {
-        tfSelector.classList.add('wrapped');
-      }
-    }
-
-    function checkOHLCOverflow() {
+    function checkOhlcOverflow() {
       const tooltip = $('ohlcTooltip');
-      const chartCard = $('chartCard');
-      if (!tooltip || !chartCard) return;
+      const container = $('chartCard');
+      if (!tooltip || !container) return;
 
-      // Only check when tooltip is visible
-      if (!tooltip.classList.contains('visible')) return;
+      const wasWrapped = tooltip.classList.contains('ohlc-wrapped');
+      tooltip.classList.remove('ohlc-wrapped');
 
-      // Temporarily remove wrapped class to measure natural width
-      tooltip.classList.remove('wrapped');
+      const containerWidth = container.clientWidth;
+      const tooltipLeft = 46;
+      const tooltipPaddingH = 16;
+      const availableWidth = containerWidth - tooltipLeft - tooltipPaddingH;
 
-      // Force reflow
-      void tooltip.offsetWidth;
+      let totalItemsWidth = 0;
+      const items = tooltip.querySelectorAll('.ohlc-item');
+      const gap = 8;
+      items.forEach((item, i) => {
+        totalItemsWidth += item.offsetWidth;
+        if (i < items.length - 1) totalItemsWidth += gap;
+      });
 
-      const chartRect = chartCard.getBoundingClientRect();
-      const tooltipRect = tooltip.getBoundingClientRect();
-
-      // Check if tooltip extends beyond chart container right edge
-      // Account for some padding (8px)
-      const overflows = tooltipRect.right > chartRect.right - 8;
-
-      if (overflows) {
-        tooltip.classList.add('wrapped');
+      if (totalItemsWidth > availableWidth) {
+        tooltip.classList.add('ohlc-wrapped');
       }
     }
 
-    // Debounced resize handler
-    function onWindowResize() {
-      if (adaptiveCheckTimeout) clearTimeout(adaptiveCheckTimeout);
-      adaptiveCheckTimeout = setTimeout(() => {
-        checkAdaptiveLayouts();
-      }, 100);
+    function checkTfSelectorOverflow() {
+      const tfSelector = $('timeframeSelector');
+      const marketHeader = $('marketHeader');
+      if (!tfSelector || !marketHeader) return;
+
+      const wasWrapped = tfSelector.classList.contains('tf-wrapped');
+      tfSelector.classList.remove('tf-wrapped');
+
+      requestAnimationFrame(() => {
+        const headerRect = marketHeader.getBoundingClientRect();
+        const tfRect = tfSelector.getBoundingClientRect();
+        const overflowRight = tfRect.right > headerRect.right + 1;
+
+        let totalChildWidth = 0;
+        const gap = 2;
+        const padding = 4;
+        const opts = tfSelector.querySelectorAll('.tf-opt');
+        opts.forEach((opt, i) => {
+          totalChildWidth += opt.offsetWidth;
+          if (i < opts.length - 1) totalChildWidth += gap;
+        });
+        totalChildWidth += padding;
+
+        const availableForTf = headerRect.width * 0.6;
+        const needsWrap = overflowRight || totalChildWidth > availableForTf;
+
+        if (needsWrap) {
+          tfSelector.classList.add('tf-wrapped');
+        }
+      });
     }
 
     // ==================== ADSGRAM ====================
@@ -1433,15 +1392,9 @@
 
     function updateOHLCTooltip(param) {
       const tooltip = $('ohlcTooltip');
-      if (!param || !param.time || !param.seriesData) { 
-        tooltip.classList.remove('visible'); 
-        return; 
-      }
+      if (!param || !param.time || !param.seriesData) { tooltip.classList.remove('visible'); return; }
       const candleData = param.seriesData.get(candleSeries);
-      if (!candleData) { 
-        tooltip.classList.remove('visible'); 
-        return; 
-      }
+      if (!candleData) { tooltip.classList.remove('visible'); return; }
 
       const { open, high, low, close } = candleData;
       const isUp = close >= open;
@@ -1461,11 +1414,8 @@
       $('ohlcVol').className = `ohlc-value ${cls}`;
 
       tooltip.classList.add('visible');
-      
-      // Check overflow after showing tooltip
-      requestAnimationFrame(() => {
-        checkOHLCOverflow();
-      });
+
+      requestAnimationFrame(() => { checkOhlcOverflow(); });
     }
 
     // ==================== DOUBLE TAP RESET ====================
@@ -1685,13 +1635,7 @@
       target.classList.remove('hidden');
       target.classList.add('active');
       if (viewId === 'view-profile') { if(tg) tg.BackButton.show(); }
-      else if (viewId === 'view-trade') { 
-        if(tg) tg.BackButton.hide(); 
-        // Re-check adaptive layouts when returning to trade view
-        requestAnimationFrame(() => {
-          checkAdaptiveLayouts();
-        });
-      }
+      else if (viewId === 'view-trade') { if(tg) tg.BackButton.hide(); }
       else if (viewId === 'view-rewards') { loadAdStats(); }
     }
 
@@ -1967,12 +1911,12 @@
     chart.subscribeCrosshairMove(updateOHLCTooltip);
     chart.subscribeClick(handleChartClick);
 
+    // ResizeObserver for main chart — also triggers responsive overflow checks
     new ResizeObserver(entries => {
       if (entries.length === 0 || entries[0].target !== chartEl) return;
       const r = entries[0].contentRect;
       chart.applyOptions({ width: r.width, height: r.height });
-      // Check adaptive layouts on chart resize
-      checkAdaptiveLayouts();
+      checkResponsiveOverflows();
     }).observe(chartEl);
 
     new ResizeObserver(entries => {
@@ -1981,8 +1925,13 @@
       volumeChartInstance.applyOptions({ width: r.width, height: r.height });
     }).observe(volumeChartEl);
 
-    // Window resize listener for adaptive layouts
-    window.addEventListener('resize', onWindowResize);
+    // Additional ResizeObserver on market-header for tf-selector checks
+    const marketHeaderEl = $('marketHeader');
+    if (marketHeaderEl) {
+      new ResizeObserver(() => {
+        checkTfSelectorOverflow();
+      }).observe(marketHeaderEl);
+    }
 
     // ==================== HISTORY LOADING ====================
 
@@ -2463,10 +2412,8 @@
     await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
     setProgress(100, "READY");
 
-    // Initial adaptive layout check after everything is loaded
-    setTimeout(() => {
-      checkAdaptiveLayouts();
-    }, 100);
+    // Initial responsive check after everything is loaded
+    setTimeout(() => { checkResponsiveOverflows(); }, 100);
 
     setTimeout(() => {
       loaderEl.classList.add('hidden');
