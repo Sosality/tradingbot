@@ -103,11 +103,19 @@
     .card { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
 
     .market-header {
-      display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px;
-      gap: 8px; min-width: 0;
+      display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;
+      gap: 12px; min-width: 0; position: relative;
     }
 
-    .price-display { font-family: 'Roboto Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
+    .price-block {
+      display: flex; flex-direction: column; min-width: 0; flex-shrink: 0;
+    }
+
+    .price-label {
+      color: var(--muted); font-size: 11px; margin-bottom: 4px;
+    }
+
+    .price-display { font-family: 'Roboto Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; letter-spacing: -1px; white-space: nowrap; }
 
     .chart-wrapper { position: relative; display: flex; flex-direction: column; gap: 0; }
 
@@ -138,7 +146,6 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* OHLC Tooltip — shifted right to avoid drawing tools overlap */
     .ohlc-tooltip {
       position: absolute; top: 8px; left: 46px; z-index: 30;
       display: flex; align-items: center; gap: 8px;
@@ -157,7 +164,6 @@
     .ohlc-tooltip .ohlc-value.up { color: var(--accent-green); }
     .ohlc-tooltip .ohlc-value.down { color: var(--accent-red); }
 
-    /* Drawing Tools Menu */
     .drawing-tools-menu {
       position: absolute; top: 8px; left: 8px; z-index: 40;
       display: flex; flex-direction: column; gap: 2px;
@@ -185,7 +191,6 @@
     .drawing-tool-btn.active { background: rgba(30, 144, 255, 0.2); color: var(--accent-blue); border-color: var(--accent-blue); }
     .drawing-tool-btn svg { width: 14px; height: 14px; }
 
-    /* Indicators Panel */
     .indicators-panel {
       display: flex; align-items: center; gap: 6px; padding: 8px 0; flex-wrap: wrap;
     }
@@ -306,7 +311,6 @@
     }
     .close-btn:active { background: var(--accent-red); color: #fff; }
 
-    /* Profile */
     .profile-container { flex: 1; display: flex; flex-direction: column; padding: 16px; overflow-y: auto; gap: 20px; background: var(--bg); }
     .pro-header, .asset-card, .analysis-block, .rewards-banner, .hist-header-row { flex-shrink: 0; }
     .pro-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -341,7 +345,6 @@
     .donut-val { position: absolute; z-index: 2; font-size: 12px; font-weight: 700; color: var(--white); }
     .an-text { font-size: 12px; color: var(--white); font-weight: 600; margin-top: 4px; }
 
-    /* PnL Details Modal — Code 2 style with Code 1 features */
     .pnl-modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.8); z-index: 1000;
@@ -369,7 +372,6 @@
     .pnl-modal-close:hover { background: rgba(255,255,255,0.1); color: var(--white); }
     .pnl-modal-content { padding: 20px; display: flex; flex-direction: column; gap: 24px; }
 
-    /* Stats Metrics Grid — 4 cards from Code 1 */
     .stats-metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .stats-metric-card {
       background: rgba(255,255,255,0.03); border: 1px solid var(--border);
@@ -380,7 +382,6 @@
     .stats-metric-value.positive { color: var(--accent-green); }
     .stats-metric-value.negative { color: var(--accent-red); }
 
-    /* Period Selector */
     .period-selector {
       display: flex; gap: 4px; background: rgba(255,255,255,0.03);
       padding: 3px; border-radius: 8px; border: 1px solid var(--border);
@@ -392,7 +393,6 @@
     .period-btn:hover { color: var(--white); }
     .period-btn.active { background: var(--panel-light); color: var(--white); }
 
-    /* Chart Section in Modal */
     .chart-section { display: flex; flex-direction: column; gap: 12px; }
     .chart-section-header { display: flex; justify-content: space-between; align-items: center; }
     .chart-section-title { font-size: 13px; font-weight: 600; color: var(--white); }
@@ -401,7 +401,6 @@
       overflow: hidden; position: relative;
     }
 
-    /* Calendar PnL — Code 1 full version with month nav */
     .calendar-pnl-container { display: flex; flex-direction: column; gap: 8px; }
     .calendar-month-nav {
       display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 8px;
@@ -439,7 +438,6 @@
     .calendar-legend-dot.loss { background: var(--accent-red-transparent); }
     .calendar-legend-dot.no-trade { background: rgba(255,255,255,0.03); }
 
-    /* Referrals */
     .ref-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
     .ref-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     .ref-title { font-weight: 800; font-size: 14px; }
@@ -458,7 +456,6 @@
     .ref-date { font-size: 10px; color: var(--muted); font-family: monospace; flex-shrink: 0; }
     .ref-status { font-size: 10px; color: var(--muted); }
 
-    /* Rewards Banner */
     .rewards-banner {
       background: linear-gradient(90deg, #1E2329 0%, #252a33 100%); border: 1px solid rgba(240, 185, 11, 0.3);
       border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center;
@@ -486,7 +483,6 @@
     .hc-val { color: var(--white); font-family: 'Roboto Mono'; }
     .hc-pnl { font-weight: 700; font-family: 'Roboto Mono'; font-size: 14px; }
 
-    /* Rewards */
     .rewards-container { padding: 20px; display: flex; flex-direction: column; gap: 24px; overflow-y: auto; padding-bottom: 100px; }
     .rewards-header { text-align: center; padding: 20px 0; }
     .rh-title { font-size: 22px; font-weight: 700; color: var(--white); margin-bottom: 8px; }
@@ -536,16 +532,40 @@
     .loader-bar-bg { width: 140px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
     .loader-bar-fill { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.2s; }
 
+    /* Timeframe Selector - Основные стили */
     .tf-selector {
-      display: flex; gap: 2px; background: rgba(255,255,255,0.03); padding: 2px; border-radius: 6px;
-      height: fit-content; flex-shrink: 0; min-width: 0;
+      display: flex;
+      gap: 2px;
+      background: rgba(255,255,255,0.03);
+      padding: 2px;
+      border-radius: 6px;
+      height: fit-content;
+      flex-shrink: 0;
+      align-self: flex-start;
     }
+
+    /* Timeframe Selector - Wrapped режим (2 строки по 3 элемента) */
     .tf-selector.tf-wrapped {
-      flex-wrap: wrap;
-      max-width: 50%;
-      justify-content: flex-end;
+      display: grid;
+      grid-template-columns: repeat(3, auto);
+      grid-template-rows: auto auto;
+      gap: 2px;
+      width: auto;
+      justify-content: end;
     }
-    .tf-opt { padding: 4px 8px; font-size: 10px; color: var(--muted); border-radius: 4px; cursor: pointer; font-weight: 600; transition: 0.2s; user-select: none; white-space: nowrap; }
+
+    .tf-opt {
+      padding: 4px 8px;
+      font-size: 10px;
+      color: var(--muted);
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.2s;
+      user-select: none;
+      white-space: nowrap;
+      text-align: center;
+    }
     .tf-opt:hover { color: var(--white); background: rgba(255,255,255,0.05); }
     .tf-opt.active { background: var(--panel-light); color: var(--gold); }
   </style>
@@ -588,8 +608,8 @@
       <div class="left-col">
         <div class="card">
           <div class="market-header" id="marketHeader">
-            <div style="min-width: 0;">
-              <div style="color:var(--muted); font-size:11px; margin-bottom:4px;">Market Price</div>
+            <div class="price-block" id="priceBlock">
+              <div class="price-label">Market Price</div>
               <div class="price-display text-green" id="priceDisplay">--.--</div>
             </div>
             <div class="tf-selector" id="timeframeSelector">
@@ -609,7 +629,6 @@
                 <div class="chart-loading-spinner"></div>
               </div>
 
-              <!-- OHLC Tooltip -->
               <div class="ohlc-tooltip" id="ohlcTooltip">
                 <div class="ohlc-item"><span class="ohlc-label">O:</span><span class="ohlc-value" id="ohlcOpen">-</span></div>
                 <div class="ohlc-item"><span class="ohlc-label">H:</span><span class="ohlc-value" id="ohlcHigh">-</span></div>
@@ -618,7 +637,6 @@
                 <div class="ohlc-item"><span class="ohlc-label">V:</span><span class="ohlc-value" id="ohlcVol">-</span></div>
               </div>
 
-              <!-- Drawing Tools Menu -->
               <div class="drawing-tools-menu" id="drawingToolsMenu">
                 <div class="drawing-tools-toggle" id="drawingToolsToggle" title="Drawing Tools">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
@@ -644,12 +662,10 @@
               </div>
             </div>
 
-            <!-- Separate Volume Chart Container -->
             <div class="volume-container" id="volumeContainer">
               <div id="volumeChart" style="width: 100%; height: 100%;"></div>
             </div>
 
-            <!-- Indicators Panel -->
             <div class="indicators-panel" id="indicatorsPanel">
               <div class="indicator-chip ema" id="chipEMA" data-indicator="ema">
                 <span class="indicator-dot"></span>
@@ -736,7 +752,6 @@
     </main>
   </div>
 
-  <!-- Profile View -->
   <div id="view-profile" class="view-section hidden">
     <div class="profile-container">
       <div class="pro-header">
@@ -827,7 +842,6 @@
     </div>
   </div>
 
-  <!-- Rewards View -->
   <div id="view-rewards" class="view-section hidden">
     <div class="rewards-container">
       <div class="rewards-header">
@@ -879,7 +893,6 @@
 
 </div>
 
-<!-- PnL Details Modal -->
 <div class="pnl-modal-overlay" id="pnlModalOverlay">
   <div class="pnl-modal" id="pnlModal">
     <div class="pnl-modal-header">
@@ -1018,6 +1031,8 @@
 
     // ==================== RESPONSIVE OVERFLOW CHECK ====================
 
+    const TF_OVERLAP_GAP = 12;
+
     function checkResponsiveOverflows() {
       checkOhlcOverflow();
       checkTfSelectorOverflow();
@@ -1028,7 +1043,6 @@
       const container = $('chartCard');
       if (!tooltip || !container) return;
 
-      const wasWrapped = tooltip.classList.contains('ohlc-wrapped');
       tooltip.classList.remove('ohlc-wrapped');
 
       const containerWidth = container.clientWidth;
@@ -1051,31 +1065,31 @@
 
     function checkTfSelectorOverflow() {
       const tfSelector = $('timeframeSelector');
+      const priceBlock = $('priceBlock');
       const marketHeader = $('marketHeader');
-      if (!tfSelector || !marketHeader) return;
+      
+      if (!tfSelector || !priceBlock || !marketHeader) return;
 
-      const wasWrapped = tfSelector.classList.contains('tf-wrapped');
       tfSelector.classList.remove('tf-wrapped');
 
       requestAnimationFrame(() => {
-        const headerRect = marketHeader.getBoundingClientRect();
+        const priceRect = priceBlock.getBoundingClientRect();
         const tfRect = tfSelector.getBoundingClientRect();
-        const overflowRight = tfRect.right > headerRect.right + 1;
+        const headerRect = marketHeader.getBoundingClientRect();
 
-        let totalChildWidth = 0;
-        const gap = 2;
-        const padding = 4;
-        const opts = tfSelector.querySelectorAll('.tf-opt');
-        opts.forEach((opt, i) => {
-          totalChildWidth += opt.offsetWidth;
-          if (i < opts.length - 1) totalChildWidth += gap;
-        });
-        totalChildWidth += padding;
+        const priceRightEdge = priceRect.right;
+        const tfLeftEdge = tfRect.left;
+        const gap = tfLeftEdge - priceRightEdge;
 
-        const availableForTf = headerRect.width * 0.6;
-        const needsWrap = overflowRight || totalChildWidth > availableForTf;
+        const isOverlapping = gap < TF_OVERLAP_GAP;
 
-        if (needsWrap) {
+        const headerWidth = headerRect.width;
+        const tfWidth = tfRect.width;
+        const priceWidth = priceRect.width;
+        const minRequiredWidth = priceWidth + tfWidth + TF_OVERLAP_GAP;
+        const needsWrapByWidth = minRequiredWidth > headerWidth;
+
+        if (isOverlapping || needsWrapByWidth) {
           tfSelector.classList.add('tf-wrapped');
         }
       });
@@ -1911,7 +1925,6 @@
     chart.subscribeCrosshairMove(updateOHLCTooltip);
     chart.subscribeClick(handleChartClick);
 
-    // ResizeObserver for main chart — also triggers responsive overflow checks
     new ResizeObserver(entries => {
       if (entries.length === 0 || entries[0].target !== chartEl) return;
       const r = entries[0].contentRect;
@@ -1925,7 +1938,6 @@
       volumeChartInstance.applyOptions({ width: r.width, height: r.height });
     }).observe(volumeChartEl);
 
-    // Additional ResizeObserver on market-header for tf-selector checks
     const marketHeaderEl = $('marketHeader');
     if (marketHeaderEl) {
       new ResizeObserver(() => {
@@ -2412,7 +2424,6 @@
     await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
     setProgress(100, "READY");
 
-    // Initial responsive check after everything is loaded
     setTimeout(() => { checkResponsiveOverflows(); }, 100);
 
     setTimeout(() => {
