@@ -102,7 +102,13 @@
     .right-col { display: flex; flex-direction: column; gap: 12px; }
     .card { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
 
-    .market-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; gap: 8px; }
+    .market-header {
+      display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px;
+      gap: 8px; flex-wrap: nowrap;
+    }
+    .market-header.wrapped {
+      flex-direction: column; align-items: flex-start; gap: 10px;
+    }
     .price-display { font-family: 'Roboto Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
 
     .chart-wrapper { position: relative; display: flex; flex-direction: column; gap: 0; }
@@ -134,38 +140,24 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* OHLC Tooltip — adaptive layout */
+    /* OHLC Tooltip — shifted right to avoid drawing tools overlap */
     .ohlc-tooltip {
       position: absolute; top: 8px; left: 46px; z-index: 30;
-      display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;
+      display: flex; align-items: center; gap: 8px;
       font-family: 'Roboto Mono', monospace; font-size: 10px; color: var(--muted);
       background: rgba(11, 14, 17, 0.85); padding: 4px 8px; border-radius: 4px;
       pointer-events: none; opacity: 0; transition: opacity 0.15s ease;
       max-width: calc(100% - 54px);
     }
     .ohlc-tooltip.visible { opacity: 1; }
+    .ohlc-tooltip.wrapped {
+      flex-wrap: wrap; gap: 4px 8px;
+    }
     .ohlc-tooltip .ohlc-item { display: flex; gap: 2px; white-space: nowrap; }
     .ohlc-tooltip .ohlc-label { color: var(--muted); }
     .ohlc-tooltip .ohlc-value { color: var(--white); font-weight: 500; }
     .ohlc-tooltip .ohlc-value.up { color: var(--accent-green); }
     .ohlc-tooltip .ohlc-value.down { color: var(--accent-red); }
-    
-    /* OHLC Tooltip wrapped mode — two rows */
-    .ohlc-tooltip.wrapped {
-      flex-wrap: wrap;
-      gap: 4px 8px;
-    }
-    .ohlc-tooltip.wrapped .ohlc-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .ohlc-tooltip.wrapped .ohlc-row-main {
-      width: 100%;
-    }
-    .ohlc-tooltip.wrapped .ohlc-row-secondary {
-      width: 100%;
-    }
 
     /* Drawing Tools Menu */
     .drawing-tools-menu {
@@ -351,7 +343,7 @@
     .donut-val { position: absolute; z-index: 2; font-size: 12px; font-weight: 700; color: var(--white); }
     .an-text { font-size: 12px; color: var(--white); font-weight: 600; margin-top: 4px; }
 
-    /* PnL Details Modal — Code 2 style with Code 1 features */
+    /* PnL Details Modal */
     .pnl-modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.8); z-index: 1000;
@@ -379,7 +371,7 @@
     .pnl-modal-close:hover { background: rgba(255,255,255,0.1); color: var(--white); }
     .pnl-modal-content { padding: 20px; display: flex; flex-direction: column; gap: 24px; }
 
-    /* Stats Metrics Grid — 4 cards from Code 1 */
+    /* Stats Metrics Grid */
     .stats-metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .stats-metric-card {
       background: rgba(255,255,255,0.03); border: 1px solid var(--border);
@@ -411,7 +403,7 @@
       overflow: hidden; position: relative;
     }
 
-    /* Calendar PnL — Code 1 full version with month nav */
+    /* Calendar PnL */
     .calendar-pnl-container { display: flex; flex-direction: column; gap: 8px; }
     .calendar-month-nav {
       display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 8px;
@@ -546,43 +538,21 @@
     .loader-bar-bg { width: 140px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
     .loader-bar-fill { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.2s; }
 
-    /* Timeframe Selector — adaptive layout */
-    .tf-selector { 
-      display: flex; 
-      gap: 2px; 
-      background: rgba(255,255,255,0.03); 
-      padding: 2px; 
-      border-radius: 6px; 
-      height: fit-content;
-      flex-shrink: 0;
+    .tf-selector {
+      display: flex; gap: 2px; background: rgba(255,255,255,0.03); padding: 2px; border-radius: 6px;
+      height: fit-content; flex-shrink: 0; flex-wrap: nowrap;
     }
-    .tf-opt { 
-      padding: 4px 8px; 
-      font-size: 10px; 
-      color: var(--muted); 
-      border-radius: 4px; 
-      cursor: pointer; 
-      font-weight: 600; 
-      transition: 0.2s; 
-      user-select: none;
-      white-space: nowrap;
+    .tf-selector.wrapped {
+      flex-wrap: wrap; max-width: 140px; justify-content: flex-start;
     }
+    .market-header.wrapped .tf-selector {
+      max-width: none; align-self: flex-end;
+    }
+    .tf-opt { padding: 4px 8px; font-size: 10px; color: var(--muted); border-radius: 4px; cursor: pointer; font-weight: 600; transition: 0.2s; user-select: none; white-space: nowrap; }
     .tf-opt:hover { color: var(--white); background: rgba(255,255,255,0.05); }
     .tf-opt.active { background: var(--panel-light); color: var(--gold); }
-    
-    /* Timeframe Selector wrapped mode — two rows */
-    .tf-selector.wrapped {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 2px;
-    }
-    .tf-selector.wrapped .tf-opt {
-      text-align: center;
-      padding: 4px 6px;
-    }
   </style>
 </head>
-
 <body>
 
 <div id="app-loader">
@@ -620,7 +590,7 @@
     <main class="container">
       <div class="left-col">
         <div class="card">
-          <div class="market-header">
+          <div class="market-header" id="marketHeader">
             <div>
               <div style="color:var(--muted); font-size:11px; margin-bottom:4px;">Market Price</div>
               <div class="price-display text-green" id="priceDisplay">--.--</div>
@@ -642,13 +612,13 @@
                 <div class="chart-loading-spinner"></div>
               </div>
 
-              <!-- OHLC Tooltip — adaptive layout -->
+              <!-- OHLC Tooltip -->
               <div class="ohlc-tooltip" id="ohlcTooltip">
-                <div class="ohlc-item" data-ohlc="open"><span class="ohlc-label">O:</span><span class="ohlc-value" id="ohlcOpen">-</span></div>
-                <div class="ohlc-item" data-ohlc="high"><span class="ohlc-label">H:</span><span class="ohlc-value" id="ohlcHigh">-</span></div>
-                <div class="ohlc-item" data-ohlc="low"><span class="ohlc-label">L:</span><span class="ohlc-value" id="ohlcLow">-</span></div>
-                <div class="ohlc-item" data-ohlc="close"><span class="ohlc-label">C:</span><span class="ohlc-value" id="ohlcClose">-</span></div>
-                <div class="ohlc-item" data-ohlc="vol"><span class="ohlc-label">V:</span><span class="ohlc-value" id="ohlcVol">-</span></div>
+                <div class="ohlc-item"><span class="ohlc-label">O:</span><span class="ohlc-value" id="ohlcOpen">-</span></div>
+                <div class="ohlc-item"><span class="ohlc-label">H:</span><span class="ohlc-value" id="ohlcHigh">-</span></div>
+                <div class="ohlc-item"><span class="ohlc-label">L:</span><span class="ohlc-value" id="ohlcLow">-</span></div>
+                <div class="ohlc-item"><span class="ohlc-label">C:</span><span class="ohlc-value" id="ohlcClose">-</span></div>
+                <div class="ohlc-item"><span class="ohlc-label">V:</span><span class="ohlc-value" id="ohlcVol">-</span></div>
               </div>
 
               <!-- Drawing Tools Menu -->
@@ -810,7 +780,6 @@
             <div class="an-text" id="totalTradesVal" style="margin-top: 6px;">0 Trades</div>
           </div>
         </div>
-        <!-- Net PnL card — Code 1 style "Tap for details →" -->
         <div class="an-card clickable" id="netPnlCard">
           <div class="an-title">Net PnL</div>
           <div class="an-content-center">
@@ -921,7 +890,6 @@
       <button class="pnl-modal-close" id="pnlModalClose">×</button>
     </div>
     <div class="pnl-modal-content">
-      <!-- 4 Metric Cards from Code 1 -->
       <div class="stats-metrics-grid">
         <div class="stats-metric-card">
           <div class="stats-metric-label">Avg Risk:Reward</div>
@@ -941,7 +909,6 @@
         </div>
       </div>
 
-      <!-- Equity Curve — LightweightCharts with Y-axis numbers -->
       <div class="chart-section">
         <div class="chart-section-header">
           <div class="chart-section-title">Equity Curve</div>
@@ -955,7 +922,6 @@
         <div class="equity-chart-container" id="equityChartContainer"></div>
       </div>
 
-      <!-- Calendar PnL with month navigation from Code 1 -->
       <div class="chart-section">
         <div class="chart-section-title" style="margin-bottom: 12px;">Calendar PnL</div>
         <div class="calendar-pnl-container" id="calendarPnlContainer">
@@ -1021,33 +987,26 @@
 
     let AdController = null;
 
-    // Indicator states
     let indicatorState = { ema: false, sma: false, vwap: false, volume: false };
 
-    // Indicator series references (on main chart)
     let emaSeries = null;
     let smaSeries = null;
     let vwapSeries = null;
 
-    // Volume chart references (separate chart instance)
     let volumeChartInstance = null;
     let volumeHistogramSeries = null;
 
-    // Drawing tools state
     let currentDrawingTool = 'cursor';
     let isDrawingToolsOpen = false;
     let drawnLines = [];
     let isDrawing = false;
     let drawStartPoint = null;
 
-    // Double tap
     let lastTapTime = 0;
     const DOUBLE_TAP_DELAY = 300;
 
-    // Calendar state
     let calendarCurrentMonth = new Date();
 
-    // Equity chart references
     let equityChartInstance = null;
     let equityLineSeries = null;
 
@@ -1060,113 +1019,76 @@
       tg.enableClosingConfirmation();
     }
 
-    // ==================== ADAPTIVE LAYOUT CHECKS ====================
+    // ==================== RESPONSIVE OVERFLOW CHECKS ====================
 
-    let adaptiveCheckTimeout = null;
+    function initResponsiveOverflowChecks() {
+      const ohlcTooltip = $('ohlcTooltip');
+      const chartCard = $('chartCard');
+      const marketHeader = $('marketHeader');
+      const tfSelector = $('timeframeSelector');
 
-    function debounce(fn, delay) {
-      return function(...args) {
-        clearTimeout(adaptiveCheckTimeout);
-        adaptiveCheckTimeout = setTimeout(() => fn.apply(this, args), delay);
-      };
+      // OHLC Tooltip: check if it overflows the chart container
+      if (chartCard && ohlcTooltip) {
+        const ohlcObserver = new ResizeObserver(() => {
+          checkOhlcOverflow(chartCard, ohlcTooltip);
+        });
+        ohlcObserver.observe(chartCard);
+        // Also re-check whenever tooltip becomes visible
+        const ohlcMutationObserver = new MutationObserver(() => {
+          checkOhlcOverflow(chartCard, ohlcTooltip);
+        });
+        ohlcMutationObserver.observe(ohlcTooltip, { attributes: true, attributeFilter: ['class'] });
+      }
+
+      // Timeframe selector: check if it overflows the market-header
+      if (marketHeader && tfSelector) {
+        const tfObserver = new ResizeObserver(() => {
+          checkTfOverflow(marketHeader, tfSelector);
+        });
+        tfObserver.observe(marketHeader);
+        // Initial check
+        requestAnimationFrame(() => checkTfOverflow(marketHeader, tfSelector));
+      }
     }
 
-    // Check if OHLC tooltip overflows chart container
-    function checkOHLCOverflow() {
-      const tooltip = $('ohlcTooltip');
-      const chartContainer = $('chartCard');
-      if (!tooltip || !chartContainer) return;
-
-      // Temporarily remove wrapped class to measure natural width
+    function checkOhlcOverflow(container, tooltip) {
+      // Temporarily remove wrapped to measure natural single-line width
+      const wasWrapped = tooltip.classList.contains('wrapped');
       tooltip.classList.remove('wrapped');
 
-      // Get measurements
-      const containerRect = chartContainer.getBoundingClientRect();
-      const tooltipRect = tooltip.getBoundingClientRect();
-      
-      // Calculate available width (container width - left offset - right padding)
-      const leftOffset = 46; // Drawing tools offset
-      const rightPadding = 8;
-      const availableWidth = containerRect.width - leftOffset - rightPadding;
-      
-      // Check if tooltip content overflows
+      const containerWidth = container.clientWidth;
+      const tooltipLeft = 46; // left offset from CSS
+      const availableWidth = containerWidth - tooltipLeft - 8; // 8px right padding
       const tooltipNaturalWidth = tooltip.scrollWidth;
-      
+
       if (tooltipNaturalWidth > availableWidth) {
         tooltip.classList.add('wrapped');
       }
+      // If it was not wrapped and fits, leave it as-is (already removed above)
+      // If it was wrapped but now fits (e.g. screen rotated wider), it stays unwrapped
     }
 
-    // Check if timeframe selector overflows market header
-    function checkTimeframeSelectorOverflow() {
-      const selector = $('timeframeSelector');
-      const marketHeader = selector?.closest('.market-header');
-      if (!selector || !marketHeader) return;
-
-      // Temporarily remove wrapped class to measure natural width
+    function checkTfOverflow(header, selector) {
+      // Temporarily remove wrapped classes to measure natural layout
+      const wasHeaderWrapped = header.classList.contains('wrapped');
+      const wasSelectorWrapped = selector.classList.contains('wrapped');
+      header.classList.remove('wrapped');
       selector.classList.remove('wrapped');
 
-      // Force reflow to get accurate measurements
-      void selector.offsetWidth;
+      // Force layout recalculation
+      const headerWidth = header.clientWidth;
+      const headerScrollWidth = header.scrollWidth;
 
-      // Get measurements
-      const headerRect = marketHeader.getBoundingClientRect();
-      const selectorRect = selector.getBoundingClientRect();
-      
-      // Get price display width
-      const priceDisplay = marketHeader.querySelector('.price-display');
-      const priceContainer = priceDisplay?.parentElement;
-      const priceWidth = priceContainer ? priceContainer.getBoundingClientRect().width : 0;
-      
-      // Calculate available width for selector (header width - price width - gaps)
-      const gap = 8;
-      const padding = 24; // Padding on both sides
-      const availableWidth = headerRect.width - priceWidth - gap - padding;
-      
-      // Check if selector natural width exceeds available space
-      const selectorNaturalWidth = selector.scrollWidth;
-      
-      if (selectorNaturalWidth > availableWidth || selectorRect.right > headerRect.right - 12) {
+      if (headerScrollWidth > headerWidth + 2) {
+        // Content overflows — first try wrapping just the selector into 2 rows
         selector.classList.add('wrapped');
+
+        // Re-check: if still overflows, also wrap the header to column layout
+        if (header.scrollWidth > header.clientWidth + 2) {
+          header.classList.add('wrapped');
+        }
       }
-    }
-
-    // Combined check function with debounce
-    const checkAdaptiveLayouts = debounce(function() {
-      checkTimeframeSelectorOverflow();
-      checkOHLCOverflow();
-    }, 100);
-
-    // Setup resize observer for adaptive checks
-    function setupAdaptiveLayoutObserver() {
-      // Initial check
-      checkAdaptiveLayouts();
-
-      // Observe chart container for size changes
-      const chartCard = $('chartCard');
-      if (chartCard) {
-        const resizeObserver = new ResizeObserver(() => {
-          checkAdaptiveLayouts();
-        });
-        resizeObserver.observe(chartCard);
-      }
-
-      // Also observe market header
-      const marketHeader = document.querySelector('.market-header');
-      if (marketHeader) {
-        const headerObserver = new ResizeObserver(() => {
-          checkTimeframeSelectorOverflow();
-        });
-        headerObserver.observe(marketHeader);
-      }
-
-      // Window resize fallback
-      window.addEventListener('resize', checkAdaptiveLayouts);
-
-      // Orientation change
-      window.addEventListener('orientationchange', () => {
-        setTimeout(checkAdaptiveLayouts, 100);
-      });
+      // If everything fits, both classes remain removed — original layout
     }
 
     // ==================== ADSGRAM ====================
@@ -1502,9 +1424,11 @@
       $('ohlcVol').className = `ohlc-value ${cls}`;
 
       tooltip.classList.add('visible');
-      
+
       // Re-check overflow after content update
-      requestAnimationFrame(checkOHLCOverflow);
+      requestAnimationFrame(() => {
+        checkOhlcOverflow($('chartCard'), tooltip);
+      });
     }
 
     // ==================== DOUBLE TAP RESET ====================
@@ -2004,7 +1928,6 @@
       if (entries.length === 0 || entries[0].target !== chartEl) return;
       const r = entries[0].contentRect;
       chart.applyOptions({ width: r.width, height: r.height });
-      checkAdaptiveLayouts();
     }).observe(chartEl);
 
     new ResizeObserver(entries => {
@@ -2485,12 +2408,10 @@
     initIndicatorChips();
     initPnlModal();
     setupDoubleTapHandler();
+    initResponsiveOverflowChecks();
 
     setProgress(60, "STREAM...");
     connectWS();
-
-    setProgress(70, "LAYOUT...");
-    setupAdaptiveLayoutObserver();
 
     await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
     setProgress(100, "READY");
