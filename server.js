@@ -68,12 +68,10 @@ const WEBAPP_SHORT_NAME = process.env.WEBAPP_SHORT_NAME || "";
 
 const REFERRAL_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
+// ======================== CONSTANTS ========================
 const AD_REWARD_AMOUNT = 1;
 const DAILY_AD_LIMIT = 5;
 const VP_TO_USD_RATE = 0.005;
-
-const MAX_TP_ORDERS = 3;
-const MAX_SL_ORDERS = 3;
 
 function makeReferralCode(len = 8) {
     const bytes = crypto.randomBytes(len);
@@ -180,24 +178,24 @@ async function initDB() {
         console.log("🔄 Recreating/Checking DB tables...");
 
         await db.query(`
-            CREATE TABLE IF NOT EXISTS users (
-                user_id TEXT PRIMARY KEY,
-                first_name TEXT,
-                username TEXT,
-                photo_url TEXT,
-                balance NUMERIC NOT NULL DEFAULT 1000,
-                last_ip TEXT,
-                referral_code TEXT,
-                invited_by TEXT,
-                invited_at TIMESTAMP,
-                ad_views_count INTEGER NOT NULL DEFAULT 0,
-                daily_ad_views INTEGER NOT NULL DEFAULT 0,
-                ad_views_reset_date DATE,
-                last_ad_view TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
+      CREATE TABLE IF NOT EXISTS users (
+        user_id TEXT PRIMARY KEY,
+        first_name TEXT,
+        username TEXT,
+        photo_url TEXT,
+        balance NUMERIC NOT NULL DEFAULT 1000,
+        last_ip TEXT,
+        referral_code TEXT,
+        invited_by TEXT,
+        invited_at TIMESTAMP,
+        ad_views_count INTEGER NOT NULL DEFAULT 0,
+        daily_ad_views INTEGER NOT NULL DEFAULT 0,
+        ad_views_reset_date DATE,
+        last_ad_view TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
         try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip TEXT`); } catch(e) {}
         try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`); } catch(e) {}
@@ -212,65 +210,42 @@ async function initDB() {
         await db.query(`CREATE INDEX IF NOT EXISTS users_invited_by_idx ON users(invited_by);`);
 
         await db.query(`
-            CREATE TABLE IF NOT EXISTS positions (
-                id BIGSERIAL PRIMARY KEY,
-                user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
-                pair TEXT NOT NULL DEFAULT 'BTC-USD',
-                type TEXT NOT NULL,
-                entry_price NUMERIC NOT NULL,
-                margin NUMERIC NOT NULL,
-                leverage INT NOT NULL,
-                size NUMERIC NOT NULL,
-                warning_sent BOOLEAN DEFAULT FALSE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
+      CREATE TABLE IF NOT EXISTS positions (
+        id BIGSERIAL PRIMARY KEY,
+        user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
+        pair TEXT NOT NULL DEFAULT 'BTC-USD',
+        type TEXT NOT NULL,
+        entry_price NUMERIC NOT NULL,
+        margin NUMERIC NOT NULL,
+        leverage INT NOT NULL,
+        size NUMERIC NOT NULL,
+        warning_sent BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
         try { await db.query(`ALTER TABLE positions ADD COLUMN IF NOT EXISTS pair TEXT DEFAULT 'BTC-USD'`); } catch(e) {}
         try { await db.query(`ALTER TABLE positions ADD COLUMN IF NOT EXISTS warning_sent BOOLEAN DEFAULT FALSE`); } catch(e) {}
 
         await db.query(`
-            CREATE TABLE IF NOT EXISTS trades_history (
-                id BIGSERIAL PRIMARY KEY,
-                user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
-                pair TEXT NOT NULL,
-                type TEXT NOT NULL,
-                entry_price NUMERIC NOT NULL,
-                exit_price NUMERIC NOT NULL,
-                size NUMERIC NOT NULL,
-                leverage INT NOT NULL,
-                pnl NUMERIC NOT NULL,
-                commission NUMERIC DEFAULT 0,
-                closed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
+      CREATE TABLE IF NOT EXISTS trades_history (
+        id BIGSERIAL PRIMARY KEY,
+        user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
+        pair TEXT NOT NULL,
+        type TEXT NOT NULL,
+        entry_price NUMERIC NOT NULL,
+        exit_price NUMERIC NOT NULL,
+        size NUMERIC NOT NULL,
+        leverage INT NOT NULL,
+        pnl NUMERIC NOT NULL,
+        commission NUMERIC DEFAULT 0,
+        closed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
         try { await db.query(`ALTER TABLE trades_history ADD COLUMN IF NOT EXISTS commission NUMERIC DEFAULT 0`); } catch(e) {}
 
-        await db.query(`
-            CREATE TABLE IF NOT EXISTS tp_sl_orders (
-                id BIGSERIAL PRIMARY KEY,
-                position_id BIGINT REFERENCES positions(id) ON DELETE CASCADE,
-                user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
-                type TEXT NOT NULL CHECK (type IN ('TAKE_PROFIT', 'STOP_LOSS')),
-                trigger_price NUMERIC NOT NULL,
-                size_percent NUMERIC NOT NULL DEFAULT 100 CHECK (size_percent > 0 AND size_percent <= 100),
-                size_amount NUMERIC NOT NULL,
-                status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'TRIGGERED', 'CANCELLED')),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                triggered_at TIMESTAMP,
-                UNIQUE(position_id, type, trigger_price)
-            );
-        `);
-
-        try { await db.query(`ALTER TABLE tp_sl_orders ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'ACTIVE'`); } catch(e) {}
-        try { await db.query(`ALTER TABLE tp_sl_orders ADD COLUMN IF NOT EXISTS triggered_at TIMESTAMP`); } catch(e) {}
-
-        await db.query(`CREATE INDEX IF NOT EXISTS idx_tp_sl_position ON tp_sl_orders(position_id);`);
-        await db.query(`CREATE INDEX IF NOT EXISTS idx_tp_sl_user ON tp_sl_orders(user_id);`);
-        await db.query(`CREATE INDEX IF NOT EXISTS idx_tp_sl_status ON tp_sl_orders(status);`);
-
-        console.log("✅ DB tables ready (including tp_sl_orders)!");
+        console.log("✅ DB tables ready!");
 
         try {
             const missing = await db.query("SELECT user_id FROM users WHERE referral_code IS NULL");
@@ -327,9 +302,9 @@ async function upsertUserFromObj(userObj, ipAddress, startParamRaw) {
 
         if (!existingRes.rows.length) {
             await db.query(`
-                INSERT INTO users (user_id, first_name, username, photo_url, last_ip, referral_code, invited_by, invited_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            `, [
+        INSERT INTO users (user_id, first_name, username, photo_url, last_ip, referral_code, invited_by, invited_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `, [
                 userId,
                 userObj.first_name || null,
                 userObj.username || null,
@@ -341,17 +316,17 @@ async function upsertUserFromObj(userObj, ipAddress, startParamRaw) {
             ]);
         } else {
             await db.query(`
-                UPDATE users SET
-                    first_name = $2,
-                    username = $3,
-                    photo_url = $4,
-                    last_ip = $5,
-                    referral_code = $6,
-                    invited_by = COALESCE(users.invited_by, $7),
-                    invited_at = COALESCE(users.invited_at, $8),
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE user_id = $1
-            `, [
+        UPDATE users SET
+          first_name = $2,
+          username = $3,
+          photo_url = $4,
+          last_ip = $5,
+          referral_code = $6,
+          invited_by = COALESCE(users.invited_by, $7),
+          invited_at = COALESCE(users.invited_at, $8),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = $1
+      `, [
                 userId,
                 userObj.first_name || null,
                 userObj.username || null,
@@ -452,11 +427,6 @@ app.post("/api/init", async (req, res) => {
             [userRow.user_id]
         );
 
-        const tpSlRes = await db.query(
-            "SELECT * FROM tp_sl_orders WHERE user_id = $1 AND status = 'ACTIVE' ORDER BY created_at ASC",
-            [userRow.user_id]
-        );
-
         const cookieVal = makeSessionCookieValue(userRow.user_id);
         const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
 
@@ -473,8 +443,7 @@ app.post("/api/init", async (req, res) => {
                 daily_ad_limit: DAILY_AD_LIMIT,
                 vp_to_usd_rate: VP_TO_USD_RATE
             }, 
-            positions: positionsRes.rows,
-            tpSlOrders: tpSlRes.rows
+            positions: positionsRes.rows 
         });
 
     } catch (err) {
@@ -494,27 +463,6 @@ async function getAuthenticatedUserId(req) {
     const sessionVal = cookies[COOKIE_NAME];
     const userId = verifySessionCookieValue(sessionVal);
     return userId ? String(userId) : null;
-}
-
-async function getAuthenticatedUser(req) {
-    let userId;
-    if (req.body && req.body.userId) {
-        userId = String(req.body.userId);
-    } else {
-        const cookieHeader = req.headers.cookie || "";
-        const cookies = Object.fromEntries(
-            cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
-        );
-        const sessionVal = cookies[COOKIE_NAME];
-        userId = verifySessionCookieValue(sessionVal);
-    }
-
-    if (!userId) throw new Error("NO_SESSION");
-
-    const res = await db.query("SELECT user_id, balance FROM users WHERE user_id = $1", [userId]);
-    if (!res.rows.length) throw new Error("NO_USER");
-
-    return res.rows[0];
 }
 
 app.get("/api/user/referrals", async (req, res) => {
@@ -581,6 +529,8 @@ app.get("/api/user/history", async (req, res) => {
         res.status(500).json({ ok: false, error: "SERVER_ERROR" });
     }
 });
+
+// ======================== ADSGRAM REWARD ENDPOINT ========================
 
 app.get("/api/adsgram/reward", async (req, res) => {
     console.log("\n🎬 /api/adsgram/reward called!");
@@ -727,184 +677,26 @@ app.get("/api/user/ad-stats", async (req, res) => {
     }
 });
 
-app.get("/api/position/tp-sl/:positionId", async (req, res) => {
-    try {
-        const userId = await getAuthenticatedUserId(req);
-        if (!userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
-
-        const { positionId } = req.params;
-
-        const posCheck = await db.query(
-            "SELECT id FROM positions WHERE id = $1 AND user_id = $2",
-            [positionId, userId]
+async function getAuthenticatedUser(req) {
+    let userId;
+    if (req.body && req.body.userId) {
+        userId = String(req.body.userId);
+    } else {
+        const cookieHeader = req.headers.cookie || "";
+        const cookies = Object.fromEntries(
+            cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
         );
-        if (!posCheck.rows.length) {
-            return res.status(404).json({ ok: false, error: "POSITION_NOT_FOUND" });
-        }
-
-        const ordersRes = await db.query(
-            "SELECT * FROM tp_sl_orders WHERE position_id = $1 AND status = 'ACTIVE' ORDER BY created_at ASC",
-            [positionId]
-        );
-
-        res.json({ ok: true, orders: ordersRes.rows });
-    } catch (err) {
-        console.error("Error fetching TP/SL orders:", err);
-        res.status(500).json({ ok: false, error: "SERVER_ERROR" });
+        const sessionVal = cookies[COOKIE_NAME];
+        userId = verifySessionCookieValue(sessionVal);
     }
-});
 
-app.post("/api/position/tp-sl/create", async (req, res) => {
-    console.log("\n🎯 /api/position/tp-sl/create called!");
-    
-    try {
-        const user = await getAuthenticatedUser(req);
-        const { positionId, type, triggerPrice, sizePercent } = req.body;
+    if (!userId) throw new Error("NO_SESSION");
 
-        if (!positionId || !type || !triggerPrice) {
-            return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
-        }
+    const res = await db.query("SELECT user_id, balance FROM users WHERE user_id = $1", [userId]);
+    if (!res.rows.length) throw new Error("NO_USER");
 
-        if (!['TAKE_PROFIT', 'STOP_LOSS'].includes(type)) {
-            return res.status(400).json({ ok: false, error: "INVALID_ORDER_TYPE" });
-        }
-
-        const triggerPriceNum = Number(triggerPrice);
-        const sizePercentNum = Number(sizePercent) || 100;
-
-        if (isNaN(triggerPriceNum) || triggerPriceNum <= 0) {
-            return res.status(400).json({ ok: false, error: "INVALID_TRIGGER_PRICE" });
-        }
-
-        if (sizePercentNum <= 0 || sizePercentNum > 100) {
-            return res.status(400).json({ ok: false, error: "INVALID_SIZE_PERCENT" });
-        }
-
-        const posRes = await db.query(
-            "SELECT * FROM positions WHERE id = $1 AND user_id = $2",
-            [positionId, user.user_id]
-        );
-
-        if (!posRes.rows.length) {
-            return res.status(404).json({ ok: false, error: "POSITION_NOT_FOUND" });
-        }
-
-        const position = posRes.rows[0];
-        const entryPrice = Number(position.entry_price);
-        const positionType = position.type;
-
-        if (type === 'TAKE_PROFIT') {
-            if (positionType === 'LONG' && triggerPriceNum <= entryPrice) {
-                return res.status(400).json({ ok: false, error: "TP_MUST_BE_ABOVE_ENTRY_FOR_LONG" });
-            }
-            if (positionType === 'SHORT' && triggerPriceNum >= entryPrice) {
-                return res.status(400).json({ ok: false, error: "TP_MUST_BE_BELOW_ENTRY_FOR_SHORT" });
-            }
-        }
-
-        if (type === 'STOP_LOSS') {
-            if (positionType === 'LONG' && triggerPriceNum >= entryPrice) {
-                return res.status(400).json({ ok: false, error: "SL_MUST_BE_BELOW_ENTRY_FOR_LONG" });
-            }
-            if (positionType === 'SHORT' && triggerPriceNum <= entryPrice) {
-                return res.status(400).json({ ok: false, error: "SL_MUST_BE_ABOVE_ENTRY_FOR_SHORT" });
-            }
-        }
-
-        const existingOrders = await db.query(
-            "SELECT type, size_percent FROM tp_sl_orders WHERE position_id = $1 AND status = 'ACTIVE'",
-            [positionId]
-        );
-
-        const tpOrders = existingOrders.rows.filter(o => o.type === 'TAKE_PROFIT');
-        const slOrders = existingOrders.rows.filter(o => o.type === 'STOP_LOSS');
-
-        if (type === 'TAKE_PROFIT' && tpOrders.length >= MAX_TP_ORDERS) {
-            return res.status(400).json({ ok: false, error: "MAX_TP_ORDERS_REACHED", max: MAX_TP_ORDERS });
-        }
-
-        if (type === 'STOP_LOSS' && slOrders.length >= MAX_SL_ORDERS) {
-            return res.status(400).json({ ok: false, error: "MAX_SL_ORDERS_REACHED", max: MAX_SL_ORDERS });
-        }
-
-        const usedPercent = existingOrders.rows.reduce((sum, o) => sum + Number(o.size_percent), 0);
-        if (usedPercent + sizePercentNum > 100) {
-            return res.status(400).json({ 
-                ok: false, 
-                error: "EXCEEDS_POSITION_SIZE",
-                usedPercent: usedPercent,
-                availablePercent: 100 - usedPercent
-            });
-        }
-
-        const positionSize = Number(position.size);
-        const sizeAmount = (positionSize * sizePercentNum) / 100;
-
-        const insertRes = await db.query(`
-            INSERT INTO tp_sl_orders (position_id, user_id, type, trigger_price, size_percent, size_amount)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING *
-        `, [positionId, user.user_id, type, triggerPriceNum, sizePercentNum, sizeAmount]);
-
-        console.log(`✅ TP/SL Order Created: ${type} @ ${triggerPriceNum} for ${sizePercentNum}% of position ${positionId}`);
-
-        res.json({ ok: true, order: insertRes.rows[0] });
-
-    } catch (err) {
-        if (err.code === '23505') {
-            return res.status(400).json({ ok: false, error: "DUPLICATE_ORDER" });
-        }
-        console.error("Error creating TP/SL order:", err);
-        res.status(500).json({ ok: false, error: err.message });
-    }
-});
-
-app.delete("/api/position/tp-sl/:orderId", async (req, res) => {
-    try {
-        const userId = await getAuthenticatedUserId(req);
-        if (!userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
-
-        const { orderId } = req.params;
-
-        const orderRes = await db.query(
-            "SELECT * FROM tp_sl_orders WHERE id = $1 AND user_id = $2 AND status = 'ACTIVE'",
-            [orderId, userId]
-        );
-
-        if (!orderRes.rows.length) {
-            return res.status(404).json({ ok: false, error: "ORDER_NOT_FOUND" });
-        }
-
-        await db.query(
-            "UPDATE tp_sl_orders SET status = 'CANCELLED' WHERE id = $1",
-            [orderId]
-        );
-
-        console.log(`🗑️ TP/SL Order ${orderId} cancelled by user ${userId}`);
-
-        res.json({ ok: true, message: "Order cancelled" });
-    } catch (err) {
-        console.error("Error deleting TP/SL order:", err);
-        res.status(500).json({ ok: false, error: "SERVER_ERROR" });
-    }
-});
-
-app.get("/api/position/tp-sl/all", async (req, res) => {
-    try {
-        const userId = await getAuthenticatedUserId(req);
-        if (!userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
-
-        const ordersRes = await db.query(
-            "SELECT * FROM tp_sl_orders WHERE user_id = $1 AND status = 'ACTIVE' ORDER BY created_at ASC",
-            [userId]
-        );
-
-        res.json({ ok: true, orders: ordersRes.rows });
-    } catch (err) {
-        console.error("Error fetching all TP/SL orders:", err);
-        res.status(500).json({ ok: false, error: "SERVER_ERROR" });
-    }
-});
+    return res.rows[0];
+}
 
 app.post("/api/order/open", async (req, res) => {
     try {
@@ -926,10 +718,10 @@ app.post("/api/order/open", async (req, res) => {
         );
 
         const posRes = await db.query(`
-            INSERT INTO positions (user_id, pair, type, entry_price, margin, leverage, size)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING *
-        `, [user.user_id, pair, type, entryPrice, margin, leverage, size]);
+      INSERT INTO positions (user_id, pair, type, entry_price, margin, leverage, size)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `, [user.user_id, pair, type, entryPrice, margin, leverage, size]);
 
         res.json({ ok: true, position: posRes.rows[0], newBalance: Number(user.balance) - margin });
     } catch (err) {
@@ -982,16 +774,11 @@ app.post("/api/order/close", async (req, res) => {
         const finalCommission = commission;
 
         await db.query(`
-            INSERT INTO trades_history (user_id, pair, type, entry_price, exit_price, size, leverage, pnl, commission)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        `, [user.user_id, pos.pair || 'BTC-USD', pos.type, ePrice, cPrice, pSize, pos.leverage, pnl, finalCommission]);
+      INSERT INTO trades_history (user_id, pair, type, entry_price, exit_price, size, leverage, pnl, commission)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `, [user.user_id, pos.pair || 'BTC-USD', pos.type, ePrice, cPrice, pSize, pos.leverage, pnl, finalCommission]);
 
         await db.query("DELETE FROM positions WHERE id = $1", [positionId]);
-
-        await db.query(
-            "UPDATE tp_sl_orders SET status = 'CANCELLED' WHERE position_id = $1 AND status = 'ACTIVE'",
-            [positionId]
-        );
 
         await db.query("COMMIT");
 
