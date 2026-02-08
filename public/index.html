@@ -311,6 +311,263 @@
     }
     .close-btn:active { background: var(--accent-red); color: #fff; }
 
+    /* ==================== TP/SL SYSTEM STYLES ==================== */
+
+    .tpsl-actions {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;
+      padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .tpsl-btn {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03); color: var(--muted); font-size: 12px;
+      font-weight: 600; cursor: pointer; transition: all 0.2s; user-select: none;
+    }
+    .tpsl-btn:hover { background: rgba(255,255,255,0.06); color: var(--white); }
+    .tpsl-btn:active { transform: scale(0.97); }
+    .tpsl-btn.tp-btn { border-color: rgba(14, 203, 129, 0.3); }
+    .tpsl-btn.tp-btn:hover { background: var(--accent-green-transparent); color: var(--accent-green); border-color: var(--accent-green); }
+    .tpsl-btn.sl-btn { border-color: rgba(246, 70, 93, 0.3); }
+    .tpsl-btn.sl-btn:hover { background: var(--accent-red-transparent); color: var(--accent-red); border-color: var(--accent-red); }
+    .tpsl-btn .tpsl-icon { font-size: 14px; }
+    .tpsl-btn .tpsl-count {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 16px; height: 16px; border-radius: 8px; font-size: 9px; font-weight: 700;
+      padding: 0 4px;
+    }
+    .tpsl-btn.tp-btn .tpsl-count { background: var(--accent-green-transparent); color: var(--accent-green); }
+    .tpsl-btn.sl-btn .tpsl-count { background: var(--accent-red-transparent); color: var(--accent-red); }
+
+    .tpsl-active-list {
+      display: flex; flex-direction: column; gap: 4px; margin-top: 8px;
+    }
+    .tpsl-active-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px; border-radius: 6px; font-size: 11px; font-family: 'Roboto Mono', monospace;
+      border: 1px solid var(--border); background: rgba(255,255,255,0.02);
+    }
+    .tpsl-active-item.tp-item { border-left: 3px solid var(--accent-green); }
+    .tpsl-active-item.sl-item { border-left: 3px solid var(--accent-red); }
+    .tpsl-item-info { display: flex; align-items: center; gap: 8px; }
+    .tpsl-item-badge {
+      font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; text-transform: uppercase;
+    }
+    .tpsl-item-badge.tp { background: var(--accent-green-transparent); color: var(--accent-green); }
+    .tpsl-item-badge.sl { background: var(--accent-red-transparent); color: var(--accent-red); }
+    .tpsl-item-price { color: var(--white); font-weight: 600; }
+    .tpsl-item-pct { color: var(--muted); font-size: 10px; }
+    .tpsl-item-pnl { font-weight: 600; font-size: 10px; }
+    .tpsl-item-delete {
+      width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.05); border: none; border-radius: 4px;
+      color: var(--muted); font-size: 12px; cursor: pointer; transition: all 0.2s;
+    }
+    .tpsl-item-delete:hover { background: var(--accent-red-transparent); color: var(--accent-red); }
+
+    /* TP/SL Modal */
+    .tpsl-modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75); z-index: 1000;
+      opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+    }
+    .tpsl-modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+    .tpsl-modal {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--panel); border-radius: 16px 16px 0 0;
+      max-height: 80vh; overflow-y: auto; z-index: 1001;
+      transform: translateY(100%); transition: transform 0.3s ease;
+    }
+    .tpsl-modal-overlay.active .tpsl-modal { transform: translateY(0); }
+
+    .tpsl-modal-handle {
+      width: 36px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px;
+      margin: 10px auto 0; display: block;
+    }
+
+    .tpsl-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px 8px; position: sticky; top: 0; background: var(--panel); z-index: 10;
+    }
+    .tpsl-modal-title { font-size: 15px; font-weight: 700; color: var(--white); display: flex; align-items: center; gap: 8px; }
+    .tpsl-modal-title .tpsl-type-indicator {
+      font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 700;
+    }
+    .tpsl-type-indicator.tp { background: var(--accent-green-transparent); color: var(--accent-green); }
+    .tpsl-type-indicator.sl { background: var(--accent-red-transparent); color: var(--accent-red); }
+
+    .tpsl-modal-close {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.05); border-radius: 50%; cursor: pointer;
+      color: var(--muted); font-size: 16px; transition: all 0.2s; border: none;
+    }
+    .tpsl-modal-close:hover { background: rgba(255,255,255,0.1); color: var(--white); }
+
+    .tpsl-modal-pos-info {
+      display: flex; align-items: center; gap: 8px; padding: 0 16px 10px;
+      font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border);
+    }
+    .tpsl-pos-pair { font-weight: 700; color: var(--white); font-size: 13px; }
+    .tpsl-pos-type { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; }
+    .tpsl-pos-type.long { background: var(--accent-green-transparent); color: var(--accent-green); }
+    .tpsl-pos-type.short { background: var(--accent-red-transparent); color: var(--accent-red); }
+    .tpsl-pos-entry { font-family: 'Roboto Mono', monospace; font-size: 11px; }
+
+    .tpsl-tabs {
+      display: flex; border-bottom: 1px solid var(--border); padding: 0 16px;
+    }
+    .tpsl-tab {
+      flex: 1; padding: 10px 0; text-align: center; font-size: 12px; font-weight: 600;
+      color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent;
+      transition: all 0.2s; user-select: none;
+    }
+    .tpsl-tab:hover { color: var(--white); }
+    .tpsl-tab.active { color: var(--white); }
+    .tpsl-tab.active.tp-tab { border-bottom-color: var(--accent-green); }
+    .tpsl-tab.active.sl-tab { border-bottom-color: var(--accent-red); }
+
+    .tpsl-modal-body { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+    .tpsl-current-price {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 8px;
+      border: 1px solid var(--border); font-size: 12px;
+    }
+    .tpsl-current-price-label { color: var(--muted); }
+    .tpsl-current-price-val { font-family: 'Roboto Mono', monospace; font-weight: 700; color: var(--white); }
+
+    .tpsl-input-group { display: flex; flex-direction: column; gap: 6px; }
+    .tpsl-input-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    .tpsl-input-wrap {
+      position: relative; display: flex; align-items: center;
+      background: #111; border: 1px solid var(--border); border-radius: 8px;
+      transition: border-color 0.2s; overflow: hidden;
+    }
+    .tpsl-input-wrap:focus-within { border-color: var(--accent-green); }
+    .tpsl-input-wrap.sl-focus:focus-within { border-color: var(--accent-red); }
+    .tpsl-input-wrap.error { border-color: var(--accent-red); }
+    .tpsl-price-input {
+      flex: 1; background: transparent; border: none; color: var(--white);
+      padding: 10px 12px; font-size: 15px; font-family: 'Roboto Mono', monospace;
+      outline: none;
+    }
+    .tpsl-price-input::placeholder { color: rgba(132, 142, 156, 0.5); }
+    .tpsl-input-suffix {
+      padding: 0 12px; font-size: 11px; color: var(--muted); font-weight: 600;
+      border-left: 1px solid var(--border); white-space: nowrap;
+    }
+
+    .tpsl-error-msg {
+      font-size: 11px; color: var(--accent-red); min-height: 16px; padding-left: 2px;
+      transition: opacity 0.2s; opacity: 0;
+    }
+    .tpsl-error-msg.visible { opacity: 1; }
+
+    .tpsl-preview {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      padding: 10px 12px; background: rgba(255,255,255,0.02); border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .tpsl-preview-item { display: flex; flex-direction: column; gap: 2px; }
+    .tpsl-preview-label { font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 600; }
+    .tpsl-preview-val { font-size: 14px; font-weight: 700; font-family: 'Roboto Mono', monospace; }
+
+    .tpsl-volume-section { display: flex; flex-direction: column; gap: 8px; }
+    .tpsl-volume-header { display: flex; justify-content: space-between; align-items: center; }
+    .tpsl-volume-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    .tpsl-volume-val { font-size: 13px; font-weight: 700; color: var(--white); font-family: 'Roboto Mono', monospace; }
+
+    .tpsl-volume-slider {
+      -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px;
+      outline: none; margin: 6px 0;
+      background: linear-gradient(to right, var(--accent-green) 0%, var(--accent-green) 0%, #2A2F36 0%, #2A2F36 100%);
+    }
+    .tpsl-volume-slider.sl-slider {
+      background: linear-gradient(to right, var(--accent-red) 0%, var(--accent-red) 0%, #2A2F36 0%, #2A2F36 100%);
+    }
+    .tpsl-volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%;
+      background: linear-gradient(145deg, #3a4149 0%, #2A2F36 100%); cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+      border: 2px solid var(--accent-green); transition: transform 0.15s ease;
+    }
+    .tpsl-volume-slider.sl-slider::-webkit-slider-thumb { border-color: var(--accent-red); }
+    .tpsl-volume-slider::-webkit-slider-thumb:active { transform: scale(0.95); }
+    .tpsl-volume-slider::-moz-range-thumb {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: linear-gradient(145deg, #3a4149 0%, #2A2F36 100%); cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4); border: 2px solid var(--accent-green);
+    }
+    .tpsl-volume-slider.sl-slider::-moz-range-thumb { border-color: var(--accent-red); }
+
+    .tpsl-volume-chips {
+      display: flex; gap: 4px;
+    }
+    .tpsl-vol-chip {
+      flex: 1; text-align: center; padding: 5px 0; font-size: 10px; font-weight: 600;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 4px;
+      color: var(--muted); cursor: pointer; transition: all 0.2s; user-select: none;
+    }
+    .tpsl-vol-chip:hover { color: var(--white); background: rgba(255,255,255,0.06); }
+    .tpsl-vol-chip.active { font-weight: 700; }
+    .tpsl-vol-chip.active.tp-chip { background: var(--accent-green-transparent); color: var(--accent-green); border-color: var(--accent-green); }
+    .tpsl-vol-chip.active.sl-chip { background: var(--accent-red-transparent); color: var(--accent-red); border-color: var(--accent-red); }
+
+    .tpsl-remaining-info {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 6px;
+      font-size: 11px; border: 1px solid var(--border);
+    }
+    .tpsl-remaining-label { color: var(--muted); }
+    .tpsl-remaining-val { font-family: 'Roboto Mono', monospace; font-weight: 600; color: var(--white); }
+    .tpsl-remaining-val.warning { color: var(--accent-orange); }
+    .tpsl-remaining-val.full { color: var(--accent-red); }
+
+    .tpsl-submit-btn {
+      width: 100%; padding: 12px; border-radius: 8px; border: none;
+      font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .tpsl-submit-btn:active { transform: scale(0.98); }
+    .tpsl-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .tpsl-submit-btn.tp-submit { background: var(--accent-green); color: #052e1f; }
+    .tpsl-submit-btn.sl-submit { background: var(--accent-red); color: #2d0a0f; }
+
+    .tpsl-existing-section {
+      border-top: 1px solid var(--border); padding-top: 12px;
+    }
+    .tpsl-existing-title {
+      font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: 600; margin-bottom: 8px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .tpsl-existing-count { font-size: 10px; }
+    .tpsl-existing-list { display: flex; flex-direction: column; gap: 6px; }
+    .tpsl-existing-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; background: rgba(255,255,255,0.02); border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .tpsl-existing-item-left { display: flex; flex-direction: column; gap: 2px; }
+    .tpsl-existing-item-row { display: flex; align-items: center; gap: 8px; }
+    .tpsl-existing-price { font-family: 'Roboto Mono', monospace; font-weight: 700; font-size: 13px; color: var(--white); }
+    .tpsl-existing-pct { font-size: 10px; color: var(--muted); }
+    .tpsl-existing-pnl { font-size: 11px; font-family: 'Roboto Mono', monospace; font-weight: 600; }
+    .tpsl-existing-delete {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.05); border: none; border-radius: 6px;
+      color: var(--muted); font-size: 14px; cursor: pointer; transition: all 0.2s;
+    }
+    .tpsl-existing-delete:hover { background: var(--accent-red-transparent); color: var(--accent-red); }
+
+    .tpsl-limit-notice {
+      display: flex; align-items: center; gap: 6px; padding: 8px 12px;
+      background: rgba(240, 185, 11, 0.1); border: 1px solid rgba(240, 185, 11, 0.3);
+      border-radius: 8px; font-size: 11px; color: var(--gold);
+    }
+
+    /* ==================== END TP/SL STYLES ==================== */
+
     .profile-container { flex: 1; display: flex; flex-direction: column; padding: 16px; overflow-y: auto; gap: 20px; background: var(--bg); }
     .pro-header, .asset-card, .analysis-block, .rewards-banner, .hist-header-row { flex-shrink: 0; }
     .pro-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -532,39 +789,17 @@
     .loader-bar-bg { width: 140px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
     .loader-bar-fill { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.2s; }
 
-    /* Timeframe Selector - Основные стили */
     .tf-selector {
-      display: flex;
-      gap: 2px;
-      background: rgba(255,255,255,0.03);
-      padding: 2px;
-      border-radius: 6px;
-      height: fit-content;
-      flex-shrink: 0;
-      align-self: flex-start;
+      display: flex; gap: 2px; background: rgba(255,255,255,0.03);
+      padding: 2px; border-radius: 6px; height: fit-content; flex-shrink: 0; align-self: flex-start;
     }
-
-    /* Timeframe Selector - Wrapped режим (2 строки по 3 элемента) */
     .tf-selector.tf-wrapped {
-      display: grid;
-      grid-template-columns: repeat(3, auto);
-      grid-template-rows: auto auto;
-      gap: 2px;
-      width: auto;
-      justify-content: end;
+      display: grid; grid-template-columns: repeat(3, auto); grid-template-rows: auto auto;
+      gap: 2px; width: auto; justify-content: end;
     }
-
     .tf-opt {
-      padding: 4px 8px;
-      font-size: 10px;
-      color: var(--muted);
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: 0.2s;
-      user-select: none;
-      white-space: nowrap;
-      text-align: center;
+      padding: 4px 8px; font-size: 10px; color: var(--muted); border-radius: 4px;
+      cursor: pointer; font-weight: 600; transition: 0.2s; user-select: none; white-space: nowrap; text-align: center;
     }
     .tf-opt:hover { color: var(--white); background: rgba(255,255,255,0.05); }
     .tf-opt.active { background: var(--panel-light); color: var(--gold); }
@@ -893,6 +1128,7 @@
 
 </div>
 
+<!-- PnL Statistics Modal -->
 <div class="pnl-modal-overlay" id="pnlModalOverlay">
   <div class="pnl-modal" id="pnlModal">
     <div class="pnl-modal-header">
@@ -961,6 +1197,101 @@
   </div>
 </div>
 
+<!-- TP/SL Modal -->
+<div class="tpsl-modal-overlay" id="tpslModalOverlay">
+  <div class="tpsl-modal" id="tpslModal">
+    <span class="tpsl-modal-handle"></span>
+    <div class="tpsl-modal-header">
+      <div class="tpsl-modal-title">
+        <span id="tpslModalTitleText">Take Profit</span>
+        <span class="tpsl-type-indicator tp" id="tpslTypeIndicator">TP</span>
+      </div>
+      <button class="tpsl-modal-close" id="tpslModalClose">×</button>
+    </div>
+
+    <div class="tpsl-modal-pos-info" id="tpslPosInfo">
+      <span class="tpsl-pos-pair" id="tpslPosPair">BTC-USD</span>
+      <span class="tpsl-pos-type long" id="tpslPosType">LONG</span>
+      <span>x<span id="tpslPosLev">10</span></span>
+      <span class="tpsl-pos-entry">Entry: <span id="tpslPosEntry">--.--</span></span>
+    </div>
+
+    <div class="tpsl-tabs" id="tpslTabs">
+      <div class="tpsl-tab active tp-tab" data-tab="full" id="tpslTabFull">Full Position</div>
+      <div class="tpsl-tab tp-tab" data-tab="partial" id="tpslTabPartial">Partial</div>
+    </div>
+
+    <div class="tpsl-modal-body" id="tpslModalBody">
+      <!-- Current Price -->
+      <div class="tpsl-current-price">
+        <span class="tpsl-current-price-label">Current Price</span>
+        <span class="tpsl-current-price-val" id="tpslCurrentPrice">--.--</span>
+      </div>
+
+      <!-- Price Input -->
+      <div class="tpsl-input-group">
+        <div class="tpsl-input-label" id="tpslPriceLabel">Trigger Price</div>
+        <div class="tpsl-input-wrap" id="tpslInputWrap">
+          <input type="number" class="tpsl-price-input" id="tpslPriceInput" placeholder="Enter price..." step="any">
+          <span class="tpsl-input-suffix">USD</span>
+        </div>
+        <div class="tpsl-error-msg" id="tpslErrorMsg"></div>
+      </div>
+
+      <!-- Volume Section (only for partial tab) -->
+      <div class="tpsl-volume-section" id="tpslVolumeSection" style="display:none;">
+        <div class="tpsl-volume-header">
+          <span class="tpsl-volume-label">Close Volume</span>
+          <span class="tpsl-volume-val" id="tpslVolumeVal">100%</span>
+        </div>
+        <input type="range" class="tpsl-volume-slider" id="tpslVolumeSlider" min="5" max="100" step="1" value="100">
+        <div class="tpsl-volume-chips" id="tpslVolumeChips">
+          <div class="tpsl-vol-chip tp-chip" data-pct="25">25%</div>
+          <div class="tpsl-vol-chip tp-chip" data-pct="50">50%</div>
+          <div class="tpsl-vol-chip tp-chip" data-pct="75">75%</div>
+          <div class="tpsl-vol-chip tp-chip active" data-pct="100">100%</div>
+        </div>
+
+        <div class="tpsl-remaining-info" id="tpslRemainingInfo">
+          <span class="tpsl-remaining-label">Remaining Available</span>
+          <span class="tpsl-remaining-val" id="tpslRemainingVal">100%</span>
+        </div>
+      </div>
+
+      <!-- PnL/ROE Preview -->
+      <div class="tpsl-preview" id="tpslPreview">
+        <div class="tpsl-preview-item">
+          <span class="tpsl-preview-label">Expected PnL</span>
+          <span class="tpsl-preview-val text-green" id="tpslPreviewPnl">-- VP</span>
+        </div>
+        <div class="tpsl-preview-item">
+          <span class="tpsl-preview-label">ROE</span>
+          <span class="tpsl-preview-val text-green" id="tpslPreviewRoe">--%</span>
+        </div>
+      </div>
+
+      <!-- Submit Button -->
+      <button class="tpsl-submit-btn tp-submit" id="tpslSubmitBtn" disabled>
+        <span id="tpslSubmitText">Set Take Profit</span>
+      </button>
+
+      <!-- Existing Orders -->
+      <div class="tpsl-existing-section" id="tpslExistingSection" style="display:none;">
+        <div class="tpsl-existing-title">
+          <span id="tpslExistingTitle">Active Orders</span>
+          <span class="tpsl-existing-count" id="tpslExistingCount">0/3</span>
+        </div>
+        <div class="tpsl-existing-list" id="tpslExistingList"></div>
+      </div>
+
+      <!-- Limit Notice -->
+      <div class="tpsl-limit-notice" id="tpslLimitNotice" style="display:none;">
+        <span>⚠️</span>
+        <span>Maximum 3 orders reached. Delete an existing order to add a new one.</span>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
   (async function(){
     const $ = (id) => document.getElementById(id);
@@ -972,6 +1303,7 @@
     const ADSGRAM_BLOCK_ID = "22326";
     const VP_TO_USD_RATE = 0.005;
     const DAILY_AD_LIMIT = 5;
+    const MAX_TPSL_PER_TYPE = 3;
 
     let currentUserId = null;
     let selectedPair = "BTC-USD";
@@ -1020,6 +1352,15 @@
     let equityChartInstance = null;
     let equityLineSeries = null;
 
+    // ==================== TP/SL STATE ====================
+    let tpslCache = {};
+    let tpslModalState = {
+      positionId: null,
+      orderType: 'TP',
+      activeTab: 'full',
+      position: null
+    };
+
     const tg = window.Telegram?.WebApp;
     if(tg) {
       tg.ready();
@@ -1042,14 +1383,11 @@
       const tooltip = $('ohlcTooltip');
       const container = $('chartCard');
       if (!tooltip || !container) return;
-
       tooltip.classList.remove('ohlc-wrapped');
-
       const containerWidth = container.clientWidth;
       const tooltipLeft = 46;
       const tooltipPaddingH = 16;
       const availableWidth = containerWidth - tooltipLeft - tooltipPaddingH;
-
       let totalItemsWidth = 0;
       const items = tooltip.querySelectorAll('.ohlc-item');
       const gap = 8;
@@ -1057,7 +1395,6 @@
         totalItemsWidth += item.offsetWidth;
         if (i < items.length - 1) totalItemsWidth += gap;
       });
-
       if (totalItemsWidth > availableWidth) {
         tooltip.classList.add('ohlc-wrapped');
       }
@@ -1067,28 +1404,16 @@
       const tfSelector = $('timeframeSelector');
       const priceBlock = $('priceBlock');
       const marketHeader = $('marketHeader');
-      
       if (!tfSelector || !priceBlock || !marketHeader) return;
-
       tfSelector.classList.remove('tf-wrapped');
-
       requestAnimationFrame(() => {
         const priceRect = priceBlock.getBoundingClientRect();
         const tfRect = tfSelector.getBoundingClientRect();
         const headerRect = marketHeader.getBoundingClientRect();
-
-        const priceRightEdge = priceRect.right;
-        const tfLeftEdge = tfRect.left;
-        const gap = tfLeftEdge - priceRightEdge;
-
+        const gap = tfRect.left - priceRect.right;
         const isOverlapping = gap < TF_OVERLAP_GAP;
-
-        const headerWidth = headerRect.width;
-        const tfWidth = tfRect.width;
-        const priceWidth = priceRect.width;
-        const minRequiredWidth = priceWidth + tfWidth + TF_OVERLAP_GAP;
-        const needsWrapByWidth = minRequiredWidth > headerWidth;
-
+        const minRequiredWidth = priceRect.width + tfRect.width + TF_OVERLAP_GAP;
+        const needsWrapByWidth = minRequiredWidth > headerRect.width;
         if (isOverlapping || needsWrapByWidth) {
           tfSelector.classList.add('tf-wrapped');
         }
@@ -1099,9 +1424,7 @@
 
     function initAdsgram() {
       if (window.Adsgram && ADSGRAM_BLOCK_ID !== "YOUR_BLOCK_ID_HERE") {
-        try {
-          AdController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
-        } catch(e) { console.error("Adsgram init error:", e); }
+        try { AdController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID }); } catch(e) { console.error("Adsgram init error:", e); }
       }
     }
 
@@ -1206,12 +1529,8 @@
       const emaData = [];
       let ema = data.slice(0, period).reduce((sum, c) => sum + c.close, 0) / period;
       for (let i = period - 1; i < data.length; i++) {
-        if (i === period - 1) {
-          emaData.push({ time: data[i].time, value: ema });
-        } else {
-          ema = data[i].close * k + ema * (1 - k);
-          emaData.push({ time: data[i].time, value: ema });
-        }
+        if (i === period - 1) { emaData.push({ time: data[i].time, value: ema }); }
+        else { ema = data[i].close * k + ema * (1 - k); emaData.push({ time: data[i].time, value: ema }); }
       }
       return emaData;
     }
@@ -1229,17 +1548,11 @@
     function calculateVWAP(data) {
       if (!data || data.length === 0) return [];
       const vwapData = [];
-      let cumulativeTPV = 0;
-      let cumulativeVolume = 0;
-      let currentDay = null;
+      let cumulativeTPV = 0, cumulativeVolume = 0, currentDay = null;
       for (let i = 0; i < data.length; i++) {
         const candle = data[i];
         const candleDate = new Date(candle.time * 1000).toDateString();
-        if (candleDate !== currentDay) {
-          cumulativeTPV = 0;
-          cumulativeVolume = 0;
-          currentDay = candleDate;
-        }
+        if (candleDate !== currentDay) { cumulativeTPV = 0; cumulativeVolume = 0; currentDay = candleDate; }
         const typicalPrice = (candle.high + candle.low + candle.close) / 3;
         const volume = (localVolumes[i] && localVolumes[i].value) || 1;
         cumulativeTPV += typicalPrice * volume;
@@ -1270,55 +1583,30 @@
 
     function updateIndicators() {
       if (indicatorState.ema) {
-        if (!emaSeries) {
-          emaSeries = chart.addLineSeries({
-            color: '#1E90FF', lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
-          });
-        }
+        if (!emaSeries) { emaSeries = chart.addLineSeries({ color: '#1E90FF', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }); }
         emaSeries.setData(calculateEMA(localCandles, 20));
-      } else if (emaSeries) {
-        chart.removeSeries(emaSeries);
-        emaSeries = null;
-      }
+      } else if (emaSeries) { chart.removeSeries(emaSeries); emaSeries = null; }
 
       if (indicatorState.sma) {
-        if (!smaSeries) {
-          smaSeries = chart.addLineSeries({
-            color: '#A855F7', lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
-          });
-        }
+        if (!smaSeries) { smaSeries = chart.addLineSeries({ color: '#A855F7', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }); }
         smaSeries.setData(calculateSMA(localCandles, 50));
-      } else if (smaSeries) {
-        chart.removeSeries(smaSeries);
-        smaSeries = null;
-      }
+      } else if (smaSeries) { chart.removeSeries(smaSeries); smaSeries = null; }
 
       if (indicatorState.vwap) {
-        if (!vwapSeries) {
-          vwapSeries = chart.addLineSeries({
-            color: '#F7931A', lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
-          });
-        }
+        if (!vwapSeries) { vwapSeries = chart.addLineSeries({ color: '#F7931A', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }); }
         vwapSeries.setData(calculateVWAP(localCandles));
-      } else if (vwapSeries) {
-        chart.removeSeries(vwapSeries);
-        vwapSeries = null;
-      }
+      } else if (vwapSeries) { chart.removeSeries(vwapSeries); vwapSeries = null; }
 
       const volContainer = $('volumeContainer');
       const chartCard = $('chartCard');
       if (indicatorState.volume) {
         volContainer.classList.add('visible');
         chartCard.classList.add('has-volume');
-        if (volumeHistogramSeries && localVolumes.length > 0) {
-          volumeHistogramSeries.setData(localVolumes);
-        }
+        if (volumeHistogramSeries && localVolumes.length > 0) volumeHistogramSeries.setData(localVolumes);
       } else {
         volContainer.classList.remove('visible');
         chartCard.classList.remove('has-volume');
-        if (volumeHistogramSeries) {
-          volumeHistogramSeries.setData([]);
-        }
+        if (volumeHistogramSeries) volumeHistogramSeries.setData([]);
       }
     }
 
@@ -1370,22 +1658,13 @@
       if (currentDrawingTool === 'horizline') {
         drawHorizontalLine(price);
       } else if (currentDrawingTool === 'trendline') {
-        if (!isDrawing) {
-          isDrawing = true;
-          drawStartPoint = { time: param.time, price: price };
-        } else {
-          drawTrendLine(drawStartPoint, { time: param.time, price: price });
-          isDrawing = false;
-          drawStartPoint = null;
-        }
+        if (!isDrawing) { isDrawing = true; drawStartPoint = { time: param.time, price: price }; }
+        else { drawTrendLine(drawStartPoint, { time: param.time, price: price }); isDrawing = false; drawStartPoint = null; }
       }
     }
 
     function drawHorizontalLine(price) {
-      const line = chart.addLineSeries({
-        color: '#F0B90B', lineWidth: 1, lineStyle: 2,
-        priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: false,
-      });
+      const line = chart.addLineSeries({ color: '#F0B90B', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: false });
       const now = Math.floor(Date.now() / 1000);
       line.setData([{ time: now - 365*86400, value: price }, { time: now + 365*86400, value: price }]);
       drawnLines.push(line);
@@ -1393,10 +1672,7 @@
     }
 
     function drawTrendLine(start, end) {
-      const line = chart.addLineSeries({
-        color: '#1E90FF', lineWidth: 1,
-        priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
-      });
+      const line = chart.addLineSeries({ color: '#1E90FF', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
       line.setData([{ time: start.time, value: start.price }, { time: end.time, value: end.price }]);
       drawnLines.push(line);
       if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
@@ -1409,26 +1685,17 @@
       if (!param || !param.time || !param.seriesData) { tooltip.classList.remove('visible'); return; }
       const candleData = param.seriesData.get(candleSeries);
       if (!candleData) { tooltip.classList.remove('visible'); return; }
-
       const { open, high, low, close } = candleData;
       const isUp = close >= open;
       const cls = isUp ? 'up' : 'down';
-
-      $('ohlcOpen').textContent = formatPrice(open);
-      $('ohlcOpen').className = `ohlc-value ${cls}`;
-      $('ohlcHigh').textContent = formatPrice(high);
-      $('ohlcHigh').className = `ohlc-value ${cls}`;
-      $('ohlcLow').textContent = formatPrice(low);
-      $('ohlcLow').className = `ohlc-value ${cls}`;
-      $('ohlcClose').textContent = formatPrice(close);
-      $('ohlcClose').className = `ohlc-value ${cls}`;
-
+      $('ohlcOpen').textContent = formatPrice(open); $('ohlcOpen').className = `ohlc-value ${cls}`;
+      $('ohlcHigh').textContent = formatPrice(high); $('ohlcHigh').className = `ohlc-value ${cls}`;
+      $('ohlcLow').textContent = formatPrice(low); $('ohlcLow').className = `ohlc-value ${cls}`;
+      $('ohlcClose').textContent = formatPrice(close); $('ohlcClose').className = `ohlc-value ${cls}`;
       const volData = localVolumes.find(v => v.time === param.time);
       $('ohlcVol').textContent = volData ? formatVolume(volData.value) : '--';
       $('ohlcVol').className = `ohlc-value ${cls}`;
-
       tooltip.classList.add('visible');
-
       requestAnimationFrame(() => { checkOhlcOverflow(); });
     }
 
@@ -1473,26 +1740,20 @@
 
     function renderModalStats() {
       if (!remoteHistory || remoteHistory.length === 0) {
-        $('modalAvgRR').textContent = '--';
-        $('modalMaxDD').textContent = '--';
-        $('modalProfitFactor').textContent = '--';
-        $('modalAvgTrade').textContent = '--';
+        $('modalAvgRR').textContent = '--'; $('modalMaxDD').textContent = '--';
+        $('modalProfitFactor').textContent = '--'; $('modalAvgTrade').textContent = '--';
         return;
       }
-
       let totalWins = 0, totalLosses = 0, winCount = 0, lossCount = 0;
       let maxDrawdown = 0, peak = 0, runningPnL = 0;
-
       remoteHistory.forEach(trade => {
         const pnl = Number(trade.pnl);
         runningPnL += pnl;
-        if (pnl > 0) { totalWins += pnl; winCount++; }
-        else { totalLosses += Math.abs(pnl); lossCount++; }
+        if (pnl > 0) { totalWins += pnl; winCount++; } else { totalLosses += Math.abs(pnl); lossCount++; }
         if (runningPnL > peak) peak = runningPnL;
         const dd = peak - runningPnL;
         if (dd > maxDrawdown) maxDrawdown = dd;
       });
-
       const avgWin = winCount > 0 ? totalWins / winCount : 0;
       const avgLoss = lossCount > 0 ? totalLosses / lossCount : 1;
       const avgRR = avgLoss > 0 ? (avgWin / avgLoss).toFixed(2) : '--';
@@ -1502,13 +1763,10 @@
       const rrEl = $('modalAvgRR');
       rrEl.textContent = avgRR !== '--' ? `1:${avgRR}` : '--';
       rrEl.className = `stats-metric-value ${Number(avgRR) >= 1 ? 'positive' : ''}`;
-
       $('modalMaxDD').textContent = maxDrawdown > 0 ? `-${maxDrawdown.toFixed(2)} VP` : '--';
-
       const pfEl = $('modalProfitFactor');
       pfEl.textContent = profitFactor;
       pfEl.className = `stats-metric-value ${Number(profitFactor) >= 1 ? 'positive' : 'negative'}`;
-
       const atEl = $('modalAvgTrade');
       atEl.textContent = avgTrade !== '--' ? `${Number(avgTrade) >= 0 ? '+' : ''}${avgTrade} VP` : '--';
       atEl.className = `stats-metric-value ${Number(avgTrade) >= 0 ? 'positive' : 'negative'}`;
@@ -1517,7 +1775,6 @@
     function renderEquityChart(period) {
       const container = $('equityChartContainer');
       if (equityChartInstance) { equityChartInstance.remove(); equityChartInstance = null; }
-
       equityChartInstance = LightweightCharts.createChart(container, {
         width: container.clientWidth, height: container.clientHeight,
         layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#848E9C' },
@@ -1526,35 +1783,22 @@
         timeScale: { borderVisible: false, timeVisible: true },
         crosshair: { mode: 0 }
       });
-
       equityLineSeries = equityChartInstance.addAreaSeries({
         topColor: 'rgba(14, 203, 129, 0.4)', bottomColor: 'rgba(14, 203, 129, 0.0)',
         lineColor: '#0ECB81', lineWidth: 2,
       });
-
       if (!remoteHistory || remoteHistory.length === 0) { equityLineSeries.setData([]); return; }
-
       const now = Date.now();
       const periods = { '7d': 7*86400000, '30d': 30*86400000, '90d': 90*86400000, 'all': Infinity };
       const cutoff = periods[period] === Infinity ? 0 : now - periods[period];
-
-      const filtered = remoteHistory
-        .filter(h => new Date(h.closed_at).getTime() >= cutoff)
-        .sort((a, b) => new Date(a.closed_at) - new Date(b.closed_at));
-
+      const filtered = remoteHistory.filter(h => new Date(h.closed_at).getTime() >= cutoff).sort((a, b) => new Date(a.closed_at) - new Date(b.closed_at));
       if (filtered.length === 0) { equityLineSeries.setData([]); return; }
-
       let equity = 1000;
       const equityData = [{ time: Math.floor(new Date(filtered[0].closed_at).getTime() / 1000) - 86400, value: equity }];
-      filtered.forEach(trade => {
-        equity += Number(trade.pnl);
-        equityData.push({ time: Math.floor(new Date(trade.closed_at).getTime() / 1000), value: equity });
-      });
-
+      filtered.forEach(trade => { equity += Number(trade.pnl); equityData.push({ time: Math.floor(new Date(trade.closed_at).getTime() / 1000), value: equity }); });
       const unique = equityData.filter((v, i, a) => a.findIndex(t => t.time === v.time) === i).sort((a, b) => a.time - b.time);
       equityLineSeries.setData(unique);
       equityChartInstance.timeScale().fitContent();
-
       const lastEq = unique[unique.length - 1]?.value || 1000;
       const isPos = lastEq >= 1000;
       equityLineSeries.applyOptions({
@@ -1569,15 +1813,12 @@
       const monthLabel = $('calendarMonthLabel');
       const year = calendarCurrentMonth.getFullYear();
       const month = calendarCurrentMonth.getMonth();
-
       const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
       monthLabel.textContent = `${monthNames[month]} ${year}`;
-
       const firstDay = new Date(year, month, 1);
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       let startDay = firstDay.getDay() - 1;
       if (startDay < 0) startDay = 6;
-
       const dailyPnL = {};
       if (remoteHistory && remoteHistory.length > 0) {
         remoteHistory.forEach(trade => {
@@ -1588,21 +1829,15 @@
           }
         });
       }
-
       const maxPnL = Math.max(...Object.values(dailyPnL).map(Math.abs), 1);
       const today = new Date();
       const isCurrentMonth = month === today.getMonth() && year === today.getFullYear();
-
       let html = '';
       for (let i = 0; i < startDay; i++) html += '<div class="calendar-cell empty"></div>';
-
       for (let day = 1; day <= daysInMonth; day++) {
         const pnl = dailyPnL[day];
         let cls = 'calendar-cell';
-        if (pnl !== undefined) {
-          cls += pnl >= 0 ? ' profit' : ' loss';
-          if (Math.abs(pnl) / maxPnL > 0.5) cls += ' high';
-        }
+        if (pnl !== undefined) { cls += pnl >= 0 ? ' profit' : ' loss'; if (Math.abs(pnl) / maxPnL > 0.5) cls += ' high'; }
         if (isCurrentMonth && day === today.getDate()) cls += ' today';
         const title = pnl !== undefined ? `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} VP` : 'No trades';
         html += `<div class="${cls}" title="${title}">${day}</div>`;
@@ -1622,7 +1857,6 @@
       $('pnlModalOverlay').addEventListener('click', (e) => { if (e.target === $('pnlModalOverlay')) closePnlModal(); });
       $('calendarPrev').addEventListener('click', () => changeCalendarMonth(-1));
       $('calendarNext').addEventListener('click', () => changeCalendarMonth(1));
-
       document.querySelectorAll('#equityPeriodSelector .period-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('#equityPeriodSelector .period-btn').forEach(b => b.classList.remove('active'));
@@ -1632,8 +1866,6 @@
         });
       });
     }
-
-    // ==================== INDICATOR CHIPS ====================
 
     function initIndicatorChips() {
       document.querySelectorAll('.indicator-chip').forEach(chip => {
@@ -1725,7 +1957,6 @@
       $('profileId').textContent = "ID: " + profile.id;
       updateBalanceUI();
       if(profile.photo) $('profileAvatarBig').src = profile.photo;
-
       try {
         const res = await fetch(API_BASE + "/api/user/history?userId=" + currentUserId);
         const data = await res.json();
@@ -1734,17 +1965,14 @@
 
       let totalPnL = 0, wins = 0, count = remoteHistory.length;
       remoteHistory.forEach(h => { const p = Number(h.pnl); totalPnL += p; if(p > 0) wins++; });
-
       const pnlEl = $('statPnL');
       pnlEl.textContent = (totalPnL > 0 ? "+" : "") + totalPnL.toFixed(2) + " VP";
       pnlEl.className = (totalPnL >= 0 ? "text-green" : "text-red");
-
       let winRate = count > 0 ? Math.round((wins / count) * 100) : 0;
       $('winRateVal').textContent = winRate + "%";
       $('totalTradesVal').textContent = count + " Trades";
       const chartColor = winRate >= 50 ? '#0ECB81' : '#F6465D';
       $('winRateChart').style.background = `conic-gradient(${chartColor} 0% ${winRate}%, var(--panel-light) ${winRate}% 100%)`;
-
       renderHistoryList();
       await renderReferrals();
     }
@@ -1754,7 +1982,6 @@
       if(!listEl || !linkInput || !badge) return;
       listEl.innerHTML = "<div class='ref-status'>Loading referrals...</div>";
       linkInput.value = "Loading..."; badge.textContent = "Invited: ...";
-
       try {
         const res = await fetch(API_BASE + "/api/user/referrals?userId=" + encodeURIComponent(currentUserId));
         const data = await res.json();
@@ -1849,7 +2076,6 @@
       if (smaSeries) { chart.removeSeries(smaSeries); smaSeries = null; }
       if (vwapSeries) { chart.removeSeries(vwapSeries); vwapSeries = null; }
       clearAllDrawings();
-
       if (volumeHistogramSeries) volumeHistogramSeries.setData([]);
 
       if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1913,10 +2139,7 @@
       crosshair: { mode: 0 }
     });
 
-    volumeHistogramSeries = volumeChartInstance.addHistogramSeries({
-      priceFormat: { type: 'volume' },
-      priceScaleId: '',
-    });
+    volumeHistogramSeries = volumeChartInstance.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: '' });
 
     chart.timeScale().subscribeVisibleLogicalRangeChange(range => {
       if (range) volumeChartInstance.timeScale().setVisibleLogicalRange(range);
@@ -1940,9 +2163,7 @@
 
     const marketHeaderEl = $('marketHeader');
     if (marketHeaderEl) {
-      new ResizeObserver(() => {
-        checkTfSelectorOverflow();
-      }).observe(marketHeaderEl);
+      new ResizeObserver(() => { checkTfSelectorOverflow(); }).observe(marketHeaderEl);
     }
 
     // ==================== HISTORY LOADING ====================
@@ -1982,9 +2203,7 @@
       showChartLoadingOverlay();
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: "loadMore", pair: selectedPair, timeframe: currentTimeframe, until: oldest }));
-      } else {
-        isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay();
-      }
+      } else { isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay(); }
     }
 
     // ==================== SLIDERS ====================
@@ -2103,8 +2322,512 @@
           updateBalanceUI();
           updateRewardsUI();
           renderPositions(true);
+          loadAllTpSlOrders();
         }
       } catch(e) { console.error(e); }
+    }
+
+    // ==================== TP/SL SYSTEM ====================
+
+    async function loadAllTpSlOrders() {
+      if (!currentUserId) return;
+      try {
+        const res = await fetch(API_BASE + "/api/tpsl/list?userId=" + currentUserId);
+        const data = await res.json();
+        if (data.ok) {
+          tpslCache = {};
+          (data.orders || []).forEach(order => {
+            const posId = String(order.position_id);
+            if (!tpslCache[posId]) tpslCache[posId] = [];
+            tpslCache[posId].push(order);
+          });
+          renderPositions(true);
+        }
+      } catch(e) { console.error("Error loading TP/SL orders:", e); }
+    }
+
+    function getTpSlForPosition(positionId) {
+      return tpslCache[String(positionId)] || [];
+    }
+
+    function getTpCountForPosition(positionId) {
+      return getTpSlForPosition(positionId).filter(o => o.order_type === 'TP').length;
+    }
+
+    function getSlCountForPosition(positionId) {
+      return getTpSlForPosition(positionId).filter(o => o.order_type === 'SL').length;
+    }
+
+    function getUsedPercentForPosition(positionId, orderType) {
+      return getTpSlForPosition(positionId)
+        .filter(o => o.order_type === orderType)
+        .reduce((sum, o) => sum + Number(o.size_percent), 0);
+    }
+
+    function calculateTpSlPnl(pos, triggerPrice, sizePercent) {
+      const entry = Number(pos.entry_price || pos.entryPrice);
+      const totalSize = Number(pos.size);
+      const margin = Number(pos.margin);
+      const type = (pos.type || "LONG").toUpperCase();
+      const orderSize = totalSize * (sizePercent / 100);
+      const orderMargin = margin * (sizePercent / 100);
+
+      let diff = (triggerPrice - entry) / entry;
+      if (type === "SHORT") diff = -diff;
+
+      const pnl = diff * orderSize;
+      const commission = orderSize * 0.0003;
+      const netPnl = pnl - commission;
+      const roe = orderMargin > 0 ? (netPnl / orderMargin) * 100 : 0;
+
+      return { pnl: netPnl, roe };
+    }
+
+    function validateTpSlPrice(pos, orderType, price) {
+      const currentPrice = marketPrices[normalizePair(pos.pair || "BTC-USD")];
+      if (!currentPrice || !price || price <= 0) return { valid: false, error: "Enter a valid price" };
+
+      const type = (pos.type || "LONG").toUpperCase();
+
+      if (orderType === 'TP') {
+        if (type === 'LONG' && price <= currentPrice) {
+          return { valid: false, error: `TP must be above current price (${formatPrice(currentPrice)})` };
+        }
+        if (type === 'SHORT' && price >= currentPrice) {
+          return { valid: false, error: `TP must be below current price (${formatPrice(currentPrice)})` };
+        }
+      }
+
+      if (orderType === 'SL') {
+        if (type === 'LONG' && price >= currentPrice) {
+          return { valid: false, error: `SL must be below current price (${formatPrice(currentPrice)})` };
+        }
+        if (type === 'SHORT' && price <= currentPrice) {
+          return { valid: false, error: `SL must be above current price (${formatPrice(currentPrice)})` };
+        }
+      }
+
+      const entry = Number(pos.entry_price || pos.entryPrice);
+      const liqDist = (Number(pos.margin) * 0.90) / Number(pos.size) * entry;
+      const liqPrice = type === 'LONG' ? entry - liqDist : entry + liqDist;
+
+      if (orderType === 'SL') {
+        if (type === 'LONG' && price <= liqPrice) {
+          return { valid: false, error: `SL below liquidation price (${formatPrice(liqPrice)})` };
+        }
+        if (type === 'SHORT' && price >= liqPrice) {
+          return { valid: false, error: `SL above liquidation price (${formatPrice(liqPrice)})` };
+        }
+      }
+
+      return { valid: true, error: '' };
+    }
+
+    // ==================== TP/SL MODAL ====================
+
+    function openTpSlModal(positionId, orderType) {
+      const pos = window._positions.find(p => String(p.id || p._id) === String(positionId));
+      if (!pos) return;
+
+      tpslModalState.positionId = String(positionId);
+      tpslModalState.orderType = orderType;
+      tpslModalState.activeTab = 'full';
+      tpslModalState.position = pos;
+
+      const isTP = orderType === 'TP';
+      const typeName = isTP ? 'Take Profit' : 'Stop Loss';
+      const typeShort = isTP ? 'TP' : 'SL';
+      const colorClass = isTP ? 'tp' : 'sl';
+
+      $('tpslModalTitleText').textContent = typeName;
+      const indicator = $('tpslTypeIndicator');
+      indicator.textContent = typeShort;
+      indicator.className = `tpsl-type-indicator ${colorClass}`;
+
+      $('tpslPosPair').textContent = pos.pair || 'BTC-USD';
+      const posTypeEl = $('tpslPosType');
+      posTypeEl.textContent = pos.type;
+      posTypeEl.className = `tpsl-pos-type ${pos.type === 'LONG' ? 'long' : 'short'}`;
+      $('tpslPosLev').textContent = pos.leverage;
+      $('tpslPosEntry').textContent = formatPrice(pos.entry_price || pos.entryPrice);
+
+      const currentPrice = marketPrices[normalizePair(pos.pair || "BTC-USD")];
+      $('tpslCurrentPrice').textContent = currentPrice ? formatPrice(currentPrice) : '--.--';
+
+      const inputWrap = $('tpslInputWrap');
+      inputWrap.classList.toggle('sl-focus', !isTP);
+      inputWrap.classList.remove('error');
+
+      $('tpslPriceInput').value = '';
+      $('tpslErrorMsg').textContent = '';
+      $('tpslErrorMsg').classList.remove('visible');
+
+      const tabs = $('tpslTabs').querySelectorAll('.tpsl-tab');
+      tabs.forEach(tab => {
+        tab.className = `tpsl-tab ${colorClass}-tab`;
+        if (tab.dataset.tab === 'full') tab.classList.add('active');
+      });
+
+      $('tpslVolumeSection').style.display = 'none';
+      $('tpslVolumeSlider').value = 100;
+      $('tpslVolumeVal').textContent = '100%';
+
+      const volSlider = $('tpslVolumeSlider');
+      volSlider.classList.toggle('sl-slider', !isTP);
+
+      const volChips = $('tpslVolumeChips').querySelectorAll('.tpsl-vol-chip');
+      volChips.forEach(chip => {
+        chip.className = `tpsl-vol-chip ${colorClass}-chip`;
+        if (chip.dataset.pct === '100') chip.classList.add('active');
+      });
+
+      const submitBtn = $('tpslSubmitBtn');
+      submitBtn.className = `tpsl-submit-btn ${colorClass}-submit`;
+      submitBtn.disabled = true;
+      $('tpslSubmitText').textContent = `Set ${typeName}`;
+
+      $('tpslPreviewPnl').textContent = '-- VP';
+      $('tpslPreviewPnl').className = 'tpsl-preview-val';
+      $('tpslPreviewRoe').textContent = '--%';
+      $('tpslPreviewRoe').className = 'tpsl-preview-val';
+
+      updateTpSlExistingOrders();
+      updateTpSlRemainingInfo();
+      updateTpSlVolumeSliderTrack();
+
+      $('tpslModalOverlay').classList.add('active');
+      document.body.style.overflow = 'hidden';
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    }
+
+    function closeTpSlModal() {
+      $('tpslModalOverlay').classList.remove('active');
+      document.body.style.overflow = '';
+      tpslModalState.positionId = null;
+      tpslModalState.position = null;
+    }
+
+    function switchTpSlTab(tab) {
+      tpslModalState.activeTab = tab;
+      const tabs = $('tpslTabs').querySelectorAll('.tpsl-tab');
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+
+      $('tpslVolumeSection').style.display = tab === 'partial' ? '' : 'none';
+
+      if (tab === 'full') {
+        $('tpslVolumeSlider').value = 100;
+        $('tpslVolumeVal').textContent = '100%';
+        const volChips = $('tpslVolumeChips').querySelectorAll('.tpsl-vol-chip');
+        volChips.forEach(chip => chip.classList.toggle('active', chip.dataset.pct === '100'));
+        updateTpSlVolumeSliderTrack();
+      }
+
+      updateTpSlPreview();
+      updateTpSlRemainingInfo();
+    }
+
+    function updateTpSlPreview() {
+      const pos = tpslModalState.position;
+      if (!pos) return;
+
+      const price = Number($('tpslPriceInput').value);
+      const volumePct = tpslModalState.activeTab === 'full' ? 100 : Number($('tpslVolumeSlider').value);
+
+      if (!price || price <= 0) {
+        $('tpslPreviewPnl').textContent = '-- VP';
+        $('tpslPreviewPnl').className = 'tpsl-preview-val';
+        $('tpslPreviewRoe').textContent = '--%';
+        $('tpslPreviewRoe').className = 'tpsl-preview-val';
+        $('tpslSubmitBtn').disabled = true;
+        return;
+      }
+
+      const validation = validateTpSlPrice(pos, tpslModalState.orderType, price);
+      const errorEl = $('tpslErrorMsg');
+      const inputWrap = $('tpslInputWrap');
+
+      if (!validation.valid) {
+        errorEl.textContent = validation.error;
+        errorEl.classList.add('visible');
+        inputWrap.classList.add('error');
+        $('tpslSubmitBtn').disabled = true;
+        $('tpslPreviewPnl').textContent = '-- VP';
+        $('tpslPreviewPnl').className = 'tpsl-preview-val';
+        $('tpslPreviewRoe').textContent = '--%';
+        $('tpslPreviewRoe').className = 'tpsl-preview-val';
+        return;
+      }
+
+      errorEl.textContent = '';
+      errorEl.classList.remove('visible');
+      inputWrap.classList.remove('error');
+
+      const usedPct = getUsedPercentForPosition(tpslModalState.positionId, tpslModalState.orderType);
+      const availablePct = 100 - usedPct;
+      const effectiveVolume = tpslModalState.activeTab === 'full' ? availablePct : Math.min(volumePct, availablePct);
+
+      if (effectiveVolume <= 0) {
+        $('tpslSubmitBtn').disabled = true;
+        errorEl.textContent = 'No remaining volume available';
+        errorEl.classList.add('visible');
+        return;
+      }
+
+      const count = tpslModalState.orderType === 'TP' ? getTpCountForPosition(tpslModalState.positionId) : getSlCountForPosition(tpslModalState.positionId);
+      if (count >= MAX_TPSL_PER_TYPE) {
+        $('tpslSubmitBtn').disabled = true;
+        return;
+      }
+
+      const { pnl, roe } = calculateTpSlPnl(pos, price, effectiveVolume);
+      const isPositive = pnl >= 0;
+      const colorCls = isPositive ? 'text-green' : 'text-red';
+
+      $('tpslPreviewPnl').textContent = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} VP`;
+      $('tpslPreviewPnl').className = `tpsl-preview-val ${colorCls}`;
+      $('tpslPreviewRoe').textContent = `${roe >= 0 ? '+' : ''}${roe.toFixed(2)}%`;
+      $('tpslPreviewRoe').className = `tpsl-preview-val ${colorCls}`;
+
+      $('tpslSubmitBtn').disabled = false;
+    }
+
+    function updateTpSlRemainingInfo() {
+      const posId = tpslModalState.positionId;
+      const orderType = tpslModalState.orderType;
+      if (!posId) return;
+
+      const usedPct = getUsedPercentForPosition(posId, orderType);
+      const currentVolPct = tpslModalState.activeTab === 'full'
+        ? (100 - usedPct)
+        : Number($('tpslVolumeSlider').value);
+      const wouldUsePct = usedPct + currentVolPct;
+      const remainingAfter = Math.max(0, 100 - wouldUsePct);
+
+      const remainEl = $('tpslRemainingVal');
+      remainEl.textContent = `${remainingAfter.toFixed(0)}%`;
+      remainEl.classList.remove('warning', 'full');
+      if (remainingAfter <= 0) remainEl.classList.add('full');
+      else if (remainingAfter <= 25) remainEl.classList.add('warning');
+
+      if (tpslModalState.activeTab === 'partial') {
+        const maxAllowed = 100 - usedPct;
+        const slider = $('tpslVolumeSlider');
+        slider.max = Math.max(5, maxAllowed);
+        if (Number(slider.value) > maxAllowed) {
+          slider.value = maxAllowed;
+          $('tpslVolumeVal').textContent = maxAllowed.toFixed(0) + '%';
+        }
+      }
+    }
+
+    function updateTpSlExistingOrders() {
+      const posId = tpslModalState.positionId;
+      const orderType = tpslModalState.orderType;
+      const pos = tpslModalState.position;
+      if (!posId || !pos) return;
+
+      const orders = getTpSlForPosition(posId).filter(o => o.order_type === orderType);
+      const section = $('tpslExistingSection');
+      const list = $('tpslExistingList');
+      const limitNotice = $('tpslLimitNotice');
+      const countEl = $('tpslExistingCount');
+      const titleEl = $('tpslExistingTitle');
+
+      const isTP = orderType === 'TP';
+      titleEl.textContent = isTP ? 'Active Take Profits' : 'Active Stop Losses';
+      countEl.textContent = `${orders.length}/${MAX_TPSL_PER_TYPE}`;
+
+      if (orders.length === 0) {
+        section.style.display = 'none';
+        limitNotice.style.display = 'none';
+        return;
+      }
+
+      section.style.display = '';
+      list.innerHTML = '';
+
+      orders.forEach(order => {
+        const { pnl, roe } = calculateTpSlPnl(pos, Number(order.trigger_price), Number(order.size_percent));
+        const pnlClass = pnl >= 0 ? 'text-green' : 'text-red';
+
+        const item = document.createElement('div');
+        item.className = 'tpsl-existing-item';
+        item.innerHTML = `
+          <div class="tpsl-existing-item-left">
+            <div class="tpsl-existing-item-row">
+              <span class="tpsl-existing-price">${formatPrice(order.trigger_price)}</span>
+              <span class="tpsl-existing-pct">${Number(order.size_percent).toFixed(0)}%</span>
+            </div>
+            <div class="tpsl-existing-item-row">
+              <span class="tpsl-existing-pnl ${pnlClass}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} VP</span>
+              <span class="tpsl-existing-pnl" style="color:var(--muted);">${roe >= 0 ? '+' : ''}${roe.toFixed(2)}% ROE</span>
+            </div>
+          </div>
+          <button class="tpsl-existing-delete" data-order-id="${order.id}" title="Delete">×</button>
+        `;
+        list.appendChild(item);
+
+        item.querySelector('.tpsl-existing-delete').addEventListener('click', () => deleteTpSlOrder(order.id));
+      });
+
+      limitNotice.style.display = orders.length >= MAX_TPSL_PER_TYPE ? '' : 'none';
+    }
+
+    function updateTpSlVolumeSliderTrack() {
+      const slider = $('tpslVolumeSlider');
+      const isTP = tpslModalState.orderType === 'TP';
+      const color = isTP ? 'var(--accent-green)' : 'var(--accent-red)';
+      const pct = ((slider.value - slider.min) / (slider.max - slider.min)) * 100;
+      slider.style.background = `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, #2A2F36 ${pct}%, #2A2F36 100%)`;
+    }
+
+    async function submitTpSlOrder() {
+      const pos = tpslModalState.position;
+      if (!pos || !currentUserId) return;
+
+      const price = Number($('tpslPriceInput').value);
+      const orderType = tpslModalState.orderType;
+      const posId = tpslModalState.positionId;
+
+      const usedPct = getUsedPercentForPosition(posId, orderType);
+      const availablePct = 100 - usedPct;
+
+      let sizePercent;
+      if (tpslModalState.activeTab === 'full') {
+        sizePercent = availablePct;
+      } else {
+        sizePercent = Math.min(Number($('tpslVolumeSlider').value), availablePct);
+      }
+
+      if (sizePercent <= 0) { notify("No remaining volume"); return; }
+
+      const validation = validateTpSlPrice(pos, orderType, price);
+      if (!validation.valid) { notify(validation.error); return; }
+
+      const submitBtn = $('tpslSubmitBtn');
+      submitBtn.disabled = true;
+      $('tpslSubmitText').textContent = 'Submitting...';
+
+      try {
+        const res = await fetch(API_BASE + "/api/tpsl/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: currentUserId,
+            positionId: posId,
+            orderType: orderType,
+            triggerPrice: price,
+            sizePercent: sizePercent
+          })
+        });
+
+        const data = await res.json();
+        if (data.ok) {
+          const posIdStr = String(posId);
+          if (!tpslCache[posIdStr]) tpslCache[posIdStr] = [];
+          tpslCache[posIdStr].push(data.order);
+
+          if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+          notify(`${orderType === 'TP' ? 'Take Profit' : 'Stop Loss'} set at ${formatPrice(price)}`);
+
+          $('tpslPriceInput').value = '';
+          updateTpSlExistingOrders();
+          updateTpSlRemainingInfo();
+          updateTpSlPreview();
+          renderPositions(true);
+        } else {
+          notify(data.error || 'Failed to set order');
+        }
+      } catch(e) {
+        console.error("TP/SL submit error:", e);
+        notify("Network error. Try again.");
+      } finally {
+        const isTP = orderType === 'TP';
+        $('tpslSubmitText').textContent = `Set ${isTP ? 'Take Profit' : 'Stop Loss'}`;
+        submitBtn.disabled = false;
+      }
+    }
+
+    async function deleteTpSlOrder(orderId) {
+      if (!currentUserId) return;
+
+      try {
+        const res = await fetch(API_BASE + "/api/tpsl/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: currentUserId, orderId: orderId })
+        });
+
+        const data = await res.json();
+        if (data.ok) {
+          Object.keys(tpslCache).forEach(posId => {
+            tpslCache[posId] = tpslCache[posId].filter(o => o.id !== orderId);
+          });
+
+          if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
+          if (tpslModalState.positionId) {
+            updateTpSlExistingOrders();
+            updateTpSlRemainingInfo();
+            updateTpSlPreview();
+          }
+          renderPositions(true);
+        } else {
+          notify(data.error || 'Failed to delete order');
+        }
+      } catch(e) {
+        console.error("TP/SL delete error:", e);
+        notify("Network error");
+      }
+    }
+
+    function initTpSlModal() {
+      $('tpslModalClose').addEventListener('click', closeTpSlModal);
+      $('tpslModalOverlay').addEventListener('click', (e) => {
+        if (e.target === $('tpslModalOverlay')) closeTpSlModal();
+      });
+
+      $('tpslTabs').querySelectorAll('.tpsl-tab').forEach(tab => {
+        tab.addEventListener('click', () => switchTpSlTab(tab.dataset.tab));
+      });
+
+      $('tpslPriceInput').addEventListener('input', () => {
+        updateTpSlPreview();
+        updateTpSlRemainingInfo();
+      });
+
+      $('tpslVolumeSlider').addEventListener('input', () => {
+        const val = $('tpslVolumeSlider').value;
+        $('tpslVolumeVal').textContent = val + '%';
+
+        const chips = $('tpslVolumeChips').querySelectorAll('.tpsl-vol-chip');
+        chips.forEach(chip => chip.classList.toggle('active', chip.dataset.pct === val));
+
+        updateTpSlVolumeSliderTrack();
+        updateTpSlPreview();
+        updateTpSlRemainingInfo();
+      });
+
+      $('tpslVolumeChips').querySelectorAll('.tpsl-vol-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const pct = chip.dataset.pct;
+          const slider = $('tpslVolumeSlider');
+          const maxVal = Number(slider.max);
+          const setPct = Math.min(Number(pct), maxVal);
+          slider.value = setPct;
+          $('tpslVolumeVal').textContent = setPct + '%';
+
+          $('tpslVolumeChips').querySelectorAll('.tpsl-vol-chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+
+          updateTpSlVolumeSliderTrack();
+          updateTpSlPreview();
+          updateTpSlRemainingInfo();
+          if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        });
+      });
+
+      $('tpslSubmitBtn').addEventListener('click', submitTpSlOrder);
     }
 
     // ==================== WEBSOCKET ====================
@@ -2135,6 +2858,11 @@
             const currentPrice = Number(msg.price);
             $('priceDisplay').textContent = formatPrice(currentPrice);
             updatePositionsDynamic();
+
+            if (tpslModalState.positionId) {
+              $('tpslCurrentPrice').textContent = formatPrice(currentPrice);
+            }
+
             if (lastCandle) {
               const now = Math.floor(Date.now() / 1000);
               const candleTime = now - (now % currentTimeframe);
@@ -2166,18 +2894,11 @@
 
         if (msgPairNorm !== selPairNorm) return;
 
-        if (msg.type === "orderBook") {
-          renderOrderBook(msg.buy || msg.bids, msg.sell || msg.asks);
-          return;
-        }
+        if (msg.type === "orderBook") { renderOrderBook(msg.buy || msg.bids, msg.sell || msg.asks); return; }
 
         if (msg.type === "moreHistory") {
-          if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) {
-            isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay(); return;
-          }
-          if (!msg.data || msg.data.length === 0) {
-            allOlderHistoryLoaded = true; isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay(); return;
-          }
+          if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) { isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay(); return; }
+          if (!msg.data || msg.data.length === 0) { allOlderHistoryLoaded = true; isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay(); return; }
           const newCandles = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close, volume: c.volume || 0 }));
           const newVolumes = buildVolumeData(newCandles);
           const currentRange = chart.timeScale().getVisibleRange();
@@ -2226,6 +2947,36 @@
           renderTrades(localTrades);
           return;
         }
+
+        if (msg.type === "tpsl_triggered") {
+          const { positionId, orderType, triggerPrice, sizePercent, pnl, isFullClose } = msg;
+          if (tpslCache[String(positionId)]) {
+            tpslCache[String(positionId)] = tpslCache[String(positionId)].filter(o => o.id !== msg.orderId);
+          }
+          if (isFullClose) {
+            window._positions = window._positions.filter(p => String(p.id || p._id) !== String(positionId));
+            delete tpslCache[String(positionId)];
+          }
+          loadAllTpSlOrders();
+          renderPositions(true);
+
+          try {
+            const balRes = await fetch(API_BASE + "/api/init", {
+              method: "POST", headers: {"Content-Type":"application/json"},
+              body: JSON.stringify(tg?.initData ? {initData: tg.initData} : {})
+            });
+            const balData = await balRes.json();
+            if (balData.ok && balData.user) {
+              profile.balance = Number(balData.user.balance || 0);
+              window._positions = balData.positions || [];
+              updateBalanceUI();
+              renderPositions(true);
+            }
+          } catch(e) {}
+
+          notify(`${orderType} triggered at ${formatPrice(triggerPrice)}: ${pnl >= 0 ? '+' : ''}${Number(pnl).toFixed(2)} VP`);
+          return;
+        }
       };
 
       socket.onclose = () => setTimeout(connectWS, 2000);
@@ -2257,14 +3008,114 @@
         const size = Number(pos.size);
         const type = (pos.type || "LONG").toUpperCase();
         const lev = Number(pos.leverage || 1);
+
+        const tpCount = getTpCountForPosition(id);
+        const slCount = getSlCountForPosition(id);
+        const tpOrders = getTpSlForPosition(id).filter(o => o.order_type === 'TP');
+        const slOrders = getTpSlForPosition(id).filter(o => o.order_type === 'SL');
+
         let div = document.getElementById('pos-item-' + id);
-        if (!div) {
+        if (!div || forceRebuild) {
+          if (div) div.remove();
           div = document.createElement('div');
           div.className = `pos-item ${type === 'LONG' ? 'long' : 'short'}`;
           div.id = 'pos-item-' + id; div.dataset.id = id;
-          div.innerHTML = `<div class="pos-header"><div style="display:flex; align-items:center; gap:6px;"><span class="${type==='LONG'?'text-green':'text-red'}">${type}</span><span class="pos-pair">${pair}</span><span class="pos-type-badge ${type==='LONG'?'text-green':'text-red'}">x${lev}</span></div><div class="pos-pnl" id="pnl-${id}">0.00 VP</div></div><div class="pos-stats-grid"><div class="stat-col"><span class="stat-label">ROE %</span><span class="stat-val" id="roe-${id}">0.00%</span></div><div class="stat-col" style="align-items: center;"><span class="stat-label">Margin Ratio</span><span class="stat-val" id="ratio-${id}">0.00%</span></div><div class="stat-col" style="align-items: flex-end;"><span class="stat-label">Risk</span><span class="stat-val" id="risk-val-${id}">0.0%</span><div class="risk-wrap" style="width: 100%;"><div class="risk-track"><div class="risk-fill" id="risk-bar-${id}"></div></div></div></div></div><div class="pos-details"><div class="pd-col"><span class="pd-label">Entry Price</span><span class="pd-val">${formatPrice(entry)}</span></div><div class="pd-col" style="align-items: center;"><span class="pd-label">Size / Mark</span><span class="pd-val">${size.toFixed(0)} / <span id="mark-${id}">--.--</span></span></div><div class="pd-col" style="align-items: flex-end;"><span class="pd-label">Liquidation Price</span><span class="pd-val text-red" id="liq-${id}">--.--</span></div></div><button class="close-btn" data-id="${id}">Close Position</button>`;
+
+          let tpslListHtml = '';
+          const allOrders = [...tpOrders, ...slOrders];
+          if (allOrders.length > 0) {
+            tpslListHtml = '<div class="tpsl-active-list">';
+            allOrders.forEach(order => {
+              const isTP = order.order_type === 'TP';
+              const { pnl } = calculateTpSlPnl(pos, Number(order.trigger_price), Number(order.size_percent));
+              const pnlClass = pnl >= 0 ? 'text-green' : 'text-red';
+              tpslListHtml += `
+                <div class="tpsl-active-item ${isTP ? 'tp-item' : 'sl-item'}">
+                  <div class="tpsl-item-info">
+                    <span class="tpsl-item-badge ${isTP ? 'tp' : 'sl'}">${isTP ? 'TP' : 'SL'}</span>
+                    <span class="tpsl-item-price">${formatPrice(order.trigger_price)}</span>
+                    <span class="tpsl-item-pct">${Number(order.size_percent).toFixed(0)}%</span>
+                    <span class="tpsl-item-pnl ${pnlClass}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</span>
+                  </div>
+                  <button class="tpsl-item-delete" data-order-id="${order.id}" data-pos-id="${id}">×</button>
+                </div>
+              `;
+            });
+            tpslListHtml += '</div>';
+          }
+
+          div.innerHTML = `
+            <div class="pos-header">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span class="${type==='LONG'?'text-green':'text-red'}">${type}</span>
+                <span class="pos-pair">${pair}</span>
+                <span class="pos-type-badge ${type==='LONG'?'text-green':'text-red'}">x${lev}</span>
+              </div>
+              <div class="pos-pnl" id="pnl-${id}">0.00 VP</div>
+            </div>
+            <div class="pos-stats-grid">
+              <div class="stat-col">
+                <span class="stat-label">ROE %</span>
+                <span class="stat-val" id="roe-${id}">0.00%</span>
+              </div>
+              <div class="stat-col" style="align-items: center;">
+                <span class="stat-label">Margin Ratio</span>
+                <span class="stat-val" id="ratio-${id}">0.00%</span>
+              </div>
+              <div class="stat-col" style="align-items: flex-end;">
+                <span class="stat-label">Risk</span>
+                <span class="stat-val" id="risk-val-${id}">0.0%</span>
+                <div class="risk-wrap" style="width: 100%;">
+                  <div class="risk-track"><div class="risk-fill" id="risk-bar-${id}"></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="pos-details">
+              <div class="pd-col">
+                <span class="pd-label">Entry Price</span>
+                <span class="pd-val">${formatPrice(entry)}</span>
+              </div>
+              <div class="pd-col" style="align-items: center;">
+                <span class="pd-label">Size / Mark</span>
+                <span class="pd-val">${size.toFixed(0)} / <span id="mark-${id}">--.--</span></span>
+              </div>
+              <div class="pd-col" style="align-items: flex-end;">
+                <span class="pd-label">Liquidation Price</span>
+                <span class="pd-val text-red" id="liq-${id}">--.--</span>
+              </div>
+            </div>
+            <div class="tpsl-actions">
+              <button class="tpsl-btn tp-btn" data-pos-id="${id}" data-type="TP">
+                <span class="tpsl-icon">🎯</span>
+                <span>Take Profit</span>
+                ${tpCount > 0 ? `<span class="tpsl-count">${tpCount}</span>` : ''}
+              </button>
+              <button class="tpsl-btn sl-btn" data-pos-id="${id}" data-type="SL">
+                <span class="tpsl-icon">🛡️</span>
+                <span>Stop Loss</span>
+                ${slCount > 0 ? `<span class="tpsl-count">${slCount}</span>` : ''}
+              </button>
+            </div>
+            ${tpslListHtml}
+            <button class="close-btn" data-id="${id}">Close Position</button>
+          `;
+
           list.appendChild(div);
+
           div.querySelector('.close-btn').onclick = () => closePosition(id, pair);
+
+          div.querySelectorAll('.tpsl-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              openTpSlModal(btn.dataset.posId, btn.dataset.type);
+            });
+          });
+
+          div.querySelectorAll('.tpsl-item-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              deleteTpSlOrder(Number(btn.dataset.orderId));
+            });
+          });
         }
       });
       updatePositionsDynamic();
@@ -2388,6 +3239,7 @@
         const data = await res.json();
         if(data.ok) {
           window._positions = window._positions.filter(p => (p.id!=id && p._id!=id));
+          delete tpslCache[String(id)];
           if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
           const el = document.getElementById('pos-item-' + id);
           if(el) el.remove();
@@ -2416,6 +3268,7 @@
     initDrawingTools();
     initIndicatorChips();
     initPnlModal();
+    initTpSlModal();
     setupDoubleTapHandler();
 
     setProgress(60, "STREAM...");
