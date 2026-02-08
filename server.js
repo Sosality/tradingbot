@@ -1,18 +1,19 @@
 // server.js — Trading Bot Backend with TP/SL System
-const express = require('express');
-const http = require('http');
-const WebSocket = require('ws');
-const { Pool } = require('pg');
-const cors = require('cors');
-const crypto = require('crypto');
-const fetch = require('node-fetch');
+import express from 'express';
+import http from 'http';
+import { WebSocketServer, WebSocket } from 'ws';
+import pg from 'pg';
+import cors from 'cors';
+import crypto from 'crypto';
+
+const { Pool } = pg;
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocketServer({ server });
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -95,7 +96,6 @@ async function initDB() {
       );
     `);
 
-    // Add index for faster lookups
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_tpsl_active 
       ON tpsl_orders (position_id, status) 
@@ -108,7 +108,6 @@ async function initDB() {
       WHERE status = 'active';
     `);
 
-    // Safe column additions
     const safeAdd = async (table, column, type) => {
       try { await client.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} ${type}`); } catch(e) {}
     };
@@ -163,7 +162,6 @@ app.post('/api/init', async (req, res) => {
     const username = tgUser.username || '';
     const photoUrl = tgUser.photo_url || '';
 
-    // Parse referral
     let referredBy = null;
     if (initData) {
       try {
@@ -176,7 +174,6 @@ app.post('/api/init', async (req, res) => {
       } catch(e) {}
     }
 
-    // Upsert user
     const existing = await pool.query('SELECT * FROM users WHERE user_id = $1', [userId]);
     if (existing.rows.length === 0) {
       await pool.query(
@@ -184,7 +181,6 @@ app.post('/api/init', async (req, res) => {
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [userId, firstName, username, photoUrl, INITIAL_BALANCE, referredBy]
       );
-      // Referral bonus
       if (referredBy) {
         const refUser = await pool.query('SELECT user_id FROM users WHERE user_id = $1', [referredBy]);
         if (refUser.rows.length > 0) {
@@ -200,7 +196,6 @@ app.post('/api/init', async (req, res) => {
 
     const user = (await pool.query('SELECT * FROM users WHERE user_id = $1', [userId])).rows[0];
 
-    // Reset daily ad counter if new day
     const today = new Date().toISOString().split('T')[0];
     if (user.daily_ad_date !== today) {
       await pool.query('UPDATE users SET daily_ad_views = 0, daily_ad_date = $2 WHERE user_id = $1', [userId, today]);
@@ -208,7 +203,6 @@ app.post('/api/init', async (req, res) => {
       user.daily_ad_date = today;
     }
 
-    // Load open positions
     const positions = (await pool.query(
       'SELECT * FROM positions WHERE user_id = $1 AND status = $2 ORDER BY opened_at DESC',
       [userId, 'open']
@@ -271,7 +265,6 @@ app.post('/api/order/close', async (req, res) => {
     const netPnl = pnl - commission;
     const returnAmount = margin + netPnl;
 
-    // Cancel all active TP/SL for this position
     await pool.query(
       "UPDATE tpsl_orders SET status = 'cancelled' WHERE position_id = $1 AND status = 'active'",
       [positionId]
@@ -319,7 +312,6 @@ app.post('/api/tpsl/create', async (req, res) => {
       return res.json({ ok: false, error: 'Size percent must be between 1 and 100' });
     }
 
-    // Verify position exists and belongs to user
     const pos = (await pool.query(
       'SELECT * FROM positions WHERE id = $1 AND user_id = $2 AND status = $3',
       [positionId, userId, 'open']
@@ -329,7 +321,6 @@ app.post('/api/tpsl/create', async (req, res) => {
       return res.json({ ok: false, error: 'Position not found or already closed' });
     }
 
-    // Check limit per type
     const existingCount = (await pool.query(
       "SELECT COUNT(*) as cnt FROM tpsl_orders WHERE position_id = $1 AND order_type = $2 AND status = 'active'",
       [positionId, orderType]
@@ -339,7 +330,6 @@ app.post('/api/tpsl/create', async (req, res) => {
       return res.json({ ok: false, error: `Maximum ${MAX_TPSL_PER_TYPE} ${orderType} orders per position` });
     }
 
-    // Check total used percent
     const usedPercent = (await pool.query(
       "SELECT COALESCE(SUM(size_percent), 0) as total FROM tpsl_orders WHERE position_id = $1 AND order_type = $2 AND status = 'active'",
       [positionId, orderType]
@@ -350,7 +340,6 @@ app.post('/api/tpsl/create', async (req, res) => {
       return res.json({ ok: false, error: `Only ${available.toFixed(0)}% volume available for ${orderType}` });
     }
 
-    // Validate price direction
     const type = pos.type.toUpperCase();
     if (orderType === 'TP') {
       if (type === 'LONG' && triggerPrice <= Number(pos.entry_price)) {
@@ -361,7 +350,6 @@ app.post('/api/tpsl/create', async (req, res) => {
       }
     }
 
-    // Insert order
     const result = await pool.query(
       `INSERT INTO tpsl_orders (user_id, position_id, order_type, trigger_price, size_percent)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
@@ -425,10 +413,10 @@ async function checkTpSlTriggers(pair, currentPrice) {
   const normalizedPair = pair.replace('/', '-').toUpperCase();
 
   try {
-    // Find all active TP/SL orders for open positions of this pair
     const orders = (await pool.query(`
       SELECT t.*, p.type as pos_type, p.entry_price, p.size as pos_size, 
-             p.margin as pos_margin, p.leverage as pos_leverage, p.user_id as pos_user_id
+             p.margin as pos_margin, p.leverage as pos_leverage, p.user_id as pos_user_id,
+             p.pair as pos_pair
       FROM tpsl_orders t
       JOIN positions p ON t.position_id = p.id
       WHERE t.status = 'active' 
@@ -465,7 +453,6 @@ async function executeTpSlOrder(order, currentPrice) {
   try {
     await client.query('BEGIN');
 
-    // Mark order as triggered
     const updateResult = await client.query(
       "UPDATE tpsl_orders SET status = 'triggered', triggered_at = NOW() WHERE id = $1 AND status = 'active' RETURNING *",
       [order.id]
@@ -473,7 +460,7 @@ async function executeTpSlOrder(order, currentPrice) {
 
     if (updateResult.rows.length === 0) {
       await client.query('ROLLBACK');
-      return; // Already triggered by another check
+      return;
     }
 
     const positionId = order.position_id;
@@ -483,12 +470,11 @@ async function executeTpSlOrder(order, currentPrice) {
     const totalSize = Number(order.pos_size);
     const totalMargin = Number(order.pos_margin);
     const posType = order.pos_type.toUpperCase();
+    const posPair = order.pos_pair;
 
-    // Calculate partial size
     const orderSize = totalSize * (sizePercent / 100);
     const orderMargin = totalMargin * (sizePercent / 100);
 
-    // Calculate PnL
     let diff = (currentPrice - entryPrice) / entryPrice;
     if (posType === 'SHORT') diff = -diff;
     const pnl = diff * orderSize;
@@ -496,15 +482,6 @@ async function executeTpSlOrder(order, currentPrice) {
     const netPnl = pnl - commission;
     const returnAmount = orderMargin + netPnl;
 
-    // Check remaining active orders for this position
-    const remainingOrders = (await client.query(
-      "SELECT COALESCE(SUM(size_percent), 0) as total FROM tpsl_orders WHERE position_id = $1 AND status = 'active'",
-      [positionId]
-    )).rows[0].total;
-
-    const remainingPercent = 100 - sizePercent - Number(remainingOrders);
-    
-    // Check if all TP/SL combined close the full position
     const allTpSlTotal = (await client.query(
       "SELECT COALESCE(SUM(size_percent), 0) as total FROM tpsl_orders WHERE position_id = $1 AND status = 'triggered'",
       [positionId]
@@ -513,16 +490,13 @@ async function executeTpSlOrder(order, currentPrice) {
     const isFullClose = Number(allTpSlTotal) >= 99.99;
 
     if (isFullClose) {
-      // Close position entirely
       await client.query("UPDATE positions SET status = 'closed' WHERE id = $1", [positionId]);
       
-      // Cancel any remaining active orders for this position
       await client.query(
         "UPDATE tpsl_orders SET status = 'cancelled' WHERE position_id = $1 AND status = 'active'",
         [positionId]
       );
 
-      // Return remaining margin + total PnL
       const remainingMargin = totalMargin - orderMargin;
       const totalReturn = returnAmount + remainingMargin;
       
@@ -530,7 +504,6 @@ async function executeTpSlOrder(order, currentPrice) {
         await client.query('UPDATE users SET balance = balance + $1 WHERE user_id = $2', [totalReturn, userId]);
       }
     } else {
-      // Partial close — reduce position size and margin
       const newSize = totalSize - orderSize;
       const newMargin = totalMargin - orderMargin;
 
@@ -539,32 +512,21 @@ async function executeTpSlOrder(order, currentPrice) {
         [newSize, newMargin, positionId]
       );
 
-      // Return PnL + used margin portion
       if (returnAmount > 0) {
         await client.query('UPDATE users SET balance = balance + $1 WHERE user_id = $2', [returnAmount, userId]);
       }
     }
 
-    // Record in history
     await client.query(
       `INSERT INTO trades_history (user_id, pair, type, size, margin, leverage, entry_price, exit_price, pnl, commission, opened_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())`,
-      [userId, order.pos_type === 'LONG' ? 'LONG' : 'SHORT', 
-       `${order.order_type}_PARTIAL`, orderSize, orderMargin, 
-       order.pos_leverage, entryPrice, currentPrice, netPnl, commission]
-    );
-
-    // Fix: pair for history
-    await client.query(
-      `UPDATE trades_history SET pair = $1, type = $2 WHERE user_id = $3 AND exit_price = $4 AND pnl = $5 ORDER BY id DESC LIMIT 1`,
-      [normalizeDbPair(order), posType, userId, currentPrice, netPnl]
+      [userId, posPair, posType, orderSize, orderMargin, order.pos_leverage, entryPrice, currentPrice, netPnl, commission]
     );
 
     await client.query('COMMIT');
 
     console.log(`[TPSL TRIGGERED] ${order.order_type} for position ${positionId}: price=${currentPrice}, pnl=${netPnl.toFixed(4)}, size=${sizePercent}%, fullClose=${isFullClose}`);
 
-    // Notify client via WebSocket
     notifyUserTpSl(userId, {
       type: 'tpsl_triggered',
       orderId: order.id,
@@ -582,11 +544,6 @@ async function executeTpSlOrder(order, currentPrice) {
   } finally {
     client.release();
   }
-}
-
-function normalizeDbPair(order) {
-  // Helper to get pair from the position join
-  return 'BTC-USD'; // Will be overwritten by correct update
 }
 
 // ==================== LIQUIDATION ENGINE ====================
@@ -614,7 +571,6 @@ async function checkLiquidations(pair, currentPrice) {
       if (type === 'SHORT' && currentPrice >= liqPrice) liquidated = true;
 
       if (liquidated) {
-        // Cancel all TP/SL
         await pool.query(
           "UPDATE tpsl_orders SET status = 'cancelled' WHERE position_id = $1 AND status = 'active'",
           [pos.id]
@@ -646,13 +602,11 @@ app.get('/api/user/ad-stats', async (req, res) => {
 
     const today = new Date().toISOString().split('T')[0];
     
-    // Reset daily counter if new day
     await pool.query(
       "UPDATE users SET daily_ad_views = 0, daily_ad_date = $2 WHERE user_id = $1 AND daily_ad_date != $2",
       [userId, today]
     );
 
-    // Increment views
     await pool.query(
       `UPDATE users SET 
         ad_views_count = ad_views_count + 1,
@@ -721,8 +675,6 @@ let latestPrices = {};
 
 // ==================== WEBSOCKET CLIENTS ====================
 
-const clients = new Map();
-
 function notifyUserTpSl(userId, message) {
   wss.clients.forEach(ws => {
     if (ws.readyState === WebSocket.OPEN && ws._userId === String(userId)) {
@@ -735,7 +687,6 @@ function notifyUserTpSl(userId, message) {
 
 let coinbaseWs = null;
 let coinbaseReconnectTimer = null;
-const coinbaseSubs = new Set();
 
 function connectCoinbase() {
   if (coinbaseWs) { try { coinbaseWs.close(); } catch(e) {} }
@@ -757,14 +708,12 @@ function connectCoinbase() {
     try {
       const msg = JSON.parse(evt.data);
       if (msg.type === 'ticker' && msg.product_id && msg.price) {
-        const pair = msg.product_id.replace('-', '-');
+        const pair = msg.product_id;
         const price = Number(msg.price);
         latestPrices[pair] = price;
 
-        // Broadcast price
         broadcast({ type: 'price', pair, price });
 
-        // Check triggers
         checkTpSlTriggers(pair, price);
         checkLiquidations(pair, price);
       }
@@ -803,7 +752,6 @@ function handleOrderBookUpdate(pair, msg) {
     });
   }
 
-  // Broadcast order book
   const bids = Array.from(book.bids.entries())
     .map(([price, size]) => ({ price, size }))
     .sort((a, b) => b.price - a.price)
@@ -859,7 +807,6 @@ async function fetchCandleHistory(pair, timeframe, limit = 300) {
   if (!pairConfig) return [];
 
   try {
-    // Try Coinbase first
     const granularity = timeframe;
     const end = new Date().toISOString();
     const start = new Date(Date.now() - timeframe * limit * 1000).toISOString();
@@ -882,7 +829,6 @@ async function fetchCandleHistory(pair, timeframe, limit = 300) {
     console.error(`[HISTORY] Coinbase error for ${pair}:`, e.message);
   }
 
-  // Fallback to Binance
   try {
     const binanceSymbol = pairConfig.binance;
     const intervalMap = { 60: '1m', 300: '5m', 900: '15m', 3600: '1h', 14400: '4h', 86400: '1d' };
@@ -1018,18 +964,15 @@ wss.on('connection', (ws) => {
         ws._subscribedPair = pair;
         ws._subscribedTimeframe = tf;
 
-        // Send history
         const candles = await fetchCandleHistory(pair, tf);
         if (candles.length > 0) {
           ws.send(JSON.stringify({ type: 'history', pair, timeframe: tf, data: candles }));
         }
 
-        // Send latest price
         if (latestPrices[pair]) {
           ws.send(JSON.stringify({ type: 'price', pair, price: latestPrices[pair] }));
         }
 
-        // Send order book
         if (orderBooks[pair]) {
           const book = orderBooks[pair];
           const bids = Array.from(book.bids.entries()).map(([p, s]) => ({ price: p, size: s })).sort((a, b) => b.price - a.price).slice(0, 15);
@@ -1037,7 +980,6 @@ wss.on('connection', (ws) => {
           ws.send(JSON.stringify({ type: 'orderBook', pair, buy: bids, sell: asks }));
         }
 
-        // Send trades
         const trades = await fetchRecentTrades(pair);
         if (trades.length > 0) {
           ws.send(JSON.stringify({ type: 'trades', pair, trades }));
@@ -1061,7 +1003,6 @@ wss.on('connection', (ws) => {
 
 // ==================== PERIODIC TASKS ====================
 
-// Fetch trades periodically
 setInterval(async () => {
   for (const pair of Object.keys(SUPPORTED_PAIRS)) {
     try {
