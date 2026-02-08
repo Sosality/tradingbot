@@ -1,1029 +1,1017 @@
-// server.js — Trading Bot Backend with TP/SL System
-import express from 'express';
-import http from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
-import pg from 'pg';
-import cors from 'cors';
-import crypto from 'crypto';
-
-const { Pool } = pg;
+import dotenv from "dotenv";
+dotenv.config();
+import express from "express";
+import crypto from "crypto";
+import cors from "cors";
+import { Pool } from "pg";
+import { validate } from '@telegram-apps/init-data-node';
+import rateLimit from 'express-rate-limit';
+import cron from "node-cron";
 
 const app = express();
-app.use(cors());
+
+app.set('trust proxy', 1);
+
+app.use(cors({
+    origin: true,
+    credentials: true
+}));
 app.use(express.json());
+app.use(express.static("public"));
 
-const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { ok: false, error: "TOO_MANY_REQUESTS" }
 });
 
-const BOT_TOKEN = process.env.BOT_TOKEN || '';
-const COMMISSION_RATE = 0.0003;
-const REFERRAL_BONUS = 50;
-const INITIAL_BALANCE = 1000;
-const DAILY_AD_LIMIT = 5;
-const AD_REWARD_VP = 1;
-const MAX_TPSL_PER_TYPE = 3;
+app.use('/api/', limiter);
 
-// ==================== DATABASE INIT ====================
+const PRICE_SERVER_URL = "https://tradingbot-backend-2yws.onrender.com";
+
+cron.schedule("*/10 * * * *", async () => {
+    console.log("⏰ Anti-Sleep: Pinging Price Server...");
+    try {
+        const response = await fetch(`${PRICE_SERVER_URL}/health`);
+        if (response.ok) console.log("✅ Price Server is awake");
+        else console.log("⚠️ Price Server responded with " + response.status);
+    } catch (e) {
+        console.error("❌ Anti-Sleep Error:", e.message);
+    }
+});
+
+const CONNECTION_STRING = "postgresql://neondb_owner:npg_igxGcyUQmX52@ep-ancient-sky-a9db2z9z-pooler.gwc.azure.neon.tech/neondb?sslmode=require&channel_binding=require";
+
+console.log("=== ENV CHECK ===");
+console.log("BOT_TOKEN set:", !!process.env.BOT_TOKEN);
+console.log("ADSGRAM_SECRET set:", !!process.env.ADSGRAM_SECRET);
+console.log("Using provided NeonDB connection string");
+console.log("==================");
+
+if (!process.env.BOT_TOKEN) {
+    console.warn("⚠️  BOT_TOKEN not set! Signature verification will fail.");
+}
+
+if (!process.env.ADSGRAM_SECRET) {
+    console.warn("⚠️  ADSGRAM_SECRET not set! Ad reward endpoint will reject all requests.");
+}
+
+const db = new Pool({
+    connectionString: CONNECTION_STRING,
+    ssl: true
+});
+
+const BOT_USERNAME = process.env.BOT_USERNAME || "";
+const WEBAPP_SHORT_NAME = process.env.WEBAPP_SHORT_NAME || "";
+
+const REFERRAL_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+const AD_REWARD_AMOUNT = 1;
+const DAILY_AD_LIMIT = 5;
+const VP_TO_USD_RATE = 0.005;
+const MAX_TP_PER_POSITION = 3;
+const MAX_SL_PER_POSITION = 3;
+
+function makeReferralCode(len = 8) {
+    const bytes = crypto.randomBytes(len);
+    let out = "";
+    for (let i = 0; i < len; i++) {
+        out += REFERRAL_ALPHABET[bytes[i] % REFERRAL_ALPHABET.length];
+    }
+    return out;
+}
+
+async function generateUniqueReferralCode() {
+    for (let attempt = 0; attempt < 20; attempt++) {
+        const code = makeReferralCode(8);
+        const check = await db.query("SELECT 1 FROM users WHERE referral_code = $1 LIMIT 1", [code]);
+        if (!check.rows.length) return code;
+    }
+    for (let attempt = 0; attempt < 20; attempt++) {
+        const code = makeReferralCode(12);
+        const check = await db.query("SELECT 1 FROM users WHERE referral_code = $1 LIMIT 1", [code]);
+        if (!check.rows.length) return code;
+    }
+    throw new Error("REFERRAL_CODE_GENERATION_FAILED");
+}
+
+function buildReferralLink(code) {
+    if (BOT_USERNAME && WEBAPP_SHORT_NAME) {
+        return `https://t.me/${BOT_USERNAME}/${WEBAPP_SHORT_NAME}?startapp=${encodeURIComponent(code)}`;
+    }
+    if (BOT_USERNAME) {
+        return `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(code)}`;
+    }
+    return code;
+}
+
+function getTodayDateUTC() {
+    const now = new Date();
+    return now.toISOString().split('T')[0];
+}
+
+function checkAndResetDailyAds(user) {
+    const today = getTodayDateUTC();
+    const lastResetDate = user.ad_views_reset_date ? user.ad_views_reset_date.toISOString().split('T')[0] : null;
+
+    if (lastResetDate !== today) {
+        return {
+            needsReset: true,
+            dailyAdViews: 0,
+            newResetDate: today
+        };
+    }
+
+    return {
+        needsReset: false,
+        dailyAdViews: Number(user.daily_ad_views) || 0,
+        newResetDate: lastResetDate
+    };
+}
+
+db.connect()
+    .then(client => {
+        console.log("✅ Successfully connected to NeonDB (PostgreSQL)");
+        client.release();
+    })
+    .catch(err => {
+        console.error("❌ Failed to connect to database:", err.message);
+        console.error("Full error:", err);
+    });
+
+function checkTelegramAuthInitData(initData) {
+    try {
+        console.log("🔍 Validating initData with official @telegram-apps/init-data-node library...");
+        validate(initData, process.env.BOT_TOKEN);
+        console.log("✅ initData signature VALID (library confirmed)!");
+        return true;
+    } catch (err) {
+        console.error("❌ initData validation FAILED:", err.message);
+        return false;
+    }
+}
+
+const COOKIE_NAME = "tg_session";
+function makeSessionCookieValue(userId) {
+    const secret = process.env.COOKIE_SECRET || process.env.BOT_TOKEN || "fallback_secret";
+    const mac = crypto.createHmac("sha256", secret).update(String(userId)).digest("hex");
+    return `${userId}:${mac}`;
+}
+
+function verifySessionCookieValue(val) {
+    if (!val || typeof val !== "string") return false;
+    const [userId, mac] = val.split(":");
+    if (!userId || !mac) return false;
+    const secret = process.env.COOKIE_SECRET || process.env.BOT_TOKEN || "fallback_secret";
+    const expected = crypto.createHmac("sha256", secret).update(String(userId)).digest("hex");
+    return mac === expected ? userId : false;
+}
+
+function getClientIp(req) {
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    return ip ? ip.split(',')[0].trim() : ip;
+}
 
 async function initDB() {
-  const client = await pool.connect();
-  try {
-    await client.query(`
+    try {
+        console.log("🔄 Recreating/Checking DB tables...");
+
+        await db.query(`
       CREATE TABLE IF NOT EXISTS users (
-        user_id BIGINT PRIMARY KEY,
-        first_name TEXT DEFAULT '',
-        username TEXT DEFAULT '',
-        photo_url TEXT DEFAULT '',
-        balance NUMERIC(20,8) DEFAULT ${INITIAL_BALANCE},
-        referred_by BIGINT DEFAULT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        ad_views_count INT DEFAULT 0,
-        daily_ad_views INT DEFAULT 0,
-        daily_ad_date DATE DEFAULT CURRENT_DATE,
-        daily_ad_limit INT DEFAULT ${DAILY_AD_LIMIT}
+        user_id TEXT PRIMARY KEY,
+        first_name TEXT,
+        username TEXT,
+        photo_url TEXT,
+        balance NUMERIC NOT NULL DEFAULT 1000,
+        last_ip TEXT,
+        referral_code TEXT,
+        invited_by TEXT,
+        invited_at TIMESTAMP,
+        ad_views_count INTEGER NOT NULL DEFAULT 0,
+        daily_ad_views INTEGER NOT NULL DEFAULT 0,
+        ad_views_reset_date DATE,
+        last_ad_view TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    await client.query(`
+        try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip TEXT`); } catch(e) {}
+        try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`); } catch(e) {}
+        try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_by TEXT`); } catch(e) {}
+        try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_at TIMESTAMP`); } catch(e) {}
+        try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ad_views_count INTEGER NOT NULL DEFAULT 0`); } catch(e) {}
+        try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ad_view TIMESTAMP`); } catch(e) {}
+        try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_ad_views INTEGER NOT NULL DEFAULT 0`); } catch(e) {}
+        try { await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ad_views_reset_date DATE`); } catch(e) {}
+
+        await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_uidx ON users(referral_code) WHERE referral_code IS NOT NULL;`);
+        await db.query(`CREATE INDEX IF NOT EXISTS users_invited_by_idx ON users(invited_by);`);
+
+        await db.query(`
       CREATE TABLE IF NOT EXISTS positions (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT REFERENCES users(user_id),
-        pair TEXT NOT NULL,
+        id BIGSERIAL PRIMARY KEY,
+        user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
+        pair TEXT NOT NULL DEFAULT 'BTC-USD',
         type TEXT NOT NULL,
-        size NUMERIC(20,8) NOT NULL,
-        margin NUMERIC(20,8) NOT NULL,
+        entry_price NUMERIC NOT NULL,
+        margin NUMERIC NOT NULL,
         leverage INT NOT NULL,
-        entry_price NUMERIC(20,8) NOT NULL,
-        opened_at TIMESTAMPTZ DEFAULT NOW(),
-        status TEXT DEFAULT 'open'
+        size NUMERIC NOT NULL,
+        warning_sent BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    await client.query(`
+        try { await db.query(`ALTER TABLE positions ADD COLUMN IF NOT EXISTS pair TEXT DEFAULT 'BTC-USD'`); } catch(e) {}
+        try { await db.query(`ALTER TABLE positions ADD COLUMN IF NOT EXISTS warning_sent BOOLEAN DEFAULT FALSE`); } catch(e) {}
+
+        await db.query(`
       CREATE TABLE IF NOT EXISTS trades_history (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT REFERENCES users(user_id),
+        id BIGSERIAL PRIMARY KEY,
+        user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
         pair TEXT NOT NULL,
         type TEXT NOT NULL,
-        size NUMERIC(20,8),
-        margin NUMERIC(20,8),
-        leverage INT,
-        entry_price NUMERIC(20,8),
-        exit_price NUMERIC(20,8),
-        pnl NUMERIC(20,8),
-        commission NUMERIC(20,8) DEFAULT 0,
-        opened_at TIMESTAMPTZ,
-        closed_at TIMESTAMPTZ DEFAULT NOW()
+        entry_price NUMERIC NOT NULL,
+        exit_price NUMERIC NOT NULL,
+        size NUMERIC NOT NULL,
+        leverage INT NOT NULL,
+        pnl NUMERIC NOT NULL,
+        commission NUMERIC DEFAULT 0,
+        closed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS tpsl_orders (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT REFERENCES users(user_id),
-        position_id INT REFERENCES positions(id) ON DELETE CASCADE,
+        try { await db.query(`ALTER TABLE trades_history ADD COLUMN IF NOT EXISTS commission NUMERIC DEFAULT 0`); } catch(e) {}
+
+        await db.query(`
+      CREATE TABLE IF NOT EXISTS tp_sl_orders (
+        id BIGSERIAL PRIMARY KEY,
+        position_id BIGINT NOT NULL REFERENCES positions(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+        pair TEXT NOT NULL,
         order_type TEXT NOT NULL CHECK (order_type IN ('TP', 'SL')),
-        trigger_price NUMERIC(20,8) NOT NULL,
-        size_percent NUMERIC(10,4) NOT NULL,
-        status TEXT DEFAULT 'active' CHECK (status IN ('active', 'triggered', 'cancelled')),
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        triggered_at TIMESTAMPTZ DEFAULT NULL
+        trigger_price NUMERIC NOT NULL,
+        size_percent NUMERIC NOT NULL DEFAULT 100,
+        size_amount NUMERIC NOT NULL,
+        is_partial BOOLEAN NOT NULL DEFAULT FALSE,
+        status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'TRIGGERED', 'CANCELLED')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        triggered_at TIMESTAMP
       );
     `);
 
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_tpsl_active 
-      ON tpsl_orders (position_id, status) 
-      WHERE status = 'active';
-    `);
+        await db.query(`CREATE INDEX IF NOT EXISTS tp_sl_position_idx ON tp_sl_orders(position_id) WHERE status = 'ACTIVE';`);
+        await db.query(`CREATE INDEX IF NOT EXISTS tp_sl_pair_status_idx ON tp_sl_orders(pair, status) WHERE status = 'ACTIVE';`);
+        await db.query(`CREATE INDEX IF NOT EXISTS tp_sl_user_idx ON tp_sl_orders(user_id);`);
 
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_tpsl_user 
-      ON tpsl_orders (user_id, status) 
-      WHERE status = 'active';
-    `);
+        console.log("✅ DB tables ready (including tp_sl_orders)!");
 
-    const safeAdd = async (table, column, type) => {
-      try { await client.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} ${type}`); } catch(e) {}
-    };
-    await safeAdd('users', 'ad_views_count', 'INT DEFAULT 0');
-    await safeAdd('users', 'daily_ad_views', 'INT DEFAULT 0');
-    await safeAdd('users', 'daily_ad_date', 'DATE DEFAULT CURRENT_DATE');
-    await safeAdd('users', 'daily_ad_limit', `INT DEFAULT ${DAILY_AD_LIMIT}`);
-    await safeAdd('trades_history', 'commission', 'NUMERIC(20,8) DEFAULT 0');
-
-    console.log("[DB] All tables initialized (including tpsl_orders)");
-  } finally {
-    client.release();
-  }
-}
-
-// ==================== AUTH ====================
-
-function verifyTelegramAuth(initData) {
-  if (!BOT_TOKEN || !initData) return null;
-  try {
-    const params = new URLSearchParams(initData);
-    const hash = params.get('hash');
-    if (!hash) return null;
-    params.delete('hash');
-    const dataCheckString = Array.from(params.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${v}`).join('\n');
-    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
-    const checkHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-    if (checkHash !== hash) return null;
-    const userStr = params.get('user');
-    return userStr ? JSON.parse(userStr) : null;
-  } catch (e) { return null; }
-}
-
-// ==================== INIT API ====================
-
-app.post('/api/init', async (req, res) => {
-  try {
-    const { initData } = req.body;
-    let tgUser = verifyTelegramAuth(initData);
-    if (!tgUser && initData) {
-      try {
-        const p = new URLSearchParams(initData);
-        const u = p.get('user');
-        if (u) tgUser = JSON.parse(u);
-      } catch(e) {}
-    }
-    if (!tgUser) {
-      tgUser = { id: 0, first_name: "Demo", username: "demo" };
-    }
-    const userId = tgUser.id;
-    const firstName = tgUser.first_name || '';
-    const username = tgUser.username || '';
-    const photoUrl = tgUser.photo_url || '';
-
-    let referredBy = null;
-    if (initData) {
-      try {
-        const p = new URLSearchParams(initData);
-        const sp = p.get('start_param');
-        if (sp && sp.startsWith('ref_')) {
-          const refId = parseInt(sp.replace('ref_', ''));
-          if (!isNaN(refId) && refId !== userId) referredBy = refId;
+        try {
+            const missing = await db.query("SELECT user_id FROM users WHERE referral_code IS NULL");
+            if (missing.rows.length) {
+                console.log(`🔁 Backfill referral_code: ${missing.rows.length} users`);
+                for (const row of missing.rows) {
+                    const code = await generateUniqueReferralCode();
+                    await db.query("UPDATE users SET referral_code = $1 WHERE user_id = $2 AND referral_code IS NULL", [code, row.user_id]);
+                }
+                console.log("✅ Backfill referral_code done");
+            }
+        } catch (e) {
+            console.error("⚠️ Backfill referral_code failed:", e.message);
         }
-      } catch(e) {}
+    } catch (err) {
+        console.error("❌ Error recreating tables:", err.message);
     }
-
-    const existing = await pool.query('SELECT * FROM users WHERE user_id = $1', [userId]);
-    if (existing.rows.length === 0) {
-      await pool.query(
-        `INSERT INTO users (user_id, first_name, username, photo_url, balance, referred_by) 
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [userId, firstName, username, photoUrl, INITIAL_BALANCE, referredBy]
-      );
-      if (referredBy) {
-        const refUser = await pool.query('SELECT user_id FROM users WHERE user_id = $1', [referredBy]);
-        if (refUser.rows.length > 0) {
-          await pool.query('UPDATE users SET balance = balance + $1 WHERE user_id = $2', [REFERRAL_BONUS, referredBy]);
-        }
-      }
-    } else {
-      await pool.query(
-        'UPDATE users SET first_name = $2, username = $3, photo_url = COALESCE(NULLIF($4, \'\'), photo_url) WHERE user_id = $1',
-        [userId, firstName, username, photoUrl]
-      );
-    }
-
-    const user = (await pool.query('SELECT * FROM users WHERE user_id = $1', [userId])).rows[0];
-
-    const today = new Date().toISOString().split('T')[0];
-    if (user.daily_ad_date !== today) {
-      await pool.query('UPDATE users SET daily_ad_views = 0, daily_ad_date = $2 WHERE user_id = $1', [userId, today]);
-      user.daily_ad_views = 0;
-      user.daily_ad_date = today;
-    }
-
-    const positions = (await pool.query(
-      'SELECT * FROM positions WHERE user_id = $1 AND status = $2 ORDER BY opened_at DESC',
-      [userId, 'open']
-    )).rows;
-
-    res.json({ ok: true, user, positions });
-  } catch (e) {
-    console.error('[INIT ERROR]', e);
-    res.json({ ok: false, error: 'Server error' });
-  }
-});
-
-// ==================== ORDER OPEN / CLOSE ====================
-
-app.post('/api/order/open', async (req, res) => {
-  try {
-    const { userId, pair, type, size, leverage, entryPrice } = req.body;
-    if (!userId || !pair || !type || !size || !leverage || !entryPrice) return res.json({ ok: false, error: 'Missing fields' });
-    
-    const margin = size / leverage;
-    const commission = size * COMMISSION_RATE;
-    const totalCost = margin + commission;
-
-    const user = (await pool.query('SELECT balance FROM users WHERE user_id = $1', [userId])).rows[0];
-    if (!user || user.balance < totalCost) return res.json({ ok: false, error: 'Insufficient balance' });
-
-    await pool.query('UPDATE users SET balance = balance - $1 WHERE user_id = $2', [totalCost, userId]);
-
-    const result = await pool.query(
-      `INSERT INTO positions (user_id, pair, type, size, margin, leverage, entry_price) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [userId, pair, type.toUpperCase(), size, margin, leverage, entryPrice]
-    );
-
-    const newBalance = (await pool.query('SELECT balance FROM users WHERE user_id = $1', [userId])).rows[0].balance;
-
-    res.json({ ok: true, position: result.rows[0], newBalance: Number(newBalance) });
-  } catch (e) {
-    console.error('[OPEN ERROR]', e);
-    res.json({ ok: false, error: 'Server error' });
-  }
-});
-
-app.post('/api/order/close', async (req, res) => {
-  try {
-    const { userId, positionId, closePrice } = req.body;
-    if (!userId || !positionId || !closePrice) return res.json({ ok: false, error: 'Missing fields' });
-
-    const pos = (await pool.query(
-      'SELECT * FROM positions WHERE id = $1 AND user_id = $2 AND status = $3',
-      [positionId, userId, 'open']
-    )).rows[0];
-    if (!pos) return res.json({ ok: false, error: 'Position not found' });
-
-    const size = Number(pos.size), entry = Number(pos.entry_price), margin = Number(pos.margin);
-    let diff = (closePrice - entry) / entry;
-    if (pos.type === 'SHORT') diff = -diff;
-    const pnl = diff * size;
-    const commission = size * COMMISSION_RATE;
-    const netPnl = pnl - commission;
-    const returnAmount = margin + netPnl;
-
-    await pool.query(
-      "UPDATE tpsl_orders SET status = 'cancelled' WHERE position_id = $1 AND status = 'active'",
-      [positionId]
-    );
-
-    await pool.query("UPDATE positions SET status = 'closed' WHERE id = $1", [positionId]);
-
-    if (returnAmount > 0) {
-      await pool.query('UPDATE users SET balance = balance + $1 WHERE user_id = $2', [returnAmount, userId]);
-    }
-
-    await pool.query(
-      `INSERT INTO trades_history (user_id, pair, type, size, margin, leverage, entry_price, exit_price, pnl, commission, opened_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [userId, pos.pair, pos.type, size, margin, pos.leverage, entry, closePrice, netPnl, commission, pos.opened_at]
-    );
-
-    const newBalance = (await pool.query('SELECT balance FROM users WHERE user_id = $1', [userId])).rows[0].balance;
-    res.json({ ok: true, pnl: netPnl, newBalance: Number(newBalance) });
-  } catch (e) {
-    console.error('[CLOSE ERROR]', e);
-    res.json({ ok: false, error: 'Server error' });
-  }
-});
-
-// ==================== TP/SL API ====================
-
-app.post('/api/tpsl/create', async (req, res) => {
-  try {
-    const { userId, positionId, orderType, triggerPrice, sizePercent } = req.body;
-    
-    if (!userId || !positionId || !orderType || !triggerPrice || !sizePercent) {
-      return res.json({ ok: false, error: 'Missing required fields' });
-    }
-
-    if (!['TP', 'SL'].includes(orderType)) {
-      return res.json({ ok: false, error: 'Invalid order type' });
-    }
-
-    if (triggerPrice <= 0) {
-      return res.json({ ok: false, error: 'Invalid trigger price' });
-    }
-
-    if (sizePercent <= 0 || sizePercent > 100) {
-      return res.json({ ok: false, error: 'Size percent must be between 1 and 100' });
-    }
-
-    const pos = (await pool.query(
-      'SELECT * FROM positions WHERE id = $1 AND user_id = $2 AND status = $3',
-      [positionId, userId, 'open']
-    )).rows[0];
-
-    if (!pos) {
-      return res.json({ ok: false, error: 'Position not found or already closed' });
-    }
-
-    const existingCount = (await pool.query(
-      "SELECT COUNT(*) as cnt FROM tpsl_orders WHERE position_id = $1 AND order_type = $2 AND status = 'active'",
-      [positionId, orderType]
-    )).rows[0].cnt;
-
-    if (Number(existingCount) >= MAX_TPSL_PER_TYPE) {
-      return res.json({ ok: false, error: `Maximum ${MAX_TPSL_PER_TYPE} ${orderType} orders per position` });
-    }
-
-    const usedPercent = (await pool.query(
-      "SELECT COALESCE(SUM(size_percent), 0) as total FROM tpsl_orders WHERE position_id = $1 AND order_type = $2 AND status = 'active'",
-      [positionId, orderType]
-    )).rows[0].total;
-
-    const available = 100 - Number(usedPercent);
-    if (sizePercent > available + 0.01) {
-      return res.json({ ok: false, error: `Only ${available.toFixed(0)}% volume available for ${orderType}` });
-    }
-
-    const type = pos.type.toUpperCase();
-    if (orderType === 'TP') {
-      if (type === 'LONG' && triggerPrice <= Number(pos.entry_price)) {
-        return res.json({ ok: false, error: 'TP must be above entry for LONG' });
-      }
-      if (type === 'SHORT' && triggerPrice >= Number(pos.entry_price)) {
-        return res.json({ ok: false, error: 'TP must be below entry for SHORT' });
-      }
-    }
-
-    const result = await pool.query(
-      `INSERT INTO tpsl_orders (user_id, position_id, order_type, trigger_price, size_percent)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [userId, positionId, orderType, triggerPrice, sizePercent]
-    );
-
-    console.log(`[TPSL] Created ${orderType} for position ${positionId}: price=${triggerPrice}, size=${sizePercent}%`);
-
-    res.json({ ok: true, order: result.rows[0] });
-  } catch (e) {
-    console.error('[TPSL CREATE ERROR]', e);
-    res.json({ ok: false, error: 'Server error' });
-  }
-});
-
-app.post('/api/tpsl/delete', async (req, res) => {
-  try {
-    const { userId, orderId } = req.body;
-    if (!userId || !orderId) return res.json({ ok: false, error: 'Missing fields' });
-
-    const result = await pool.query(
-      "UPDATE tpsl_orders SET status = 'cancelled' WHERE id = $1 AND user_id = $2 AND status = 'active' RETURNING *",
-      [orderId, userId]
-    );
-
-    if (result.rows.length === 0) {
-      return res.json({ ok: false, error: 'Order not found or already cancelled' });
-    }
-
-    console.log(`[TPSL] Deleted order ${orderId} for user ${userId}`);
-
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('[TPSL DELETE ERROR]', e);
-    res.json({ ok: false, error: 'Server error' });
-  }
-});
-
-app.get('/api/tpsl/list', async (req, res) => {
-  try {
-    const { userId } = req.query;
-    if (!userId) return res.json({ ok: false, error: 'Missing userId' });
-
-    const orders = (await pool.query(
-      "SELECT * FROM tpsl_orders WHERE user_id = $1 AND status = 'active' ORDER BY created_at DESC",
-      [userId]
-    )).rows;
-
-    res.json({ ok: true, orders });
-  } catch (e) {
-    console.error('[TPSL LIST ERROR]', e);
-    res.json({ ok: false, error: 'Server error' });
-  }
-});
-
-// ==================== TP/SL TRIGGER ENGINE ====================
-
-async function checkTpSlTriggers(pair, currentPrice) {
-  if (!currentPrice || currentPrice <= 0) return;
-
-  const normalizedPair = pair.replace('/', '-').toUpperCase();
-
-  try {
-    const orders = (await pool.query(`
-      SELECT t.*, p.type as pos_type, p.entry_price, p.size as pos_size, 
-             p.margin as pos_margin, p.leverage as pos_leverage, p.user_id as pos_user_id,
-             p.pair as pos_pair
-      FROM tpsl_orders t
-      JOIN positions p ON t.position_id = p.id
-      WHERE t.status = 'active' 
-        AND p.status = 'open'
-        AND UPPER(REPLACE(p.pair, '/', '-')) = $1
-    `, [normalizedPair])).rows;
-
-    if (orders.length === 0) return;
-
-    for (const order of orders) {
-      const triggerPrice = Number(order.trigger_price);
-      const posType = order.pos_type.toUpperCase();
-      let triggered = false;
-
-      if (order.order_type === 'TP') {
-        if (posType === 'LONG' && currentPrice >= triggerPrice) triggered = true;
-        if (posType === 'SHORT' && currentPrice <= triggerPrice) triggered = true;
-      } else if (order.order_type === 'SL') {
-        if (posType === 'LONG' && currentPrice <= triggerPrice) triggered = true;
-        if (posType === 'SHORT' && currentPrice >= triggerPrice) triggered = true;
-      }
-
-      if (triggered) {
-        await executeTpSlOrder(order, currentPrice);
-      }
-    }
-  } catch (e) {
-    console.error('[TPSL CHECK ERROR]', e);
-  }
 }
+await initDB();
 
-async function executeTpSlOrder(order, currentPrice) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
+async function upsertUserFromObj(userObj, ipAddress, startParamRaw) {
+    const userId = String(userObj.id);
+    console.log(`📝 Upserting user ${userId} (${userObj.first_name || "No name"}). IP: ${ipAddress}`);
 
-    const updateResult = await client.query(
-      "UPDATE tpsl_orders SET status = 'triggered', triggered_at = NOW() WHERE id = $1 AND status = 'active' RETURNING *",
-      [order.id]
-    );
+    const startParam = startParamRaw ? String(startParamRaw).trim() : "";
 
-    if (updateResult.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return;
-    }
+    try {
+        await db.query("BEGIN");
 
-    const positionId = order.position_id;
-    const userId = order.pos_user_id;
-    const sizePercent = Number(order.size_percent);
-    const entryPrice = Number(order.entry_price);
-    const totalSize = Number(order.pos_size);
-    const totalMargin = Number(order.pos_margin);
-    const posType = order.pos_type.toUpperCase();
-    const posPair = order.pos_pair;
-
-    const orderSize = totalSize * (sizePercent / 100);
-    const orderMargin = totalMargin * (sizePercent / 100);
-
-    let diff = (currentPrice - entryPrice) / entryPrice;
-    if (posType === 'SHORT') diff = -diff;
-    const pnl = diff * orderSize;
-    const commission = orderSize * COMMISSION_RATE;
-    const netPnl = pnl - commission;
-    const returnAmount = orderMargin + netPnl;
-
-    const allTpSlTotal = (await client.query(
-      "SELECT COALESCE(SUM(size_percent), 0) as total FROM tpsl_orders WHERE position_id = $1 AND status = 'triggered'",
-      [positionId]
-    )).rows[0].total;
-
-    const isFullClose = Number(allTpSlTotal) >= 99.99;
-
-    if (isFullClose) {
-      await client.query("UPDATE positions SET status = 'closed' WHERE id = $1", [positionId]);
-      
-      await client.query(
-        "UPDATE tpsl_orders SET status = 'cancelled' WHERE position_id = $1 AND status = 'active'",
-        [positionId]
-      );
-
-      const remainingMargin = totalMargin - orderMargin;
-      const totalReturn = returnAmount + remainingMargin;
-      
-      if (totalReturn > 0) {
-        await client.query('UPDATE users SET balance = balance + $1 WHERE user_id = $2', [totalReturn, userId]);
-      }
-    } else {
-      const newSize = totalSize - orderSize;
-      const newMargin = totalMargin - orderMargin;
-
-      await client.query(
-        'UPDATE positions SET size = $1, margin = $2 WHERE id = $3',
-        [newSize, newMargin, positionId]
-      );
-
-      if (returnAmount > 0) {
-        await client.query('UPDATE users SET balance = balance + $1 WHERE user_id = $2', [returnAmount, userId]);
-      }
-    }
-
-    await client.query(
-      `INSERT INTO trades_history (user_id, pair, type, size, margin, leverage, entry_price, exit_price, pnl, commission, opened_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())`,
-      [userId, posPair, posType, orderSize, orderMargin, order.pos_leverage, entryPrice, currentPrice, netPnl, commission]
-    );
-
-    await client.query('COMMIT');
-
-    console.log(`[TPSL TRIGGERED] ${order.order_type} for position ${positionId}: price=${currentPrice}, pnl=${netPnl.toFixed(4)}, size=${sizePercent}%, fullClose=${isFullClose}`);
-
-    notifyUserTpSl(userId, {
-      type: 'tpsl_triggered',
-      orderId: order.id,
-      positionId: positionId,
-      orderType: order.order_type,
-      triggerPrice: currentPrice,
-      sizePercent: sizePercent,
-      pnl: netPnl,
-      isFullClose: isFullClose
-    });
-
-  } catch (e) {
-    await client.query('ROLLBACK');
-    console.error('[TPSL EXECUTE ERROR]', e);
-  } finally {
-    client.release();
-  }
-}
-
-// ==================== LIQUIDATION ENGINE ====================
-
-async function checkLiquidations(pair, currentPrice) {
-  if (!currentPrice || currentPrice <= 0) return;
-  const normalizedPair = pair.replace('/', '-').toUpperCase();
-
-  try {
-    const positions = (await pool.query(`
-      SELECT * FROM positions WHERE status = 'open' AND UPPER(REPLACE(pair, '/', '-')) = $1
-    `, [normalizedPair])).rows;
-
-    for (const pos of positions) {
-      const entry = Number(pos.entry_price);
-      const size = Number(pos.size);
-      const margin = Number(pos.margin);
-      const type = pos.type.toUpperCase();
-
-      const liqDist = (margin * 0.90) / size * entry;
-      const liqPrice = type === 'LONG' ? entry - liqDist : entry + liqDist;
-
-      let liquidated = false;
-      if (type === 'LONG' && currentPrice <= liqPrice) liquidated = true;
-      if (type === 'SHORT' && currentPrice >= liqPrice) liquidated = true;
-
-      if (liquidated) {
-        await pool.query(
-          "UPDATE tpsl_orders SET status = 'cancelled' WHERE position_id = $1 AND status = 'active'",
-          [pos.id]
+        const existingRes = await db.query(
+            "SELECT user_id, referral_code, invited_by FROM users WHERE user_id = $1 FOR UPDATE",
+            [userId]
         );
 
-        await pool.query("UPDATE positions SET status = 'liquidated' WHERE id = $1", [pos.id]);
+        let referralCode = existingRes.rows[0]?.referral_code || null;
+        let invitedBy = existingRes.rows[0]?.invited_by || null;
+        let invitedAt = null;
 
-        const liqPnl = -margin;
-        await pool.query(
-          `INSERT INTO trades_history (user_id, pair, type, size, margin, leverage, entry_price, exit_price, pnl, commission, opened_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, $10)`,
-          [pos.user_id, pos.pair, pos.type, size, margin, pos.leverage, entry, currentPrice, liqPnl, pos.opened_at]
+        if (!referralCode) {
+            referralCode = await generateUniqueReferralCode();
+        }
+
+        if (!invitedBy && startParam) {
+            const inviterRes = await db.query(
+                "SELECT user_id FROM users WHERE referral_code = $1 LIMIT 1",
+                [startParam]
+            );
+            const inviterId = inviterRes.rows[0]?.user_id || null;
+            if (inviterId && inviterId !== userId) {
+                invitedBy = inviterId;
+                invitedAt = new Date();
+            }
+        }
+
+        if (!existingRes.rows.length) {
+            await db.query(`
+        INSERT INTO users (user_id, first_name, username, photo_url, last_ip, referral_code, invited_by, invited_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `, [
+                userId,
+                userObj.first_name || null,
+                userObj.username || null,
+                userObj.photo_url || null,
+                ipAddress,
+                referralCode,
+                invitedBy,
+                invitedAt
+            ]);
+        } else {
+            await db.query(`
+        UPDATE users SET
+          first_name = $2,
+          username = $3,
+          photo_url = $4,
+          last_ip = $5,
+          referral_code = $6,
+          invited_by = COALESCE(users.invited_by, $7),
+          invited_at = COALESCE(users.invited_at, $8),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = $1
+      `, [
+                userId,
+                userObj.first_name || null,
+                userObj.username || null,
+                userObj.photo_url || null,
+                ipAddress,
+                referralCode,
+                invitedBy,
+                invitedAt
+            ]);
+        }
+
+        await db.query("COMMIT");
+
+        const res = await db.query(
+            "SELECT user_id, first_name, username, photo_url, balance, referral_code, invited_by, invited_at, ad_views_count, daily_ad_views, ad_views_reset_date FROM users WHERE user_id = $1",
+            [userId]
+        );
+        return res.rows[0];
+    } catch (err) {
+        try { await db.query("ROLLBACK"); } catch (e) {}
+        console.error(`❌ Error saving user ${userId}:`, err.message);
+        throw err;
+    }
+}
+
+app.use((req, res, next) => {
+    const ip = getClientIp(req);
+    console.log(`\n📡 [${new Date().toISOString()}] ${req.method} ${req.path} [IP: ${ip}]`);
+    if (req.body && Object.keys(req.body).length > 0) console.log("Body:", req.body);
+    next();
+});
+
+app.get("/auth/telegram", async (req, res) => {
+    res.json({msg: "Endpoint exists"});
+});
+
+app.post("/api/init", async (req, res) => {
+    console.log("\n🚀 /api/init called!");
+    const ip = getClientIp(req);
+
+    try {
+        const { initData, referralCode: referralCodeFromBody } = req.body;
+        let userRow;
+
+        if (initData) {
+            const sigValid = checkTelegramAuthInitData(initData);
+
+            if (!sigValid && process.env.DEV_ALLOW_BYPASS !== "1") {
+                console.log("❌ Signature invalid and no bypass — rejecting");
+                return res.status(403).json({ ok: false, error: "INVALID_SIGNATURE" });
+            }
+
+            const params = new URLSearchParams(initData);
+            params.delete("signature");
+            const rawUser = params.get("user");
+            if (!rawUser) return res.status(400).json({ ok: false, error: "NO_USER" });
+
+            const startParam = params.get("start_param") || referralCodeFromBody || "";
+
+            let userObj;
+            try {
+                userObj = JSON.parse(rawUser);
+            } catch (e) {
+                return res.status(400).json({ ok: false, error: "INVALID_USER_JSON" });
+            }
+
+            userRow = await upsertUserFromObj(userObj, ip, startParam);
+        } else {
+            const cookieHeader = req.headers.cookie || "";
+            const cookies = Object.fromEntries(
+                cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
+            );
+            const sessionVal = cookies[COOKIE_NAME];
+            const userId = verifySessionCookieValue(sessionVal);
+
+            if (!userId) return res.status(401).json({ ok: false, error: "NO_SESSION" });
+
+            const ures = await db.query(
+                "SELECT user_id, first_name, username, photo_url, balance, ad_views_count, daily_ad_views, ad_views_reset_date FROM users WHERE user_id = $1",
+                [userId]
+            );
+            if (!ures.rows.length) return res.status(404).json({ ok: false, error: "NO_USER" });
+            userRow = ures.rows[0];
+        }
+
+        const dailyStatus = checkAndResetDailyAds(userRow);
+        if (dailyStatus.needsReset) {
+            await db.query(
+                "UPDATE users SET daily_ad_views = 0, ad_views_reset_date = $1 WHERE user_id = $2",
+                [dailyStatus.newResetDate, userRow.user_id]
+            );
+            userRow.daily_ad_views = 0;
+            userRow.ad_views_reset_date = dailyStatus.newResetDate;
+        }
+
+        const positionsRes = await db.query(
+            "SELECT * FROM positions WHERE user_id = $1 ORDER BY created_at ASC",
+            [userRow.user_id]
         );
 
-        console.log(`[LIQUIDATION] Position ${pos.id} liquidated at ${currentPrice}`);
-      }
+        const tpslRes = await db.query(
+            "SELECT * FROM tp_sl_orders WHERE user_id = $1 AND status = 'ACTIVE' ORDER BY created_at ASC",
+            [userRow.user_id]
+        );
+
+        const cookieVal = makeSessionCookieValue(userRow.user_id);
+        const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
+
+        const sameSite = isSecure ? "SameSite=None" : "SameSite=Lax";
+        const cookieParts = [`${COOKIE_NAME}=${cookieVal}`, `Path=/`, `HttpOnly`, sameSite, `Max-Age=${60 * 60 * 24 * 30}`];
+        if (isSecure) cookieParts.push("Secure");
+        res.setHeader("Set-Cookie", cookieParts.join("; "));
+
+        res.json({
+            ok: true,
+            user: {
+                ...userRow,
+                daily_ad_views: dailyStatus.dailyAdViews,
+                daily_ad_limit: DAILY_AD_LIMIT,
+                vp_to_usd_rate: VP_TO_USD_RATE
+            },
+            positions: positionsRes.rows,
+            tpslOrders: tpslRes.rows
+        });
+
+    } catch (err) {
+        console.error("💥 UNHANDLED ERROR in /api/init:", err);
+        res.status(500).json({ ok: false, error: "SERVER_ERROR" });
     }
-  } catch (e) {
-    console.error('[LIQUIDATION ERROR]', e);
-  }
+});
+
+async function getAuthenticatedUserId(req) {
+    if (req.body && req.body.userId) return String(req.body.userId);
+    if (req.query && req.query.userId) return String(req.query.userId);
+
+    const cookieHeader = req.headers.cookie || "";
+    const cookies = Object.fromEntries(
+        cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
+    );
+    const sessionVal = cookies[COOKIE_NAME];
+    const userId = verifySessionCookieValue(sessionVal);
+    return userId ? String(userId) : null;
 }
 
-// ==================== AD SYSTEM ====================
-
-app.get('/api/user/ad-stats', async (req, res) => {
-  try {
-    const { userId } = req.query;
-    if (!userId) return res.json({ ok: false, error: 'Missing userId' });
-
-    const today = new Date().toISOString().split('T')[0];
-    
-    await pool.query(
-      "UPDATE users SET daily_ad_views = 0, daily_ad_date = $2 WHERE user_id = $1 AND daily_ad_date != $2",
-      [userId, today]
-    );
-
-    await pool.query(
-      `UPDATE users SET 
-        ad_views_count = ad_views_count + 1,
-        daily_ad_views = daily_ad_views + 1,
-        balance = balance + $2
-       WHERE user_id = $1`,
-      [userId, AD_REWARD_VP]
-    );
-
-    const user = (await pool.query('SELECT * FROM users WHERE user_id = $1', [userId])).rows[0];
-    
-    res.json({
-      ok: true,
-      adViewsCount: user.ad_views_count,
-      dailyAdViews: user.daily_ad_views,
-      dailyAdLimit: user.daily_ad_limit || DAILY_AD_LIMIT,
-      balance: Number(user.balance)
-    });
-  } catch (e) {
-    console.error('[AD STATS ERROR]', e);
-    res.json({ ok: false, error: 'Server error' });
-  }
-});
-
-// ==================== HISTORY & REFERRALS ====================
-
-app.get('/api/user/history', async (req, res) => {
-  try {
-    const { userId } = req.query;
-    const history = (await pool.query(
-      'SELECT * FROM trades_history WHERE user_id = $1 ORDER BY closed_at DESC LIMIT 100',
-      [userId]
-    )).rows;
-    res.json({ ok: true, history });
-  } catch (e) { res.json({ ok: false, error: 'Server error' }); }
-});
-
-app.get('/api/user/referrals', async (req, res) => {
-  try {
-    const { userId } = req.query;
-    if (!userId) return res.json({ ok: false, error: 'Missing userId' });
-
-    const botUsername = process.env.BOT_USERNAME || 'YourBot';
-    const miniAppUrl = process.env.MINI_APP_URL || '';
-    const referralLink = miniAppUrl 
-      ? `${miniAppUrl}?startapp=ref_${userId}`
-      : `https://t.me/${botUsername}?startapp=ref_${userId}`;
-
-    const invited = (await pool.query(
-      'SELECT user_id, first_name, username, photo_url, created_at FROM users WHERE referred_by = $1 ORDER BY created_at DESC',
-      [userId]
-    )).rows;
-
-    res.json({ ok: true, referralLink, invitedCount: invited.length, invited });
-  } catch (e) { res.json({ ok: false, error: 'Server error' }); }
-});
-
-// ==================== PRICE SOURCES ====================
-
-const SUPPORTED_PAIRS = {
-  'BTC-USD': { coinbase: 'BTC-USD', binance: 'btcusdt', display: 'BTC-USD' },
-  'ETH-USD': { coinbase: 'ETH-USD', binance: 'ethusdt', display: 'ETH-USD' },
-};
-
-let latestPrices = {};
-
-// ==================== WEBSOCKET CLIENTS ====================
-
-function notifyUserTpSl(userId, message) {
-  wss.clients.forEach(ws => {
-    if (ws.readyState === WebSocket.OPEN && ws._userId === String(userId)) {
-      try { ws.send(JSON.stringify(message)); } catch(e) {}
-    }
-  });
-}
-
-// ==================== COINBASE WS ====================
-
-let coinbaseWs = null;
-let coinbaseReconnectTimer = null;
-
-function connectCoinbase() {
-  if (coinbaseWs) { try { coinbaseWs.close(); } catch(e) {} }
-  
-  const pairs = Object.values(SUPPORTED_PAIRS).map(p => p.coinbase);
-  
-  coinbaseWs = new WebSocket('wss://ws-feed.exchange.coinbase.com');
-
-  coinbaseWs.onopen = () => {
-    console.log('[COINBASE] Connected');
-    coinbaseWs.send(JSON.stringify({
-      type: 'subscribe',
-      product_ids: pairs,
-      channels: ['ticker', 'level2_batch']
-    }));
-  };
-
-  coinbaseWs.onmessage = (evt) => {
+app.get("/api/user/referrals", async (req, res) => {
     try {
-      const msg = JSON.parse(evt.data);
-      if (msg.type === 'ticker' && msg.product_id && msg.price) {
-        const pair = msg.product_id;
-        const price = Number(msg.price);
-        latestPrices[pair] = price;
+        const userId = await getAuthenticatedUserId(req);
+        if (!userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
 
-        broadcast({ type: 'price', pair, price });
+        const userRes = await db.query(
+            "SELECT user_id, referral_code FROM users WHERE user_id = $1",
+            [userId]
+        );
+        if (!userRes.rows.length) return res.status(404).json({ ok: false, error: "NO_USER" });
 
-        checkTpSlTriggers(pair, price);
-        checkLiquidations(pair, price);
-      }
+        let referralCode = userRes.rows[0].referral_code;
+        if (!referralCode) {
+            referralCode = await generateUniqueReferralCode();
+            await db.query("UPDATE users SET referral_code = $1 WHERE user_id = $2 AND referral_code IS NULL", [referralCode, userId]);
+        }
 
-      if (msg.type === 'l2update' && msg.product_id) {
-        const pair = msg.product_id;
-        handleOrderBookUpdate(pair, msg);
-      }
-    } catch(e) {}
-  };
+        const invitedRes = await db.query(
+            `SELECT user_id, first_name, username, photo_url, invited_at, created_at
+             FROM users
+             WHERE invited_by = $1
+             ORDER BY invited_at DESC NULLS LAST, created_at DESC
+             LIMIT 50`,
+            [userId]
+        );
 
-  coinbaseWs.onclose = () => {
-    console.log('[COINBASE] Disconnected, reconnecting...');
-    coinbaseReconnectTimer = setTimeout(connectCoinbase, 3000);
-  };
+        const countRes = await db.query(
+            "SELECT COUNT(*)::int AS cnt FROM users WHERE invited_by = $1",
+            [userId]
+        );
 
-  coinbaseWs.onerror = (e) => {
-    console.error('[COINBASE ERROR]', e.message);
-  };
-}
+        res.json({
+            ok: true,
+            referralCode,
+            referralLink: buildReferralLink(referralCode),
+            invitedCount: countRes.rows[0]?.cnt || 0,
+            invited: invitedRes.rows
+        });
+    } catch (err) {
+        console.error("Error fetching referrals:", err);
+        res.status(500).json({ ok: false, error: "SERVER_ERROR" });
+    }
+});
 
-// ==================== ORDER BOOK STATE ====================
+app.get("/api/user/history", async (req, res) => {
+    try {
+        const cookieHeader = req.headers.cookie || "";
+        const cookies = Object.fromEntries(cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2));
+        let userId = verifySessionCookieValue(cookies[COOKIE_NAME]);
 
-const orderBooks = {};
+        if (!userId && req.query.userId) userId = String(req.query.userId);
+        if (!userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
 
-function handleOrderBookUpdate(pair, msg) {
-  if (!orderBooks[pair]) orderBooks[pair] = { bids: new Map(), asks: new Map() };
-  const book = orderBooks[pair];
+        const historyRes = await db.query(
+            "SELECT * FROM trades_history WHERE user_id = $1 ORDER BY closed_at DESC LIMIT 50",
+            [userId]
+        );
 
-  if (msg.changes) {
-    msg.changes.forEach(([side, price, size]) => {
-      const p = Number(price), s = Number(size);
-      const map = side === 'buy' ? book.bids : book.asks;
-      if (s === 0) map.delete(p);
-      else map.set(p, s);
-    });
-  }
+        res.json({ ok: true, history: historyRes.rows });
+    } catch (err) {
+        console.error("Error fetching history:", err);
+        res.status(500).json({ ok: false, error: "SERVER_ERROR" });
+    }
+});
 
-  const bids = Array.from(book.bids.entries())
-    .map(([price, size]) => ({ price, size }))
-    .sort((a, b) => b.price - a.price)
-    .slice(0, 15);
+app.get("/api/adsgram/reward", async (req, res) => {
+    console.log("\n🎬 /api/adsgram/reward called!");
+    console.log("Query params:", req.query);
 
-  const asks = Array.from(book.asks.entries())
-    .map(([price, size]) => ({ price, size }))
-    .sort((a, b) => a.price - b.price)
-    .slice(0, 15);
+    try {
+        const { userid, secret } = req.query;
 
-  broadcastToPair(pair, { type: 'orderBook', pair, buy: bids, sell: asks });
-}
+        if (!userid) {
+            console.log("❌ Missing userid parameter");
+            return res.status(400).json({ ok: false, error: "MISSING_USERID" });
+        }
 
-// ==================== CANDLE AGGREGATION ====================
+        if (!secret) {
+            console.log("❌ Missing secret parameter");
+            return res.status(400).json({ ok: false, error: "MISSING_SECRET" });
+        }
 
-const candleStore = {};
-const TIMEFRAMES = [60, 300, 900, 3600, 14400, 86400];
+        const expectedSecret = process.env.ADSGRAM_SECRET;
+        if (!expectedSecret) {
+            console.error("❌ ADSGRAM_SECRET not configured on server");
+            return res.status(500).json({ ok: false, error: "SERVER_CONFIG_ERROR" });
+        }
 
-function getCandleKey(pair, timeframe) { return `${pair}_${timeframe}`; }
+        if (secret !== expectedSecret) {
+            console.log("❌ Invalid secret provided");
+            return res.status(403).json({ ok: false, error: "INVALID_SECRET" });
+        }
 
-function updateCandle(pair, price, timestamp) {
-  TIMEFRAMES.forEach(tf => {
-    const key = getCandleKey(pair, tf);
-    if (!candleStore[key]) candleStore[key] = [];
-    
-    const candleTime = Math.floor(timestamp / tf) * tf;
-    const candles = candleStore[key];
-    const last = candles.length > 0 ? candles[candles.length - 1] : null;
+        const userId = String(userid).trim();
 
-    if (last && last.time === candleTime) {
-      last.high = Math.max(last.high, price);
-      last.low = Math.min(last.low, price);
-      last.close = price;
-      last.volume = (last.volume || 0) + Math.random() * 0.1;
+        const userCheck = await db.query(
+            "SELECT user_id, balance, ad_views_count, daily_ad_views, ad_views_reset_date FROM users WHERE user_id = $1",
+            [userId]
+        );
+
+        if (!userCheck.rows.length) {
+            console.log(`❌ User ${userId} not found in database`);
+            return res.status(404).json({ ok: false, error: "USER_NOT_FOUND" });
+        }
+
+        const user = userCheck.rows[0];
+        const dailyStatus = checkAndResetDailyAds(user);
+
+        if (dailyStatus.needsReset) {
+            await db.query(
+                "UPDATE users SET daily_ad_views = 0, ad_views_reset_date = $1 WHERE user_id = $2",
+                [dailyStatus.newResetDate, userId]
+            );
+            user.daily_ad_views = 0;
+        }
+
+        const currentDailyViews = dailyStatus.dailyAdViews;
+
+        if (currentDailyViews >= DAILY_AD_LIMIT) {
+            console.log(`⚠️ User ${userId} reached daily ad limit (${currentDailyViews}/${DAILY_AD_LIMIT})`);
+            return res.status(429).json({
+                ok: false,
+                error: "DAILY_LIMIT_REACHED",
+                dailyAdViews: currentDailyViews,
+                dailyAdLimit: DAILY_AD_LIMIT,
+                message: `Daily limit of ${DAILY_AD_LIMIT} ads reached. Try again tomorrow!`
+            });
+        }
+
+        await db.query(`
+            UPDATE users
+            SET balance = balance + $1,
+                ad_views_count = ad_views_count + 1,
+                daily_ad_views = daily_ad_views + 1,
+                ad_views_reset_date = COALESCE(ad_views_reset_date, CURRENT_DATE),
+                last_ad_view = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $2
+        `, [AD_REWARD_AMOUNT, userId]);
+
+        const updatedUser = await db.query(
+            "SELECT balance, ad_views_count, daily_ad_views FROM users WHERE user_id = $1",
+            [userId]
+        );
+
+        const newDailyViews = Number(updatedUser.rows[0].daily_ad_views);
+        const remainingToday = DAILY_AD_LIMIT - newDailyViews;
+
+        console.log(`✅ Ad reward granted to user ${userId}: +${AD_REWARD_AMOUNT} VP`);
+        console.log(`   New balance: ${updatedUser.rows[0].balance}, Daily views: ${newDailyViews}/${DAILY_AD_LIMIT}, Remaining: ${remainingToday}`);
+
+        res.json({
+            ok: true,
+            reward: AD_REWARD_AMOUNT,
+            newBalance: Number(updatedUser.rows[0].balance),
+            totalViews: Number(updatedUser.rows[0].ad_views_count),
+            dailyAdViews: newDailyViews,
+            dailyAdLimit: DAILY_AD_LIMIT,
+            remainingToday: remainingToday
+        });
+
+    } catch (err) {
+        console.error("💥 Error in /api/adsgram/reward:", err);
+        res.status(500).json({ ok: false, error: "SERVER_ERROR" });
+    }
+});
+
+app.get("/api/user/ad-stats", async (req, res) => {
+    try {
+        const userId = await getAuthenticatedUserId(req);
+        if (!userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
+
+        const userRes = await db.query(
+            "SELECT ad_views_count, daily_ad_views, ad_views_reset_date, last_ad_view, balance FROM users WHERE user_id = $1",
+            [userId]
+        );
+
+        if (!userRes.rows.length) {
+            return res.status(404).json({ ok: false, error: "USER_NOT_FOUND" });
+        }
+
+        const user = userRes.rows[0];
+        const dailyStatus = checkAndResetDailyAds(user);
+
+        if (dailyStatus.needsReset) {
+            await db.query(
+                "UPDATE users SET daily_ad_views = 0, ad_views_reset_date = $1 WHERE user_id = $2",
+                [dailyStatus.newResetDate, userId]
+            );
+        }
+
+        const currentDailyViews = dailyStatus.dailyAdViews;
+        const remainingToday = DAILY_AD_LIMIT - currentDailyViews;
+
+        res.json({
+            ok: true,
+            adViewsCount: Number(user.ad_views_count) || 0,
+            dailyAdViews: currentDailyViews,
+            dailyAdLimit: DAILY_AD_LIMIT,
+            remainingToday: Math.max(0, remainingToday),
+            lastAdView: user.last_ad_view,
+            balance: Number(user.balance),
+            vpToUsdRate: VP_TO_USD_RATE
+        });
+    } catch (err) {
+        console.error("Error fetching ad stats:", err);
+        res.status(500).json({ ok: false, error: "SERVER_ERROR" });
+    }
+});
+
+async function getAuthenticatedUser(req) {
+    let userId;
+    if (req.body && req.body.userId) {
+        userId = String(req.body.userId);
     } else {
-      candles.push({
-        time: candleTime,
-        open: price,
-        high: price,
-        low: price,
-        close: price,
-        volume: Math.random() * 0.5
-      });
-      if (candles.length > 2000) candles.splice(0, candles.length - 2000);
+        const cookieHeader = req.headers.cookie || "";
+        const cookies = Object.fromEntries(
+            cookieHeader.split(";").map(c => c.trim().split("=")).filter(p => p.length === 2)
+        );
+        const sessionVal = cookies[COOKIE_NAME];
+        userId = verifySessionCookieValue(sessionVal);
     }
-  });
+
+    if (!userId) throw new Error("NO_SESSION");
+
+    const res = await db.query("SELECT user_id, balance FROM users WHERE user_id = $1", [userId]);
+    if (!res.rows.length) throw new Error("NO_USER");
+
+    return res.rows[0];
 }
 
-// ==================== HISTORY FETCH ====================
-
-async function fetchCandleHistory(pair, timeframe, limit = 300) {
-  const pairConfig = SUPPORTED_PAIRS[pair];
-  if (!pairConfig) return [];
-
-  try {
-    const granularity = timeframe;
-    const end = new Date().toISOString();
-    const start = new Date(Date.now() - timeframe * limit * 1000).toISOString();
-    
-    const url = `https://api.exchange.coinbase.com/products/${pairConfig.coinbase}/candles?granularity=${granularity}&start=${start}&end=${end}`;
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (Array.isArray(data) && data.length > 0) {
-      return data.map(c => ({
-        time: c[0],
-        low: c[1],
-        high: c[2],
-        open: c[3],
-        close: c[4],
-        volume: c[5]
-      })).sort((a, b) => a.time - b.time);
-    }
-  } catch (e) {
-    console.error(`[HISTORY] Coinbase error for ${pair}:`, e.message);
-  }
-
-  try {
-    const binanceSymbol = pairConfig.binance;
-    const intervalMap = { 60: '1m', 300: '5m', 900: '15m', 3600: '1h', 14400: '4h', 86400: '1d' };
-    const interval = intervalMap[timeframe] || '1m';
-    
-    const url = `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol.toUpperCase()}&interval=${interval}&limit=${limit}`;
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (Array.isArray(data)) {
-      return data.map(c => ({
-        time: Math.floor(c[0] / 1000),
-        open: Number(c[1]),
-        high: Number(c[2]),
-        low: Number(c[3]),
-        close: Number(c[4]),
-        volume: Number(c[5])
-      }));
-    }
-  } catch (e) {
-    console.error(`[HISTORY] Binance error for ${pair}:`, e.message);
-  }
-
-  return [];
-}
-
-async function fetchMoreHistory(pair, timeframe, until, limit = 200) {
-  const pairConfig = SUPPORTED_PAIRS[pair];
-  if (!pairConfig) return [];
-
-  try {
-    const endTime = until;
-    const startTime = endTime - (timeframe * limit);
-    const granularity = timeframe;
-
-    const url = `https://api.exchange.coinbase.com/products/${pairConfig.coinbase}/candles?granularity=${granularity}&start=${new Date(startTime * 1000).toISOString()}&end=${new Date(endTime * 1000).toISOString()}`;
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (Array.isArray(data) && data.length > 0) {
-      return data.map(c => ({
-        time: c[0], low: c[1], high: c[2], open: c[3], close: c[4], volume: c[5]
-      })).sort((a, b) => a.time - b.time);
-    }
-  } catch (e) {
-    console.error(`[MORE HISTORY] Coinbase error:`, e.message);
-  }
-
-  try {
-    const binanceSymbol = pairConfig.binance;
-    const intervalMap = { 60: '1m', 300: '5m', 900: '15m', 3600: '1h', 14400: '4h', 86400: '1d' };
-    const interval = intervalMap[timeframe] || '1m';
-    const endMs = until * 1000;
-    
-    const url = `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol.toUpperCase()}&interval=${interval}&endTime=${endMs}&limit=${limit}`;
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (Array.isArray(data)) {
-      return data.map(c => ({
-        time: Math.floor(c[0] / 1000), open: Number(c[1]), high: Number(c[2]),
-        low: Number(c[3]), close: Number(c[4]), volume: Number(c[5])
-      }));
-    }
-  } catch (e) {
-    console.error(`[MORE HISTORY] Binance error:`, e.message);
-  }
-
-  return [];
-}
-
-// ==================== TRADES FETCH ====================
-
-async function fetchRecentTrades(pair) {
-  const pairConfig = SUPPORTED_PAIRS[pair];
-  if (!pairConfig) return [];
-
-  try {
-    const url = `https://api.exchange.coinbase.com/products/${pairConfig.coinbase}/trades?limit=20`;
-    const response = await fetch(url);
-    const data = await response.json();
-    if (Array.isArray(data)) {
-      return data.map(t => ({
-        price: Number(t.price),
-        size: Number(t.size),
-        side: t.side,
-        time: new Date(t.time).getTime()
-      }));
-    }
-  } catch(e) {}
-  return [];
-}
-
-// ==================== WS BROADCAST ====================
-
-function broadcast(data) {
-  const msg = JSON.stringify(data);
-  wss.clients.forEach(ws => {
-    if (ws.readyState === WebSocket.OPEN) {
-      try { ws.send(msg); } catch(e) {}
-    }
-  });
-}
-
-function broadcastToPair(pair, data) {
-  const msg = JSON.stringify(data);
-  const normalizedPair = pair.replace('/', '-').toUpperCase();
-  wss.clients.forEach(ws => {
-    if (ws.readyState === WebSocket.OPEN && ws._subscribedPair === normalizedPair) {
-      try { ws.send(msg); } catch(e) {}
-    }
-  });
-}
-
-// ==================== WS CONNECTION HANDLER ====================
-
-wss.on('connection', (ws) => {
-  ws._subscribedPair = 'BTC-USD';
-  ws._subscribedTimeframe = 60;
-  ws._userId = null;
-
-  ws.on('message', async (data) => {
+app.post("/api/order/open", async (req, res) => {
     try {
-      const msg = JSON.parse(data);
+        const user = await getAuthenticatedUser(req);
+        const { pair, type, size, leverage, entryPrice } = req.body;
 
-      if (msg.userId) {
-        ws._userId = String(msg.userId);
-      }
-
-      if (msg.type === 'subscribe') {
-        const pair = (msg.pair || 'BTC-USD').replace('/', '-').toUpperCase();
-        const tf = Number(msg.timeframe) || 60;
-        ws._subscribedPair = pair;
-        ws._subscribedTimeframe = tf;
-
-        const candles = await fetchCandleHistory(pair, tf);
-        if (candles.length > 0) {
-          ws.send(JSON.stringify({ type: 'history', pair, timeframe: tf, data: candles }));
+        if (!pair || !type || !size || !leverage || !entryPrice) {
+            return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
         }
 
-        if (latestPrices[pair]) {
-          ws.send(JSON.stringify({ type: 'price', pair, price: latestPrices[pair] }));
+        const margin = Number(size) / Number(leverage);
+        if (margin > Number(user.balance)) {
+            return res.status(400).json({ ok: false, error: "INSUFFICIENT_BALANCE" });
         }
 
-        if (orderBooks[pair]) {
-          const book = orderBooks[pair];
-          const bids = Array.from(book.bids.entries()).map(([p, s]) => ({ price: p, size: s })).sort((a, b) => b.price - a.price).slice(0, 15);
-          const asks = Array.from(book.asks.entries()).map(([p, s]) => ({ price: p, size: s })).sort((a, b) => a.price - b.price).slice(0, 15);
-          ws.send(JSON.stringify({ type: 'orderBook', pair, buy: bids, sell: asks }));
-        }
+        await db.query(
+            "UPDATE users SET balance = balance - $1 WHERE user_id = $2",
+            [margin, user.user_id]
+        );
 
-        const trades = await fetchRecentTrades(pair);
-        if (trades.length > 0) {
-          ws.send(JSON.stringify({ type: 'trades', pair, trades }));
-        }
-      }
+        const posRes = await db.query(`
+      INSERT INTO positions (user_id, pair, type, entry_price, margin, leverage, size)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `, [user.user_id, pair, type, entryPrice, margin, leverage, size]);
 
-      if (msg.type === 'loadMore') {
-        const pair = (msg.pair || 'BTC-USD').replace('/', '-').toUpperCase();
-        const tf = Number(msg.timeframe) || 60;
-        const until = Number(msg.until);
-
-        if (until) {
-          const moreCandles = await fetchMoreHistory(pair, tf, until);
-          ws.send(JSON.stringify({ type: 'moreHistory', pair, timeframe: tf, data: moreCandles }));
-        }
-      }
-
-    } catch(e) {}
-  });
+        res.json({ ok: true, position: posRes.rows[0], newBalance: Number(user.balance) - margin });
+    } catch (err) {
+        console.error("Error opening position:", err.message);
+        res.status(500).json({ ok: false, error: err.message });
+    }
 });
 
-// ==================== PERIODIC TASKS ====================
-
-setInterval(async () => {
-  for (const pair of Object.keys(SUPPORTED_PAIRS)) {
+app.post("/api/order/close", async (req, res) => {
     try {
-      const trades = await fetchRecentTrades(pair);
-      if (trades.length > 0) broadcastToPair(pair, { type: 'trades', pair, trades });
-    } catch(e) {}
-  }
-}, 5000);
+        const user = await getAuthenticatedUser(req);
+        const { positionId, closePrice } = req.body;
 
-// ==================== START ====================
+        if (!positionId || !closePrice) return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
+
+        const posRes = await db.query(
+            "SELECT * FROM positions WHERE id = $1 AND user_id = $2",
+            [positionId, user.user_id]
+        );
+
+        if (!posRes.rows.length) return res.status(404).json({ ok: false, error: "POSITION_NOT_FOUND" });
+        const pos = posRes.rows[0];
+
+        const cPrice = Number(closePrice);
+        const ePrice = Number(pos.entry_price);
+        const pSize = Number(pos.size);
+        const pMargin = Number(pos.margin);
+
+        const priceChangePct = (cPrice - ePrice) / ePrice;
+        let pnl = priceChangePct * pSize;
+        if (pos.type === "SHORT") pnl = -pnl;
+
+        const commission = pSize * 0.0003;
+
+        let totalReturn = pMargin + pnl - commission;
+
+        let isLiquidated = false;
+        if (totalReturn <= 0) {
+            isLiquidated = true;
+            totalReturn = 0;
+            pnl = commission - pMargin;
+        }
+
+        await db.query("BEGIN");
+
+        if (totalReturn > 0) {
+            await db.query("UPDATE users SET balance = balance + $1 WHERE user_id = $2", [totalReturn, user.user_id]);
+        }
+
+        const finalCommission = commission;
+
+        await db.query(`
+      INSERT INTO trades_history (user_id, pair, type, entry_price, exit_price, size, leverage, pnl, commission)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `, [user.user_id, pos.pair || 'BTC-USD', pos.type, ePrice, cPrice, pSize, pos.leverage, pnl, finalCommission]);
+
+        await db.query("DELETE FROM positions WHERE id = $1", [positionId]);
+
+        await db.query("COMMIT");
+
+        const newBalRes = await db.query("SELECT balance FROM users WHERE user_id = $1", [user.user_id]);
+
+        console.log(`✅ ${isLiquidated ? 'LIQUIDATED' : 'CLOSED'} | PnL: ${pnl.toFixed(2)}`);
+
+        res.json({
+            ok: true,
+            pnl: Number(pnl.toFixed(2)),
+            commission: Number(finalCommission.toFixed(2)),
+            liquidated: isLiquidated,
+            newBalance: Number(newBalRes.rows[0].balance)
+        });
+
+    } catch (err) {
+        await db.query("ROLLBACK");
+        console.error("❌ Ошибка закрытия позиции:", err.message);
+        res.status(500).json({ ok: false, error: err.message });
+    }
+});
+
+// ======================== TP/SL API ENDPOINTS ========================
+
+app.post("/api/tpsl/create", async (req, res) => {
+    console.log("\n🎯 /api/tpsl/create called!");
+    try {
+        const user = await getAuthenticatedUser(req);
+        const { positionId, orderType, triggerPrice, sizePercent, currentPrice } = req.body;
+
+        if (!positionId || !orderType || !triggerPrice) {
+            return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
+        }
+
+        const normalizedOrderType = String(orderType).toUpperCase();
+        if (normalizedOrderType !== 'TP' && normalizedOrderType !== 'SL') {
+            return res.status(400).json({ ok: false, error: "INVALID_ORDER_TYPE" });
+        }
+
+        const trigPrice = Number(triggerPrice);
+        if (isNaN(trigPrice) || trigPrice <= 0) {
+            return res.status(400).json({ ok: false, error: "INVALID_TRIGGER_PRICE" });
+        }
+
+        const pct = Number(sizePercent) || 100;
+        if (pct <= 0 || pct > 100) {
+            return res.status(400).json({ ok: false, error: "INVALID_SIZE_PERCENT" });
+        }
+
+        const isPartial = pct < 100;
+
+        const posRes = await db.query(
+            "SELECT * FROM positions WHERE id = $1 AND user_id = $2",
+            [positionId, user.user_id]
+        );
+
+        if (!posRes.rows.length) {
+            return res.status(404).json({ ok: false, error: "POSITION_NOT_FOUND" });
+        }
+
+        const pos = posRes.rows[0];
+        const posType = pos.type.toUpperCase();
+        const cPrice = Number(currentPrice) || trigPrice;
+
+        if (normalizedOrderType === 'TP') {
+            if (posType === 'LONG' && trigPrice <= cPrice) {
+                return res.status(400).json({ ok: false, error: "TP_PRICE_MUST_BE_ABOVE_CURRENT", message: "Take Profit price must be above current price for LONG positions" });
+            }
+            if (posType === 'SHORT' && trigPrice >= cPrice) {
+                return res.status(400).json({ ok: false, error: "TP_PRICE_MUST_BE_BELOW_CURRENT", message: "Take Profit price must be below current price for SHORT positions" });
+            }
+        }
+
+        if (normalizedOrderType === 'SL') {
+            if (posType === 'LONG' && trigPrice >= cPrice) {
+                return res.status(400).json({ ok: false, error: "SL_PRICE_MUST_BE_BELOW_CURRENT", message: "Stop Loss price must be below current price for LONG positions" });
+            }
+            if (posType === 'SHORT' && trigPrice <= cPrice) {
+                return res.status(400).json({ ok: false, error: "SL_PRICE_MUST_BE_ABOVE_CURRENT", message: "Stop Loss price must be above current price for SHORT positions" });
+            }
+        }
+
+        const existingOrders = await db.query(
+            "SELECT * FROM tp_sl_orders WHERE position_id = $1 AND order_type = $2 AND status = 'ACTIVE'",
+            [positionId, normalizedOrderType]
+        );
+
+        const maxOrders = normalizedOrderType === 'TP' ? MAX_TP_PER_POSITION : MAX_SL_PER_POSITION;
+        if (existingOrders.rows.length >= maxOrders) {
+            return res.status(400).json({
+                ok: false,
+                error: "MAX_ORDERS_REACHED",
+                message: `Maximum ${maxOrders} ${normalizedOrderType} orders per position`
+            });
+        }
+
+        const totalSize = Number(pos.size);
+        const existingTotalPercent = existingOrders.rows.reduce((sum, o) => sum + Number(o.size_percent), 0);
+        const allOrdersForPos = await db.query(
+            "SELECT * FROM tp_sl_orders WHERE position_id = $1 AND status = 'ACTIVE'",
+            [positionId]
+        );
+        const totalAllocatedPercentByType = {};
+        allOrdersForPos.rows.forEach(o => {
+            const t = o.order_type;
+            totalAllocatedPercentByType[t] = (totalAllocatedPercentByType[t] || 0) + Number(o.size_percent);
+        });
+
+        const currentTypeTotal = totalAllocatedPercentByType[normalizedOrderType] || 0;
+        if (currentTypeTotal + pct > 100) {
+            return res.status(400).json({
+                ok: false,
+                error: "SIZE_EXCEEDS_POSITION",
+                message: `Total ${normalizedOrderType} size would exceed 100% of position. Available: ${(100 - currentTypeTotal).toFixed(1)}%`
+            });
+        }
+
+        const sizeAmount = (totalSize * pct) / 100;
+
+        const insertRes = await db.query(`
+            INSERT INTO tp_sl_orders (position_id, user_id, pair, order_type, trigger_price, size_percent, size_amount, is_partial, status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ACTIVE')
+            RETURNING *
+        `, [positionId, user.user_id, pos.pair, normalizedOrderType, trigPrice, pct, sizeAmount, isPartial]);
+
+        const allActive = await db.query(
+            "SELECT * FROM tp_sl_orders WHERE position_id = $1 AND status = 'ACTIVE' ORDER BY created_at ASC",
+            [positionId]
+        );
+
+        console.log(`✅ ${normalizedOrderType} order created for position ${positionId}: price=${trigPrice}, size=${pct}%`);
+
+        res.json({
+            ok: true,
+            order: insertRes.rows[0],
+            allOrders: allActive.rows
+        });
+
+    } catch (err) {
+        console.error("❌ Error creating TP/SL:", err.message);
+        res.status(500).json({ ok: false, error: err.message });
+    }
+});
+
+app.get("/api/tpsl/list", async (req, res) => {
+    try {
+        const userId = await getAuthenticatedUserId(req);
+        if (!userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
+
+        const positionId = req.query.positionId;
+
+        let query, params;
+        if (positionId) {
+            query = "SELECT * FROM tp_sl_orders WHERE user_id = $1 AND position_id = $2 AND status = 'ACTIVE' ORDER BY created_at ASC";
+            params = [userId, positionId];
+        } else {
+            query = "SELECT * FROM tp_sl_orders WHERE user_id = $1 AND status = 'ACTIVE' ORDER BY created_at ASC";
+            params = [userId];
+        }
+
+        const result = await db.query(query, params);
+
+        res.json({ ok: true, orders: result.rows });
+    } catch (err) {
+        console.error("Error fetching TP/SL orders:", err);
+        res.status(500).json({ ok: false, error: "SERVER_ERROR" });
+    }
+});
+
+app.delete("/api/tpsl/delete", async (req, res) => {
+    try {
+        const userId = await getAuthenticatedUserId(req);
+        if (!userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
+
+        const orderId = req.query.orderId || req.body?.orderId;
+        if (!orderId) return res.status(400).json({ ok: false, error: "MISSING_ORDER_ID" });
+
+        const orderRes = await db.query(
+            "SELECT * FROM tp_sl_orders WHERE id = $1 AND user_id = $2 AND status = 'ACTIVE'",
+            [orderId, userId]
+        );
+
+        if (!orderRes.rows.length) {
+            return res.status(404).json({ ok: false, error: "ORDER_NOT_FOUND" });
+        }
+
+        await db.query(
+            "UPDATE tp_sl_orders SET status = 'CANCELLED' WHERE id = $1",
+            [orderId]
+        );
+
+        const positionId = orderRes.rows[0].position_id;
+        const allActive = await db.query(
+            "SELECT * FROM tp_sl_orders WHERE position_id = $1 AND status = 'ACTIVE' ORDER BY created_at ASC",
+            [positionId]
+        );
+
+        console.log(`🗑️ TP/SL order ${orderId} cancelled`);
+
+        res.json({ ok: true, allOrders: allActive.rows });
+    } catch (err) {
+        console.error("Error deleting TP/SL order:", err);
+        res.status(500).json({ ok: false, error: "SERVER_ERROR" });
+    }
+});
+
+app.get("/api/health", (req, res) => res.json({ ok: true }));
 
 const PORT = process.env.PORT || 3000;
-
-initDB().then(() => {
-  connectCoinbase();
-  
-  server.listen(PORT, () => {
-    console.log(`[SERVER] Running on port ${PORT}`);
-    console.log(`[SERVER] TP/SL system enabled (max ${MAX_TPSL_PER_TYPE} per type)`);
-  });
-}).catch(e => {
-  console.error('[FATAL]', e);
-  process.exit(1);
-});
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
