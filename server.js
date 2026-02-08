@@ -68,10 +68,13 @@ const WEBAPP_SHORT_NAME = process.env.WEBAPP_SHORT_NAME || "";
 
 const REFERRAL_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-// ======================== CONSTANTS ========================
 const AD_REWARD_AMOUNT = 1;
 const DAILY_AD_LIMIT = 5;
 const VP_TO_USD_RATE = 0.005;
+const MAX_TP_PER_POSITION = 3;
+const MAX_SL_PER_POSITION = 3;
+const MIN_PARTIAL_PERCENT = 10;
+const MAX_PARTIAL_PERCENT = 100;
 
 function makeReferralCode(len = 8) {
     const bytes = crypto.randomBytes(len);
@@ -114,7 +117,7 @@ function getTodayDateUTC() {
 function checkAndResetDailyAds(user) {
     const today = getTodayDateUTC();
     const lastResetDate = user.ad_views_reset_date ? user.ad_views_reset_date.toISOString().split('T')[0] : null;
-    
+
     if (lastResetDate !== today) {
         return {
             needsReset: true,
@@ -122,7 +125,7 @@ function checkAndResetDailyAds(user) {
             newResetDate: today
         };
     }
-    
+
     return {
         needsReset: false,
         dailyAdViews: Number(user.daily_ad_views) || 0,
@@ -245,7 +248,26 @@ async function initDB() {
 
         try { await db.query(`ALTER TABLE trades_history ADD COLUMN IF NOT EXISTS commission NUMERIC DEFAULT 0`); } catch(e) {}
 
-        console.log("✅ DB tables ready!");
+        await db.query(`
+      CREATE TABLE IF NOT EXISTS tp_sl_orders (
+        id BIGSERIAL PRIMARY KEY,
+        position_id BIGINT NOT NULL REFERENCES positions(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+        pair TEXT NOT NULL,
+        order_type TEXT NOT NULL CHECK (order_type IN ('TP', 'SL')),
+        trigger_price NUMERIC NOT NULL,
+        size_percent NUMERIC NOT NULL DEFAULT 100 CHECK (size_percent >= 10 AND size_percent <= 100),
+        status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'TRIGGERED', 'CANCELLED')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        triggered_at TIMESTAMP
+      );
+    `);
+
+        await db.query(`CREATE INDEX IF NOT EXISTS tp_sl_orders_position_idx ON tp_sl_orders(position_id) WHERE status = 'ACTIVE';`);
+        await db.query(`CREATE INDEX IF NOT EXISTS tp_sl_orders_status_idx ON tp_sl_orders(status) WHERE status = 'ACTIVE';`);
+        await db.query(`CREATE INDEX IF NOT EXISTS tp_sl_orders_user_idx ON tp_sl_orders(user_id);`);
+
+        console.log("✅ DB tables ready (including tp_sl_orders)!");
 
         try {
             const missing = await db.query("SELECT user_id FROM users WHERE referral_code IS NULL");
@@ -427,6 +449,11 @@ app.post("/api/init", async (req, res) => {
             [userRow.user_id]
         );
 
+        const tpSlRes = await db.query(
+            "SELECT * FROM tp_sl_orders WHERE user_id = $1 AND status = 'ACTIVE' ORDER BY created_at ASC",
+            [userRow.user_id]
+        );
+
         const cookieVal = makeSessionCookieValue(userRow.user_id);
         const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
 
@@ -435,15 +462,16 @@ app.post("/api/init", async (req, res) => {
         if (isSecure) cookieParts.push("Secure");
         res.setHeader("Set-Cookie", cookieParts.join("; "));
 
-        res.json({ 
-            ok: true, 
+        res.json({
+            ok: true,
             user: {
                 ...userRow,
                 daily_ad_views: dailyStatus.dailyAdViews,
                 daily_ad_limit: DAILY_AD_LIMIT,
                 vp_to_usd_rate: VP_TO_USD_RATE
-            }, 
-            positions: positionsRes.rows 
+            },
+            positions: positionsRes.rows,
+            tpSlOrders: tpSlRes.rows
         });
 
     } catch (err) {
@@ -530,8 +558,6 @@ app.get("/api/user/history", async (req, res) => {
     }
 });
 
-// ======================== ADSGRAM REWARD ENDPOINT ========================
-
 app.get("/api/adsgram/reward", async (req, res) => {
     console.log("\n🎬 /api/adsgram/reward called!");
     console.log("Query params:", req.query);
@@ -563,10 +589,10 @@ app.get("/api/adsgram/reward", async (req, res) => {
         const userId = String(userid).trim();
 
         const userCheck = await db.query(
-            "SELECT user_id, balance, ad_views_count, daily_ad_views, ad_views_reset_date FROM users WHERE user_id = $1", 
+            "SELECT user_id, balance, ad_views_count, daily_ad_views, ad_views_reset_date FROM users WHERE user_id = $1",
             [userId]
         );
-        
+
         if (!userCheck.rows.length) {
             console.log(`❌ User ${userId} not found in database`);
             return res.status(404).json({ ok: false, error: "USER_NOT_FOUND" });
@@ -587,8 +613,8 @@ app.get("/api/adsgram/reward", async (req, res) => {
 
         if (currentDailyViews >= DAILY_AD_LIMIT) {
             console.log(`⚠️ User ${userId} reached daily ad limit (${currentDailyViews}/${DAILY_AD_LIMIT})`);
-            return res.status(429).json({ 
-                ok: false, 
+            return res.status(429).json({
+                ok: false,
                 error: "DAILY_LIMIT_REACHED",
                 dailyAdViews: currentDailyViews,
                 dailyAdLimit: DAILY_AD_LIMIT,
@@ -597,7 +623,7 @@ app.get("/api/adsgram/reward", async (req, res) => {
         }
 
         await db.query(`
-            UPDATE users 
+            UPDATE users
             SET balance = balance + $1,
                 ad_views_count = ad_views_count + 1,
                 daily_ad_views = daily_ad_views + 1,
@@ -608,7 +634,7 @@ app.get("/api/adsgram/reward", async (req, res) => {
         `, [AD_REWARD_AMOUNT, userId]);
 
         const updatedUser = await db.query(
-            "SELECT balance, ad_views_count, daily_ad_views FROM users WHERE user_id = $1", 
+            "SELECT balance, ad_views_count, daily_ad_views FROM users WHERE user_id = $1",
             [userId]
         );
 
@@ -618,8 +644,8 @@ app.get("/api/adsgram/reward", async (req, res) => {
         console.log(`✅ Ad reward granted to user ${userId}: +${AD_REWARD_AMOUNT} VP`);
         console.log(`   New balance: ${updatedUser.rows[0].balance}, Daily views: ${newDailyViews}/${DAILY_AD_LIMIT}, Remaining: ${remainingToday}`);
 
-        res.json({ 
-            ok: true, 
+        res.json({
+            ok: true,
             reward: AD_REWARD_AMOUNT,
             newBalance: Number(updatedUser.rows[0].balance),
             totalViews: Number(updatedUser.rows[0].ad_views_count),
@@ -798,6 +824,231 @@ app.post("/api/order/close", async (req, res) => {
         await db.query("ROLLBACK");
         console.error("❌ Ошибка закрытия позиции:", err.message);
         res.status(500).json({ ok: false, error: err.message });
+    }
+});
+
+// ======================== TP/SL ENDPOINTS ========================
+
+app.post("/api/tp-sl/create", async (req, res) => {
+    try {
+        const user = await getAuthenticatedUser(req);
+        const { positionId, orderType, triggerPrice, sizePercent } = req.body;
+
+        if (!positionId || !orderType || !triggerPrice) {
+            return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
+        }
+
+        const normalizedType = String(orderType).toUpperCase();
+        if (normalizedType !== 'TP' && normalizedType !== 'SL') {
+            return res.status(400).json({ ok: false, error: "INVALID_ORDER_TYPE" });
+        }
+
+        const trigPrice = Number(triggerPrice);
+        if (isNaN(trigPrice) || trigPrice <= 0) {
+            return res.status(400).json({ ok: false, error: "INVALID_TRIGGER_PRICE" });
+        }
+
+        const percent = Number(sizePercent) || 100;
+        if (percent < MIN_PARTIAL_PERCENT || percent > MAX_PARTIAL_PERCENT) {
+            return res.status(400).json({ ok: false, error: `SIZE_PERCENT_MUST_BE_${MIN_PARTIAL_PERCENT}_TO_${MAX_PARTIAL_PERCENT}` });
+        }
+
+        const client = await db.pool ? db.connect() : db.connect();
+        try {
+            await client.query("BEGIN");
+
+            const posRes = await client.query(
+                "SELECT * FROM positions WHERE id = $1 AND user_id = $2 FOR UPDATE",
+                [positionId, user.user_id]
+            );
+
+            if (!posRes.rows.length) {
+                await client.query("ROLLBACK");
+                return res.status(404).json({ ok: false, error: "POSITION_NOT_FOUND" });
+            }
+
+            const pos = posRes.rows[0];
+            const entryPrice = Number(pos.entry_price);
+            const posType = pos.type.toUpperCase();
+
+            if (normalizedType === 'TP') {
+                if (posType === 'LONG' && trigPrice <= entryPrice) {
+                    await client.query("ROLLBACK");
+                    return res.status(400).json({ ok: false, error: "TP_MUST_BE_ABOVE_ENTRY_FOR_LONG" });
+                }
+                if (posType === 'SHORT' && trigPrice >= entryPrice) {
+                    await client.query("ROLLBACK");
+                    return res.status(400).json({ ok: false, error: "TP_MUST_BE_BELOW_ENTRY_FOR_SHORT" });
+                }
+            }
+
+            if (normalizedType === 'SL') {
+                if (posType === 'LONG' && trigPrice >= entryPrice) {
+                    await client.query("ROLLBACK");
+                    return res.status(400).json({ ok: false, error: "SL_MUST_BE_BELOW_ENTRY_FOR_LONG" });
+                }
+                if (posType === 'SHORT' && trigPrice <= entryPrice) {
+                    await client.query("ROLLBACK");
+                    return res.status(400).json({ ok: false, error: "SL_MUST_BE_ABOVE_ENTRY_FOR_SHORT" });
+                }
+            }
+
+            const existingOrders = await client.query(
+                "SELECT * FROM tp_sl_orders WHERE position_id = $1 AND status = 'ACTIVE'",
+                [positionId]
+            );
+
+            const tpCount = existingOrders.rows.filter(o => o.order_type === 'TP').length;
+            const slCount = existingOrders.rows.filter(o => o.order_type === 'SL').length;
+
+            if (normalizedType === 'TP' && tpCount >= MAX_TP_PER_POSITION) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({ ok: false, error: `MAX_${MAX_TP_PER_POSITION}_TP_ORDERS_REACHED` });
+            }
+
+            if (normalizedType === 'SL' && slCount >= MAX_SL_PER_POSITION) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({ ok: false, error: `MAX_${MAX_SL_PER_POSITION}_SL_ORDERS_REACHED` });
+            }
+
+            const sameTypeOrders = existingOrders.rows.filter(o => o.order_type === normalizedType);
+            const usedPercent = sameTypeOrders.reduce((sum, o) => sum + Number(o.size_percent), 0);
+            const availablePercent = 100 - usedPercent;
+
+            if (percent > availablePercent) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({
+                    ok: false,
+                    error: "EXCEEDS_AVAILABLE_VOLUME",
+                    availablePercent: Math.floor(availablePercent),
+                    usedPercent: Math.ceil(usedPercent)
+                });
+            }
+
+            const duplicatePrice = sameTypeOrders.find(o => Math.abs(Number(o.trigger_price) - trigPrice) < 0.0001);
+            if (duplicatePrice) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({ ok: false, error: "DUPLICATE_TRIGGER_PRICE" });
+            }
+
+            const orderRes = await client.query(`
+                INSERT INTO tp_sl_orders (position_id, user_id, pair, order_type, trigger_price, size_percent, status)
+                VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE')
+                RETURNING *
+            `, [positionId, user.user_id, pos.pair, normalizedType, trigPrice, percent]);
+
+            await client.query("COMMIT");
+
+            const allOrders = await db.query(
+                "SELECT * FROM tp_sl_orders WHERE position_id = $1 AND status = 'ACTIVE' ORDER BY created_at ASC",
+                [positionId]
+            );
+
+            console.log(`✅ ${normalizedType} order created for position ${positionId}: price=${trigPrice}, size=${percent}%`);
+
+            res.json({
+                ok: true,
+                order: orderRes.rows[0],
+                allOrders: allOrders.rows,
+                tpCount: allOrders.rows.filter(o => o.order_type === 'TP').length,
+                slCount: allOrders.rows.filter(o => o.order_type === 'SL').length
+            });
+
+        } catch (innerErr) {
+            await client.query("ROLLBACK");
+            throw innerErr;
+        } finally {
+            client.release();
+        }
+
+    } catch (err) {
+        console.error("❌ Error creating TP/SL:", err.message);
+        res.status(500).json({ ok: false, error: err.message });
+    }
+});
+
+app.post("/api/tp-sl/delete", async (req, res) => {
+    try {
+        const user = await getAuthenticatedUser(req);
+        const { orderId } = req.body;
+
+        if (!orderId) {
+            return res.status(400).json({ ok: false, error: "MISSING_ORDER_ID" });
+        }
+
+        const orderRes = await db.query(
+            "SELECT * FROM tp_sl_orders WHERE id = $1 AND user_id = $2 AND status = 'ACTIVE'",
+            [orderId, user.user_id]
+        );
+
+        if (!orderRes.rows.length) {
+            return res.status(404).json({ ok: false, error: "ORDER_NOT_FOUND" });
+        }
+
+        const order = orderRes.rows[0];
+
+        await db.query(
+            "UPDATE tp_sl_orders SET status = 'CANCELLED' WHERE id = $1",
+            [orderId]
+        );
+
+        const allOrders = await db.query(
+            "SELECT * FROM tp_sl_orders WHERE position_id = $1 AND status = 'ACTIVE' ORDER BY created_at ASC",
+            [order.position_id]
+        );
+
+        console.log(`✅ ${order.order_type} order ${orderId} cancelled for position ${order.position_id}`);
+
+        res.json({
+            ok: true,
+            deletedOrderId: orderId,
+            allOrders: allOrders.rows,
+            tpCount: allOrders.rows.filter(o => o.order_type === 'TP').length,
+            slCount: allOrders.rows.filter(o => o.order_type === 'SL').length
+        });
+
+    } catch (err) {
+        console.error("❌ Error deleting TP/SL:", err.message);
+        res.status(500).json({ ok: false, error: err.message });
+    }
+});
+
+app.get("/api/tp-sl/list", async (req, res) => {
+    try {
+        const userId = await getAuthenticatedUserId(req);
+        if (!userId) return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
+
+        const positionId = req.query.positionId;
+
+        let ordersRes;
+        if (positionId) {
+            ordersRes = await db.query(
+                "SELECT * FROM tp_sl_orders WHERE position_id = $1 AND user_id = $2 AND status = 'ACTIVE' ORDER BY created_at ASC",
+                [positionId, userId]
+            );
+        } else {
+            ordersRes = await db.query(
+                "SELECT * FROM tp_sl_orders WHERE user_id = $1 AND status = 'ACTIVE' ORDER BY created_at ASC",
+                [userId]
+            );
+        }
+
+        const orders = ordersRes.rows;
+        const tpOrders = orders.filter(o => o.order_type === 'TP');
+        const slOrders = orders.filter(o => o.order_type === 'SL');
+
+        res.json({
+            ok: true,
+            orders,
+            tpCount: tpOrders.length,
+            slCount: slOrders.length,
+            tpUsedPercent: tpOrders.reduce((s, o) => s + Number(o.size_percent), 0),
+            slUsedPercent: slOrders.reduce((s, o) => s + Number(o.size_percent), 0)
+        });
+
+    } catch (err) {
+        console.error("Error fetching TP/SL orders:", err);
+        res.status(500).json({ ok: false, error: "SERVER_ERROR" });
     }
 });
 
