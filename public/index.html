@@ -155,7 +155,9 @@
       max-width: calc(100% - 54px);
     }
     .ohlc-tooltip.visible { opacity: 1; }
-    .ohlc-tooltip.ohlc-wrapped { flex-wrap: wrap; }
+    .ohlc-tooltip.ohlc-wrapped {
+      flex-wrap: wrap;
+    }
     .ohlc-tooltip .ohlc-item { display: flex; gap: 2px; white-space: nowrap; }
     .ohlc-tooltip .ohlc-label { color: var(--muted); }
     .ohlc-tooltip .ohlc-value { color: var(--white); font-weight: 500; }
@@ -303,280 +305,11 @@
     .pd-label { font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 600; }
     .pd-val { font-size: 12px; color: var(--white); font-family: 'Roboto Mono'; font-weight: 700; }
 
-    /* TP/SL Buttons in Position Card */
-    .pos-tpsl-actions {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-      margin-top: 10px; padding-top: 10px;
-      border-top: 1px solid rgba(255,255,255,0.05);
-    }
-    .btn-tpsl {
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
-      background: rgba(255,255,255,0.03); color: var(--muted);
-      font-size: 12px; font-weight: 600; cursor: pointer;
-      transition: all 0.2s; user-select: none;
-    }
-    .btn-tpsl:hover { background: rgba(255,255,255,0.06); color: var(--white); }
-    .btn-tpsl:active { transform: scale(0.97); }
-    .btn-tpsl.tp { border-color: rgba(14, 203, 129, 0.3); }
-    .btn-tpsl.tp:hover { border-color: var(--accent-green); color: var(--accent-green); background: var(--accent-green-transparent); }
-    .btn-tpsl.sl { border-color: rgba(246, 70, 93, 0.3); }
-    .btn-tpsl.sl:hover { border-color: var(--accent-red); color: var(--accent-red); background: var(--accent-red-transparent); }
-    .btn-tpsl .tpsl-icon { font-size: 14px; }
-    .btn-tpsl .tpsl-count {
-      font-size: 10px; font-family: 'Roboto Mono'; padding: 1px 5px;
-      border-radius: 4px; background: rgba(255,255,255,0.08);
-      color: var(--muted); margin-left: 2px;
-    }
-
-    /* TP/SL Active Orders Summary in Position Card */
-    .pos-tpsl-summary {
-      margin-top: 8px; display: flex; flex-direction: column; gap: 4px;
-    }
-    .tpsl-summary-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 4px 8px; border-radius: 6px; font-size: 11px;
-      font-family: 'Roboto Mono', monospace;
-    }
-    .tpsl-summary-row.tp-row {
-      background: rgba(14, 203, 129, 0.08);
-      border: 1px solid rgba(14, 203, 129, 0.15);
-    }
-    .tpsl-summary-row.sl-row {
-      background: rgba(246, 70, 93, 0.08);
-      border: 1px solid rgba(246, 70, 93, 0.15);
-    }
-    .tpsl-summary-label {
-      font-weight: 600; font-size: 10px; text-transform: uppercase;
-    }
-    .tpsl-summary-row.tp-row .tpsl-summary-label { color: var(--accent-green); }
-    .tpsl-summary-row.sl-row .tpsl-summary-label { color: var(--accent-red); }
-    .tpsl-summary-price { color: var(--white); font-weight: 500; }
-    .tpsl-summary-pct { color: var(--muted); font-size: 10px; }
-
     .close-btn {
       background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--accent-red);
       padding: 8px 12px; border-radius: 8px; font-size: 12px; margin-top: 12px; width: 100%; cursor: pointer; font-weight: 600; transition: 0.2s;
     }
     .close-btn:active { background: var(--accent-red); color: #fff; }
-
-    /* ==================== TP/SL MODAL ==================== */
-    .tpsl-modal-overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.8); z-index: 1000;
-      opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-    }
-    .tpsl-modal-overlay.active { opacity: 1; pointer-events: auto; }
-
-    .tpsl-modal {
-      position: fixed; bottom: 0; left: 0; right: 0;
-      background: var(--panel); border-radius: 20px 20px 0 0;
-      max-height: 85vh; overflow-y: auto; z-index: 1001;
-      transform: translateY(100%); transition: transform 0.3s ease;
-    }
-    .tpsl-modal-overlay.active .tpsl-modal { transform: translateY(0); }
-
-    .tpsl-modal-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 20px; border-bottom: 1px solid var(--border);
-      position: sticky; top: 0; background: var(--panel); z-index: 10;
-    }
-    .tpsl-modal-title {
-      font-size: 16px; font-weight: 700; color: var(--white);
-      display: flex; align-items: center; gap: 8px;
-    }
-    .tpsl-modal-title .tpsl-title-icon {
-      width: 8px; height: 8px; border-radius: 50%;
-    }
-    .tpsl-modal-title .tpsl-title-icon.tp-icon { background: var(--accent-green); box-shadow: 0 0 8px rgba(14, 203, 129, 0.4); }
-    .tpsl-modal-title .tpsl-title-icon.sl-icon { background: var(--accent-red); box-shadow: 0 0 8px rgba(246, 70, 93, 0.4); }
-
-    .tpsl-modal-close {
-      width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-      background: rgba(255,255,255,0.05); border-radius: 50%; cursor: pointer;
-      color: var(--muted); font-size: 18px; transition: all 0.2s; border: none;
-    }
-    .tpsl-modal-close:hover { background: rgba(255,255,255,0.1); color: var(--white); }
-
-    .tpsl-modal-content { padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 16px; }
-
-    /* Position Info Bar */
-    .tpsl-pos-info {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 12px; border-radius: 8px;
-      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-      font-size: 12px;
-    }
-    .tpsl-pos-info-left { display: flex; align-items: center; gap: 8px; }
-    .tpsl-pos-pair { font-weight: 700; color: var(--white); }
-    .tpsl-pos-type {
-      font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
-    }
-    .tpsl-pos-type.long { background: var(--accent-green-transparent); color: var(--accent-green); }
-    .tpsl-pos-type.short { background: var(--accent-red-transparent); color: var(--accent-red); }
-    .tpsl-pos-size { color: var(--muted); font-family: 'Roboto Mono'; }
-
-    /* Tabs */
-    .tpsl-tabs {
-      display: flex; background: rgba(255,255,255,0.03);
-      border-radius: 8px; padding: 3px; border: 1px solid var(--border);
-    }
-    .tpsl-tab {
-      flex: 1; text-align: center; padding: 8px 12px;
-      font-size: 12px; font-weight: 600; color: var(--muted);
-      border-radius: 6px; cursor: pointer; transition: all 0.2s;
-      user-select: none;
-    }
-    .tpsl-tab:hover { color: var(--white); }
-    .tpsl-tab.active { background: var(--panel-light); color: var(--white); }
-
-    /* Tab Content */
-    .tpsl-tab-content { display: none; flex-direction: column; gap: 14px; }
-    .tpsl-tab-content.active { display: flex; }
-
-    /* Price Input */
-    .tpsl-input-group { position: relative; }
-    .tpsl-input-label {
-      font-size: 10px; color: var(--muted); text-transform: uppercase;
-      font-weight: 600; margin-bottom: 6px; display: block;
-    }
-    .tpsl-price-input {
-      width: 100%; background: #111; border: 1px solid var(--border);
-      color: var(--white); padding: 12px; border-radius: 8px;
-      font-size: 16px; font-family: 'Roboto Mono', monospace;
-      outline: none; transition: border 0.2s;
-    }
-    .tpsl-price-input:focus { border-color: var(--accent-green); }
-    .tpsl-price-input.error { border-color: var(--accent-red); }
-    .tpsl-price-input.tp-mode:focus { border-color: var(--accent-green); }
-    .tpsl-price-input.sl-mode:focus { border-color: var(--accent-red); }
-
-    .tpsl-input-hint {
-      font-size: 10px; margin-top: 4px; min-height: 14px;
-      transition: color 0.2s;
-    }
-    .tpsl-input-hint.error { color: var(--accent-red); }
-    .tpsl-input-hint.valid { color: var(--accent-green); }
-    .tpsl-input-hint.neutral { color: var(--muted); }
-
-    /* PnL Preview */
-    .tpsl-pnl-preview {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-      padding: 12px; border-radius: 8px;
-      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    }
-    .tpsl-pnl-item { display: flex; flex-direction: column; gap: 2px; }
-    .tpsl-pnl-item:nth-child(even) { align-items: flex-end; }
-    .tpsl-pnl-label { font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 600; }
-    .tpsl-pnl-value {
-      font-size: 16px; font-weight: 700; font-family: 'Roboto Mono', monospace;
-      transition: color 0.2s;
-    }
-
-    /* Volume Slider (Partial) */
-    .tpsl-volume-section {
-      display: flex; flex-direction: column; gap: 8px;
-      padding: 12px; border-radius: 8px;
-      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    }
-    .tpsl-volume-header {
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .tpsl-volume-label { font-size: 12px; color: var(--muted); font-weight: 600; }
-    .tpsl-volume-val {
-      font-size: 14px; font-weight: 700; font-family: 'Roboto Mono';
-      color: var(--accent-green);
-    }
-    .tpsl-volume-slider {
-      -webkit-appearance: none; width: 100%; height: 4px;
-      background: linear-gradient(to right, var(--accent-green) 0%, #2A2F36 0%);
-      border-radius: 2px; outline: none; margin: 6px 0;
-    }
-    .tpsl-volume-slider::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
-      background: linear-gradient(145deg, #3a4149 0%, #2A2F36 100%); cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-      border: 2px solid var(--accent-green);
-    }
-    .tpsl-volume-slider::-moz-range-thumb {
-      width: 20px; height: 20px; border-radius: 50%;
-      background: linear-gradient(145deg, #3a4149 0%, #2A2F36 100%); cursor: pointer;
-      border: 2px solid var(--accent-green);
-    }
-    .tpsl-volume-marks {
-      display: flex; justify-content: space-between; margin-top: 2px;
-    }
-    .tpsl-volume-mark {
-      font-size: 10px; color: var(--muted); cursor: pointer;
-      padding: 2px 4px; border-radius: 3px; transition: 0.2s; user-select: none;
-    }
-    .tpsl-volume-mark:hover { color: var(--accent-green); }
-    .tpsl-volume-mark.active { color: var(--accent-green); font-weight: 600; }
-    .tpsl-volume-amount {
-      font-size: 11px; color: var(--muted); text-align: center;
-      font-family: 'Roboto Mono'; margin-top: 4px;
-    }
-
-    /* Existing Orders List */
-    .tpsl-orders-section {
-      display: flex; flex-direction: column; gap: 8px;
-    }
-    .tpsl-orders-header {
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .tpsl-orders-title { font-size: 12px; font-weight: 700; color: var(--white); }
-    .tpsl-orders-counter {
-      font-size: 11px; color: var(--muted); font-family: 'Roboto Mono';
-      padding: 2px 8px; border-radius: 4px;
-      background: rgba(255,255,255,0.05); border: 1px solid var(--border);
-    }
-    .tpsl-orders-counter.limit { color: var(--accent-red); border-color: rgba(246,70,93,0.3); }
-
-    .tpsl-order-card {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 12px; border-radius: 8px;
-      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-      transition: all 0.2s;
-    }
-    .tpsl-order-card:hover { border-color: rgba(255,255,255,0.15); }
-    .tpsl-order-card-left { display: flex; flex-direction: column; gap: 2px; }
-    .tpsl-order-card-price {
-      font-size: 13px; font-weight: 700; font-family: 'Roboto Mono';
-      color: var(--white);
-    }
-    .tpsl-order-card-meta {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 10px; color: var(--muted);
-    }
-    .tpsl-order-card-pnl { font-weight: 600; }
-    .tpsl-order-card-pnl.positive { color: var(--accent-green); }
-    .tpsl-order-card-pnl.negative { color: var(--accent-red); }
-
-    .tpsl-order-delete {
-      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-      background: rgba(246, 70, 93, 0.1); border: 1px solid rgba(246, 70, 93, 0.2);
-      border-radius: 6px; cursor: pointer; color: var(--accent-red);
-      font-size: 14px; transition: all 0.2s; flex-shrink: 0;
-    }
-    .tpsl-order-delete:hover { background: rgba(246, 70, 93, 0.2); border-color: var(--accent-red); }
-    .tpsl-order-delete:active { transform: scale(0.9); }
-
-    .tpsl-no-orders {
-      text-align: center; padding: 12px; color: var(--muted); font-size: 12px;
-    }
-
-    /* Confirm Button */
-    .tpsl-confirm-btn {
-      width: 100%; padding: 14px; border-radius: 10px; border: none;
-      font-size: 14px; font-weight: 700; cursor: pointer;
-      transition: all 0.2s; color: #fff;
-    }
-    .tpsl-confirm-btn:active { transform: scale(0.98); }
-    .tpsl-confirm-btn:disabled {
-      background: var(--panel-light) !important; color: var(--muted); cursor: not-allowed;
-    }
-    .tpsl-confirm-btn.tp-confirm { background: var(--accent-green); color: #052e1f; }
-    .tpsl-confirm-btn.sl-confirm { background: var(--accent-red); color: #2d0a0f; }
 
     .profile-container { flex: 1; display: flex; flex-direction: column; padding: 16px; overflow-y: auto; gap: 20px; background: var(--bg); }
     .pro-header, .asset-card, .analysis-block, .rewards-banner, .hist-header-row { flex-shrink: 0; }
@@ -799,20 +532,39 @@
     .loader-bar-bg { width: 140px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
     .loader-bar-fill { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.2s; }
 
+    /* Timeframe Selector - Основные стили */
     .tf-selector {
-      display: flex; gap: 2px; background: rgba(255,255,255,0.03);
-      padding: 2px; border-radius: 6px; height: fit-content;
-      flex-shrink: 0; align-self: flex-start;
+      display: flex;
+      gap: 2px;
+      background: rgba(255,255,255,0.03);
+      padding: 2px;
+      border-radius: 6px;
+      height: fit-content;
+      flex-shrink: 0;
+      align-self: flex-start;
     }
+
+    /* Timeframe Selector - Wrapped режим (2 строки по 3 элемента) */
     .tf-selector.tf-wrapped {
-      display: grid; grid-template-columns: repeat(3, auto);
-      grid-template-rows: auto auto; gap: 2px;
-      width: auto; justify-content: end;
+      display: grid;
+      grid-template-columns: repeat(3, auto);
+      grid-template-rows: auto auto;
+      gap: 2px;
+      width: auto;
+      justify-content: end;
     }
+
     .tf-opt {
-      padding: 4px 8px; font-size: 10px; color: var(--muted);
-      border-radius: 4px; cursor: pointer; font-weight: 600;
-      transition: 0.2s; user-select: none; white-space: nowrap; text-align: center;
+      padding: 4px 8px;
+      font-size: 10px;
+      color: var(--muted);
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.2s;
+      user-select: none;
+      white-space: nowrap;
+      text-align: center;
     }
     .tf-opt:hover { color: var(--white); background: rgba(255,255,255,0.05); }
     .tf-opt.active { background: var(--panel-light); color: var(--gold); }
@@ -876,6 +628,7 @@
               <div class="chart-loading-overlay" id="chartLoadingOverlay">
                 <div class="chart-loading-spinner"></div>
               </div>
+
               <div class="ohlc-tooltip" id="ohlcTooltip">
                 <div class="ohlc-item"><span class="ohlc-label">O:</span><span class="ohlc-value" id="ohlcOpen">-</span></div>
                 <div class="ohlc-item"><span class="ohlc-label">H:</span><span class="ohlc-value" id="ohlcHigh">-</span></div>
@@ -883,6 +636,7 @@
                 <div class="ohlc-item"><span class="ohlc-label">C:</span><span class="ohlc-value" id="ohlcClose">-</span></div>
                 <div class="ohlc-item"><span class="ohlc-label">V:</span><span class="ohlc-value" id="ohlcVol">-</span></div>
               </div>
+
               <div class="drawing-tools-menu" id="drawingToolsMenu">
                 <div class="drawing-tools-toggle" id="drawingToolsToggle" title="Drawing Tools">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
@@ -1139,7 +893,6 @@
 
 </div>
 
-<!-- PnL Modal -->
 <div class="pnl-modal-overlay" id="pnlModalOverlay">
   <div class="pnl-modal" id="pnlModal">
     <div class="pnl-modal-header">
@@ -1165,6 +918,7 @@
           <div class="stats-metric-value" id="modalAvgTrade">--</div>
         </div>
       </div>
+
       <div class="chart-section">
         <div class="chart-section-header">
           <div class="chart-section-title">Equity Curve</div>
@@ -1177,6 +931,7 @@
         </div>
         <div class="equity-chart-container" id="equityChartContainer"></div>
       </div>
+
       <div class="chart-section">
         <div class="chart-section-title" style="margin-bottom: 12px;">Calendar PnL</div>
         <div class="calendar-pnl-container" id="calendarPnlContainer">
@@ -1206,1504 +961,1477 @@
   </div>
 </div>
 
-<!-- TP/SL Modal -->
-<div class="tpsl-modal-overlay" id="tpslModalOverlay">
-  <div class="tpsl-modal" id="tpslModal">
-    <div class="tpsl-modal-header">
-      <div class="tpsl-modal-title" id="tpslModalTitle">
-        <span class="tpsl-title-icon tp-icon" id="tpslTitleIcon"></span>
-        <span id="tpslTitleText">Take Profit</span>
-      </div>
-      <button class="tpsl-modal-close" id="tpslModalClose">×</button>
-    </div>
-    <div class="tpsl-modal-content">
-      <!-- Position Info -->
-      <div class="tpsl-pos-info">
-        <div class="tpsl-pos-info-left">
-          <span class="tpsl-pos-pair" id="tpslPosPair">BTC-USD</span>
-          <span class="tpsl-pos-type" id="tpslPosType">LONG</span>
-        </div>
-        <span class="tpsl-pos-size" id="tpslPosSize">Size: 0</span>
-      </div>
-
-      <!-- Tabs -->
-      <div class="tpsl-tabs">
-        <div class="tpsl-tab active" id="tpslTabFull" data-tab="full">Full Position</div>
-        <div class="tpsl-tab" id="tpslTabPartial" data-tab="partial">Partial</div>
-      </div>
-
-      <!-- Full Position Tab -->
-      <div class="tpsl-tab-content active" id="tpslContentFull">
-        <div class="tpsl-input-group">
-          <label class="tpsl-input-label" id="tpslPriceLabelFull">Trigger Price</label>
-          <input type="number" class="tpsl-price-input" id="tpslPriceInputFull" placeholder="Enter price..." step="any">
-          <div class="tpsl-input-hint neutral" id="tpslHintFull">Enter a trigger price</div>
-        </div>
-        <div class="tpsl-pnl-preview">
-          <div class="tpsl-pnl-item">
-            <span class="tpsl-pnl-label">Est. PnL</span>
-            <span class="tpsl-pnl-value" id="tpslPnlFull" style="color:var(--muted)">--</span>
-          </div>
-          <div class="tpsl-pnl-item">
-            <span class="tpsl-pnl-label">ROE</span>
-            <span class="tpsl-pnl-value" id="tpslRoeFull" style="color:var(--muted)">--</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Partial Tab -->
-      <div class="tpsl-tab-content" id="tpslContentPartial">
-        <div class="tpsl-input-group">
-          <label class="tpsl-input-label" id="tpslPriceLabelPartial">Trigger Price</label>
-          <input type="number" class="tpsl-price-input" id="tpslPriceInputPartial" placeholder="Enter price..." step="any">
-          <div class="tpsl-input-hint neutral" id="tpslHintPartial">Enter a trigger price</div>
-        </div>
-        <div class="tpsl-volume-section">
-          <div class="tpsl-volume-header">
-            <span class="tpsl-volume-label">Close Volume</span>
-            <span class="tpsl-volume-val" id="tpslVolumeVal">25%</span>
-          </div>
-          <input type="range" class="tpsl-volume-slider" id="tpslVolumeSlider" min="5" max="95" step="5" value="25">
-          <div class="tpsl-volume-marks">
-            <span class="tpsl-volume-mark" data-vpct="10">10%</span>
-            <span class="tpsl-volume-mark active" data-vpct="25">25%</span>
-            <span class="tpsl-volume-mark" data-vpct="50">50%</span>
-            <span class="tpsl-volume-mark" data-vpct="75">75%</span>
-          </div>
-          <div class="tpsl-volume-amount" id="tpslVolumeAmount">Amount: 0.00</div>
-        </div>
-        <div class="tpsl-pnl-preview">
-          <div class="tpsl-pnl-item">
-            <span class="tpsl-pnl-label">Est. PnL</span>
-            <span class="tpsl-pnl-value" id="tpslPnlPartial" style="color:var(--muted)">--</span>
-          </div>
-          <div class="tpsl-pnl-item">
-            <span class="tpsl-pnl-label">ROE</span>
-            <span class="tpsl-pnl-value" id="tpslRoePartial" style="color:var(--muted)">--</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Existing Orders List -->
-      <div class="tpsl-orders-section" id="tpslOrdersSection">
-        <div class="tpsl-orders-header">
-          <span class="tpsl-orders-title" id="tpslOrdersTitle">Active Orders</span>
-          <span class="tpsl-orders-counter" id="tpslOrdersCounter">0/3</span>
-        </div>
-        <div id="tpslOrdersList">
-          <div class="tpsl-no-orders">No orders set</div>
-        </div>
-      </div>
-
-      <!-- Confirm Button -->
-      <button class="tpsl-confirm-btn tp-confirm" id="tpslConfirmBtn" disabled>Set Take Profit</button>
-    </div>
-  </div>
-</div>
 <script>
-// =====================================================
-// === GLOBAL STATE ===
-// =====================================================
-const tg = window.Telegram && Telegram.WebApp ? Telegram.WebApp : null;
-if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#0B0E11'); tg.setBackgroundColor('#0B0E11'); }
-
-const API = 'https://trade-sim-api.dialogs-media.ru/api';
-let userId = tg?.initDataUnsafe?.user?.id || null;
-let userName = tg?.initDataUnsafe?.user?.first_name || 'Trader';
-let userPhoto = tg?.initDataUnsafe?.user?.photo_url || '';
-let startParam = tg?.initDataUnsafe?.start_param || null;
-
-const state = {
-  balance: 10000,
-  pair: 'BTC-USD',
-  timeframe: 60,
-  leverage: 10,
-  positions: [],
-  history: [],
-  currentPrice: 0,
-  previousPrice: 0,
-  candleData: [],
-  volumeData: [],
-  chartInstance: null,
-  candleSeries: null,
-  volumeSeries: null,
-  volumeChartInstance: null,
-  volumeBarSeries: null,
-  emaSeries: null,
-  smaSeries: null,
-  vwapSeries: null,
-  indicators: { ema: false, sma: false, vwap: false, volume: false },
-  wsPrice: null,
-  wsTrades: null,
-  priceInterval: null,
-  updateInterval: null,
-  drawingMode: null,
-  drawings: [],
-  drawingStart: null,
-  balanceHidden: false,
-  historyFilter: 'all',
-  equityChart: null,
-  equitySeries: null,
-  calendarDate: new Date(),
-  // TP/SL state
-  tpslModal: { open: false, posId: null, mode: 'tp', tab: 'full' },
-  // ads
-  adsWatched: 0,
-  adsToday: 0,
-  adsLastDate: '',
-  totalAdEarnings: 0,
-  // referrals
-  referrals: [],
-  refLink: ''
-};
-
-// =====================================================
-// === LOADER ===
-// =====================================================
-(function initLoader() {
-  const bar = document.getElementById('loaderBar');
-  const txt = document.getElementById('loaderText');
-  let p = 0;
-  const msgs = ['CONNECTING', 'LOADING MARKET DATA', 'SYNCING PORTFOLIO', 'READY'];
-  const iv = setInterval(() => {
-    p += Math.random() * 18 + 8;
-    if (p > 100) p = 100;
-    bar.style.width = p + '%';
-    txt.textContent = msgs[Math.min(Math.floor(p / 30), msgs.length - 1)];
-    if (p >= 100) {
-      clearInterval(iv);
-      setTimeout(() => document.getElementById('app-loader').classList.add('hidden'), 400);
-    }
-  }, 300);
-})();
-
-// =====================================================
-// === NAVIGATION ===
-// =====================================================
-function showView(viewId) {
-  document.querySelectorAll('.view-section').forEach(v => { v.classList.remove('active'); v.classList.add('hidden'); });
-  const el = document.getElementById(viewId);
-  if (el) { el.classList.remove('hidden'); el.classList.add('active'); }
-}
-document.getElementById('btnProfile').onclick = () => { updateProfile(); showView('view-profile'); };
-document.getElementById('btnCloseProfile').onclick = () => showView('view-trade');
-document.getElementById('btnGoRewards').onclick = () => { updateRewardsView(); showView('view-rewards'); };
-document.getElementById('btnBackFromRewards').onclick = () => { updateProfile(); showView('view-profile'); };
-
-// =====================================================
-// === PAIR DROPDOWN ===
-// =====================================================
-const pairDropdown = document.getElementById('pairDropdown');
-document.getElementById('pairTrigger').onclick = (e) => { e.stopPropagation(); pairDropdown.classList.toggle('open'); };
-document.addEventListener('click', () => pairDropdown.classList.remove('open'));
-document.querySelectorAll('.pair-item').forEach(item => {
-  item.onclick = () => {
-    const p = item.dataset.pair;
-    if (p === state.pair) return;
-    state.pair = p;
-    document.getElementById('triggerText').textContent = p.replace('-', '/');
-    document.querySelectorAll('.pair-item').forEach(i => i.classList.remove('active'));
-    item.classList.add('active');
-    document.getElementById('bookPairLabel').textContent = p;
-    pairDropdown.classList.remove('open');
-    loadChart();
-    connectWS();
-  };
-});
-
-// =====================================================
-// === TIMEFRAME ===
-// =====================================================
-document.querySelectorAll('.tf-opt').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('.tf-opt').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    state.timeframe = parseInt(btn.dataset.tf);
-    loadChart();
-  };
-});
-
-// =====================================================
-// === LEVERAGE & MARGIN ===
-// =====================================================
-const levSlider = document.getElementById('leverageSlider');
-const levText = document.getElementById('leverageValText');
-const levChips = document.querySelectorAll('#leverageChips .chip');
-levSlider.oninput = () => { state.leverage = parseInt(levSlider.value); levText.textContent = state.leverage + 'x'; levChips.forEach(c => c.classList.toggle('active', parseInt(c.dataset.v) === state.leverage)); };
-levChips.forEach(c => { c.onclick = () => { levSlider.value = c.dataset.v; levSlider.dispatchEvent(new Event('input')); }; });
-
-const marginSlider = document.getElementById('marginSlider');
-const marginText = document.getElementById('marginPercentText');
-const marginMarks = document.querySelectorAll('.margin-mark');
-marginSlider.oninput = () => {
-  const pct = parseInt(marginSlider.value);
-  marginText.textContent = pct + '%';
-  const val = Math.floor(state.balance * pct / 100);
-  document.getElementById('sizeInput').value = val > 0 ? val : '';
-  updateSliderBg(marginSlider, pct, 100);
-  marginMarks.forEach(m => m.classList.toggle('active', parseInt(m.dataset.pct) === pct));
-};
-marginMarks.forEach(m => { m.onclick = () => { marginSlider.value = m.dataset.pct; marginSlider.dispatchEvent(new Event('input')); }; });
-
-function updateSliderBg(slider, val, max) {
-  const pct = (val / max) * 100;
-  slider.style.background = `linear-gradient(to right, var(--accent-green) 0%, var(--accent-green) ${pct}%, #2A2F36 ${pct}%, #2A2F36 100%)`;
-}
-levSlider.addEventListener('input', () => updateSliderBg(levSlider, levSlider.value, 50));
-updateSliderBg(levSlider, 10, 50);
-
-// =====================================================
-// === CHART ===
-// =====================================================
-let chartEl, volChartEl;
-function initChart() {
-  chartEl = document.getElementById('chart');
-  volChartEl = document.getElementById('volumeChart');
-  state.chartInstance = LightweightCharts.createChart(chartEl, getChartOpts(chartEl));
-  state.candleSeries = state.chartInstance.addCandlestickSeries({ upColor: '#0ECB81', downColor: '#F6465D', borderUpColor: '#0ECB81', borderDownColor: '#F6465D', wickUpColor: '#0ECB81', wickDownColor: '#F6465D' });
-  state.chartInstance.subscribeCrosshairMove(onCrosshairMove);
-  window.addEventListener('resize', () => {
-    if (state.chartInstance) state.chartInstance.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
-    if (state.volumeChartInstance) state.volumeChartInstance.applyOptions({ width: volChartEl.clientWidth, height: volChartEl.clientHeight });
-  });
-}
-
-function getChartOpts(el) {
-  return {
-    width: el.clientWidth, height: el.clientHeight,
-    layout: { background: { color: '#111' }, textColor: '#848E9C', fontSize: 11, fontFamily: 'Roboto Mono' },
-    grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.03)' } },
-    crosshair: { mode: 0, vertLine: { color: 'rgba(255,255,255,0.15)', width: 1, style: 2 }, horzLine: { color: 'rgba(255,255,255,0.15)', width: 1, style: 2, labelBackgroundColor: '#1E2329' } },
-    timeScale: { borderColor: 'rgba(255,255,255,0.08)', timeVisible: true, secondsVisible: false },
-    rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
-    handleScroll: { vertTouchDrag: false }
-  };
-}
-
-function showChartLoading(show) {
-  document.getElementById('chartLoadingOverlay').classList.toggle('active', show);
-}
-
-async function loadChart() {
-  showChartLoading(true);
-  try {
-    const sym = state.pair === 'BTC-USD' ? 'BTCUSDT' : 'ETHUSDT';
-    const tfMap = { 60: '1m', 300: '5m', 900: '15m', 3600: '1h', 21600: '6h', 86400: '1d' };
-    const interval = tfMap[state.timeframe] || '1m';
-    const limit = 500;
-    const resp = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${interval}&limit=${limit}`);
-    const data = await resp.json();
-    const candles = data.map(d => ({ time: Math.floor(d[0] / 1000), open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]) }));
-    const volumes = data.map(d => ({ time: Math.floor(d[0] / 1000), value: parseFloat(d[5]), color: parseFloat(d[4]) >= parseFloat(d[1]) ? 'rgba(14,203,129,0.4)' : 'rgba(246,70,93,0.4)' }));
-    state.candleData = candles;
-    state.volumeData = volumes;
-    state.candleSeries.setData(candles);
-    if (candles.length) {
-      const last = candles[candles.length - 1];
-      updatePrice(last.close);
-    }
-    updateIndicators();
-    updateVolumeChart();
-    state.chartInstance.timeScale().fitContent();
-  } catch (e) { console.error('Chart load error:', e); }
-  showChartLoading(false);
-}
-
-function updateVolumeChart() {
-  const show = state.indicators.volume;
-  const container = document.getElementById('volumeContainer');
-  const chartCard = document.getElementById('chartCard');
-  container.classList.toggle('visible', show);
-  chartCard.classList.toggle('has-volume', show);
-  if (show) {
-    if (!state.volumeChartInstance) {
-      state.volumeChartInstance = LightweightCharts.createChart(volChartEl, {
-        ...getChartOpts(volChartEl), height: 60,
-        rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)', scaleMargins: { top: 0.1, bottom: 0 } },
-        timeScale: { visible: false }
-      });
-      state.volumeBarSeries = state.volumeChartInstance.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'right' });
-    }
-    state.volumeBarSeries.setData(state.volumeData);
-    state.volumeChartInstance.timeScale().fitContent();
-    syncTimeScales();
-  }
-  setTimeout(() => {
-    if (state.chartInstance) state.chartInstance.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
-  }, 50);
-}
-
-function syncTimeScales() {
-  if (!state.volumeChartInstance) return;
-  state.chartInstance.timeScale().subscribeVisibleLogicalRangeChange(range => {
-    if (range && state.volumeChartInstance) state.volumeChartInstance.timeScale().setVisibleLogicalRange(range);
-  });
-  state.volumeChartInstance.timeScale().subscribeVisibleLogicalRangeChange(range => {
-    if (range && state.chartInstance) state.chartInstance.timeScale().setVisibleLogicalRange(range);
-  });
-}
-
-// =====================================================
-// === OHLC TOOLTIP ===
-// =====================================================
-function onCrosshairMove(param) {
-  const tooltip = document.getElementById('ohlcTooltip');
-  if (!param || !param.time || !param.seriesData) { tooltip.classList.remove('visible'); return; }
-  const cd = param.seriesData.get(state.candleSeries);
-  if (!cd) { tooltip.classList.remove('visible'); return; }
-  const dp = state.pair === 'BTC-USD' ? 2 : 2;
-  document.getElementById('ohlcOpen').textContent = cd.open?.toFixed(dp) ?? '-';
-  document.getElementById('ohlcHigh').textContent = cd.high?.toFixed(dp) ?? '-';
-  document.getElementById('ohlcLow').textContent = cd.low?.toFixed(dp) ?? '-';
-  document.getElementById('ohlcClose').textContent = cd.close?.toFixed(dp) ?? '-';
-  const cls = cd.close >= cd.open ? 'up' : 'down';
-  ['ohlcOpen', 'ohlcHigh', 'ohlcLow', 'ohlcClose'].forEach(id => { const el = document.getElementById(id); el.className = 'ohlc-value ' + cls; });
-  const vd = state.volumeData.find(v => v.time === cd.time);
-  document.getElementById('ohlcVol').textContent = vd ? formatCompact(vd.value) : '-';
-  tooltip.classList.add('visible');
-}
-
-function formatCompact(n) {
-  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
-  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
-  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
-  return n.toFixed(2);
-}
-
-// =====================================================
-// === INDICATORS ===
-// =====================================================
-document.querySelectorAll('.indicator-chip').forEach(chip => {
-  chip.onclick = () => {
-    const ind = chip.dataset.indicator;
-    state.indicators[ind] = !state.indicators[ind];
-    chip.classList.toggle('active', state.indicators[ind]);
-    if (ind === 'volume') { updateVolumeChart(); } else { updateIndicators(); }
-  };
-});
-
-function updateIndicators() {
-  // EMA
-  if (state.indicators.ema) {
-    if (!state.emaSeries) state.emaSeries = state.chartInstance.addLineSeries({ color: '#1E90FF', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
-    state.emaSeries.setData(calcEMA(state.candleData, 20));
-  } else if (state.emaSeries) { state.chartInstance.removeSeries(state.emaSeries); state.emaSeries = null; }
-  // SMA
-  if (state.indicators.sma) {
-    if (!state.smaSeries) state.smaSeries = state.chartInstance.addLineSeries({ color: '#A855F7', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
-    state.smaSeries.setData(calcSMA(state.candleData, 50));
-  } else if (state.smaSeries) { state.chartInstance.removeSeries(state.smaSeries); state.smaSeries = null; }
-  // VWAP
-  if (state.indicators.vwap) {
-    if (!state.vwapSeries) state.vwapSeries = state.chartInstance.addLineSeries({ color: '#F7931A', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
-    state.vwapSeries.setData(calcVWAP(state.candleData, state.volumeData));
-  } else if (state.vwapSeries) { state.chartInstance.removeSeries(state.vwapSeries); state.vwapSeries = null; }
-}
-
-function calcEMA(data, period) {
-  const res = []; const k = 2 / (period + 1);
-  let prev = null;
-  for (const c of data) {
-    if (prev === null) { prev = c.close; res.push({ time: c.time, value: c.close }); }
-    else { prev = c.close * k + prev * (1 - k); res.push({ time: c.time, value: prev }); }
-  }
-  return res.slice(period - 1);
-}
-
-function calcSMA(data, period) {
-  const res = [];
-  for (let i = period - 1; i < data.length; i++) {
-    let sum = 0;
-    for (let j = i - period + 1; j <= i; j++) sum += data[j].close;
-    res.push({ time: data[i].time, value: sum / period });
-  }
-  return res;
-}
-
-function calcVWAP(data, vol) {
-  const res = []; let cumPV = 0, cumV = 0;
-  for (let i = 0; i < data.length; i++) {
-    const tp = (data[i].high + data[i].low + data[i].close) / 3;
-    const v = vol[i] ? vol[i].value : 0;
-    cumPV += tp * v; cumV += v;
-    if (cumV > 0) res.push({ time: data[i].time, value: cumPV / cumV });
-  }
-  return res;
-}
-
-// =====================================================
-// === DRAWING TOOLS ===
-// =====================================================
-const drawMenu = document.getElementById('drawingToolsMenu');
-document.getElementById('drawingToolsToggle').onclick = () => drawMenu.classList.toggle('open');
-document.querySelectorAll('.drawing-tool-btn').forEach(btn => {
-  btn.onclick = () => {
-    const tool = btn.dataset.tool;
-    if (tool === 'clear') { state.drawings.forEach(d => { try { state.chartInstance.removeSeries(d); } catch(e){} }); state.drawings = []; return; }
-    if (tool === 'cursor') { state.drawingMode = null; document.querySelectorAll('.drawing-tool-btn').forEach(b => b.classList.remove('active')); return; }
-    state.drawingMode = tool;
-    document.querySelectorAll('.drawing-tool-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  };
-});
-
-// =====================================================
-// === WEBSOCKET ===
-// =====================================================
-function connectWS() {
-  if (state.wsPrice) state.wsPrice.close();
-  if (state.wsTrades) state.wsTrades.close();
-  const sym = (state.pair === 'BTC-USD' ? 'btcusdt' : 'ethusdt');
-  state.wsPrice = new WebSocket(`wss://stream.binance.com:9443/ws/${sym}@kline_1m`);
-  state.wsPrice.onmessage = (e) => {
-    const d = JSON.parse(e.data);
-    if (d.k) {
-      const k = d.k;
-      const price = parseFloat(k.c);
-      updatePrice(price);
-      if (state.timeframe === 60 && state.candleSeries) {
-        state.candleSeries.update({ time: Math.floor(k.t / 1000), open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: price });
-      }
-    }
-  };
-  state.wsTrades = new WebSocket(`wss://stream.binance.com:9443/ws/${sym}@trade`);
-  state.wsTrades.onmessage = (e) => {
-    const d = JSON.parse(e.data);
-    addTradeToHistory(parseFloat(d.p), parseFloat(d.q), d.m);
-  };
-}
-
-function updatePrice(price) {
-  state.previousPrice = state.currentPrice;
-  state.currentPrice = price;
-  const dp = state.pair === 'BTC-USD' ? 2 : 2;
-  const el = document.getElementById('priceDisplay');
-  el.textContent = price.toFixed(dp);
-  el.className = 'price-display ' + (price >= state.previousPrice ? 'text-green' : 'text-red');
-  document.getElementById('headerBalance').textContent = state.balance.toFixed(2) + ' VP';
-  updatePositionsPnL();
-  checkTPSL();
-}
-
-// =====================================================
-// === ORDER BOOK & TRADES ===
-// =====================================================
-function generateOrderBook() {
-  if (!state.currentPrice) return;
-  const book = document.getElementById('orderBook');
-  const dp = state.pair === 'BTC-USD' ? 2 : 2;
-  let html = '';
-  const asks = [];
-  for (let i = 8; i >= 1; i--) {
-    const p = state.currentPrice + (Math.random() * 0.001 * state.currentPrice * i);
-    const a = (Math.random() * 2 + 0.01).toFixed(4);
-    asks.push({ p, a });
-  }
-  asks.sort((a, b) => b.p - a.p);
-  for (const ask of asks) {
-    const w = Math.random() * 80 + 10;
-    html += `<div class="ob-row"><div class="ob-bg bg-red" style="width:${w}%"></div><span class="text-red">${ask.p.toFixed(dp)}</span><span>${ask.a}</span></div>`;
-  }
-  html += `<div class="ob-row" style="height:28px; font-size:14px; font-weight:700; justify-items:center;"><span class="${state.currentPrice >= state.previousPrice ? 'text-green' : 'text-red'}" style="grid-column:1/-1; text-align:center;">${state.currentPrice.toFixed(dp)}</span></div>`;
-  for (let i = 1; i <= 8; i++) {
-    const p = state.currentPrice - (Math.random() * 0.001 * state.currentPrice * i);
-    const a = (Math.random() * 2 + 0.01).toFixed(4);
-    const w = Math.random() * 80 + 10;
-    html += `<div class="ob-row"><div class="ob-bg bg-green" style="width:${w}%"></div><span class="text-green">${p.toFixed(dp)}</span><span>${a}</span></div>`;
-  }
-  book.innerHTML = html;
-  document.getElementById('bookUpdated').textContent = new Date().toLocaleTimeString();
-}
-
-const tradeBuffer = [];
-function addTradeToHistory(price, qty, isSell) {
-  const dp = state.pair === 'BTC-USD' ? 2 : 2;
-  const t = new Date();
-  tradeBuffer.unshift({ price, qty, isSell, time: t });
-  if (tradeBuffer.length > 20) tradeBuffer.length = 20;
-  const el = document.getElementById('tradeHistory');
-  let html = '';
-  for (const tr of tradeBuffer) {
-    const cls = tr.isSell ? 'text-red' : 'text-green';
-    html += `<div class="ob-row"><span class="${cls}">${tr.price.toFixed(dp)}</span><span class="trade-time">${tr.time.toLocaleTimeString()}</span></div>`;
-  }
-  el.innerHTML = html;
-}
-
-// =====================================================
-// === OPEN POSITION ===
-// =====================================================
-document.getElementById('openLong').onclick = () => openPosition('long');
-document.getElementById('openShort').onclick = () => openPosition('short');
-
-function openPosition(type) {
-  const size = parseFloat(document.getElementById('sizeInput').value);
-  if (!size || size < 10 || size > state.balance) { showToast('Invalid margin amount'); return; }
-  const pos = {
-    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
-    pair: state.pair,
-    type,
-    margin: size,
-    leverage: state.leverage,
-    size: size * state.leverage,
-    entry: state.currentPrice,
-    openTime: new Date(),
-    pnl: 0,
-    roe: 0,
-    tp: [],  // array of {price, volumePct, id}
-    sl: []   // array of {price, volumePct, id}
-  };
-  state.balance -= size;
-  state.positions.push(pos);
-  renderPositions();
-  updateHeaderBalance();
-  saveState();
-  showToast(`${type.toUpperCase()} opened: ${pos.pair} @ ${pos.entry.toFixed(2)}`);
-}
-
-// =====================================================
-// === TP/SL SYSTEM ===
-// =====================================================
-const MAX_TPSL_ORDERS = 3;
-
-function openTPSLModal(posId, mode) {
-  const pos = state.positions.find(p => p.id === posId);
-  if (!pos) return;
-
-  state.tpslModal = { open: true, posId, mode, tab: 'full' };
-
-  // Title
-  const titleIcon = document.getElementById('tpslTitleIcon');
-  const titleText = document.getElementById('tpslTitleText');
-  const confirmBtn = document.getElementById('tpslConfirmBtn');
-
-  if (mode === 'tp') {
-    titleIcon.className = 'tpsl-title-icon tp-icon';
-    titleText.textContent = 'Take Profit';
-    confirmBtn.className = 'tpsl-confirm-btn tp-confirm';
-    confirmBtn.textContent = 'Set Take Profit';
-  } else {
-    titleIcon.className = 'tpsl-title-icon sl-icon';
-    titleText.textContent = 'Stop Loss';
-    confirmBtn.className = 'tpsl-confirm-btn sl-confirm';
-    confirmBtn.textContent = 'Set Stop Loss';
-  }
-
-  // Position info
-  document.getElementById('tpslPosPair').textContent = pos.pair;
-  const typeEl = document.getElementById('tpslPosType');
-  typeEl.textContent = pos.type.toUpperCase();
-  typeEl.className = 'tpsl-pos-type ' + pos.type;
-  document.getElementById('tpslPosSize').textContent = `Size: ${pos.size.toFixed(2)}`;
-
-  // Reset tabs
-  document.getElementById('tpslTabFull').classList.add('active');
-  document.getElementById('tpslTabPartial').classList.remove('active');
-  document.getElementById('tpslContentFull').classList.add('active');
-  document.getElementById('tpslContentPartial').classList.remove('active');
-
-  // Reset inputs
-  document.getElementById('tpslPriceInputFull').value = '';
-  document.getElementById('tpslPriceInputPartial').value = '';
-  document.getElementById('tpslVolumeSlider').value = 25;
-  document.getElementById('tpslVolumeVal').textContent = '25%';
-  updateTPSLVolumeAmount(pos);
-
-  // Reset hints
-  setTPSLHint('tpslHintFull', 'neutral', 'Enter a trigger price');
-  setTPSLHint('tpslHintPartial', 'neutral', 'Enter a trigger price');
-
-  // Reset PnL previews
-  ['tpslPnlFull', 'tpslRoeFull', 'tpslPnlPartial', 'tpslRoePartial'].forEach(id => {
-    const el = document.getElementById(id);
-    el.textContent = '--';
-    el.style.color = 'var(--muted)';
-  });
-
-  confirmBtn.disabled = true;
-
-  // Render existing orders
-  renderTPSLOrders(pos, mode);
-
-  // Show modal
-  document.getElementById('tpslModalOverlay').classList.add('active');
-}
-
-function closeTPSLModal() {
-  state.tpslModal.open = false;
-  document.getElementById('tpslModalOverlay').classList.remove('active');
-}
-
-document.getElementById('tpslModalClose').onclick = closeTPSLModal;
-document.getElementById('tpslModalOverlay').onclick = (e) => { if (e.target === document.getElementById('tpslModalOverlay')) closeTPSLModal(); };
-
-// Tabs
-document.querySelectorAll('.tpsl-tab').forEach(tab => {
-  tab.onclick = () => {
-    const t = tab.dataset.tab;
-    state.tpslModal.tab = t;
-    document.querySelectorAll('.tpsl-tab').forEach(tt => tt.classList.remove('active'));
-    tab.classList.add('active');
-    document.querySelectorAll('.tpsl-tab-content').forEach(tc => tc.classList.remove('active'));
-    document.getElementById(t === 'full' ? 'tpslContentFull' : 'tpslContentPartial').classList.add('active');
-    validateTPSLInput();
-  };
-});
-
-// Volume slider
-const tpslVolSlider = document.getElementById('tpslVolumeSlider');
-tpslVolSlider.oninput = () => {
-  const v = parseInt(tpslVolSlider.value);
-  document.getElementById('tpslVolumeVal').textContent = v + '%';
-  updateSliderBg(tpslVolSlider, v, 95);
-  const pos = state.positions.find(p => p.id === state.tpslModal.posId);
-  if (pos) updateTPSLVolumeAmount(pos);
-  document.querySelectorAll('.tpsl-volume-mark').forEach(m => m.classList.toggle('active', parseInt(m.dataset.vpct) === v));
-  validateTPSLInput();
-};
-document.querySelectorAll('.tpsl-volume-mark').forEach(m => {
-  m.onclick = () => { tpslVolSlider.value = m.dataset.vpct; tpslVolSlider.dispatchEvent(new Event('input')); };
-});
-
-function updateTPSLVolumeAmount(pos) {
-  const pct = parseInt(tpslVolSlider.value);
-  const amount = pos.size * pct / 100;
-  document.getElementById('tpslVolumeAmount').textContent = `Amount: ${amount.toFixed(2)}`;
-}
-
-// Price input validation
-document.getElementById('tpslPriceInputFull').oninput = () => validateTPSLInput();
-document.getElementById('tpslPriceInputPartial').oninput = () => validateTPSLInput();
-
-function validateTPSLInput() {
-  const pos = state.positions.find(p => p.id === state.tpslModal.posId);
-  if (!pos) return;
-  const mode = state.tpslModal.mode;
-  const tab = state.tpslModal.tab;
-  const inputId = tab === 'full' ? 'tpslPriceInputFull' : 'tpslPriceInputPartial';
-  const hintId = tab === 'full' ? 'tpslHintFull' : 'tpslHintPartial';
-  const pnlId = tab === 'full' ? 'tpslPnlFull' : 'tpslPnlPartial';
-  const roeId = tab === 'full' ? 'tpslRoeFull' : 'tpslRoePartial';
-
-  const price = parseFloat(document.getElementById(inputId).value);
-  const confirmBtn = document.getElementById('tpslConfirmBtn');
-  const existingOrders = mode === 'tp' ? pos.tp : pos.sl;
-
-  if (existingOrders.length >= MAX_TPSL_ORDERS) {
-    setTPSLHint(hintId, 'error', `Max ${MAX_TPSL_ORDERS} orders reached. Delete one first.`);
-    confirmBtn.disabled = true;
-    return;
-  }
-
-  if (!price || isNaN(price) || price <= 0) {
-    setTPSLHint(hintId, 'neutral', 'Enter a trigger price');
-    document.getElementById(pnlId).textContent = '--';
-    document.getElementById(pnlId).style.color = 'var(--muted)';
-    document.getElementById(roeId).textContent = '--';
-    document.getElementById(roeId).style.color = 'var(--muted)';
-    confirmBtn.disabled = true;
-    return;
-  }
-
-  // Validate direction
-  let valid = true;
-  let hint = '';
-  if (mode === 'tp') {
-    if (pos.type === 'long' && price <= pos.entry) { valid = false; hint = 'TP must be above entry for Long'; }
-    if (pos.type === 'short' && price >= pos.entry) { valid = false; hint = 'TP must be below entry for Short'; }
-  } else {
-    if (pos.type === 'long' && price >= pos.entry) { valid = false; hint = 'SL must be below entry for Long'; }
-    if (pos.type === 'short' && price <= pos.entry) { valid = false; hint = 'SL must be above entry for Short'; }
-  }
-
-  if (!valid) {
-    setTPSLHint(hintId, 'error', hint);
-    document.getElementById(pnlId).textContent = '--';
-    document.getElementById(pnlId).style.color = 'var(--muted)';
-    document.getElementById(roeId).textContent = '--';
-    document.getElementById(roeId).style.color = 'var(--muted)';
-    confirmBtn.disabled = true;
-    return;
-  }
-
-  // Calculate preview PnL
-  const volumePct = tab === 'partial' ? parseInt(tpslVolSlider.value) : 100;
-  const sizeForCalc = pos.size * volumePct / 100;
-  const marginForCalc = pos.margin * volumePct / 100;
-  let pnl;
-  if (pos.type === 'long') { pnl = (price - pos.entry) / pos.entry * sizeForCalc; }
-  else { pnl = (pos.entry - price) / pos.entry * sizeForCalc; }
-  const roe = marginForCalc > 0 ? (pnl / marginForCalc * 100) : 0;
-
-  const pnlEl = document.getElementById(pnlId);
-  const roeEl = document.getElementById(roeId);
-  pnlEl.textContent = (pnl >= 0 ? '+' : '') + pnl.toFixed(2) + ' VP';
-  pnlEl.style.color = pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-  roeEl.textContent = (roe >= 0 ? '+' : '') + roe.toFixed(2) + '%';
-  roeEl.style.color = roe >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-
-  const dist = Math.abs((price - state.currentPrice) / state.currentPrice * 100);
-  setTPSLHint(hintId, 'valid', `Distance from market: ${dist.toFixed(2)}%`);
-  confirmBtn.disabled = false;
-}
-
-function setTPSLHint(id, cls, text) {
-  const el = document.getElementById(id);
-  el.className = 'tpsl-input-hint ' + cls;
-  el.textContent = text;
-}
-
-function renderTPSLOrders(pos, mode) {
-  const orders = mode === 'tp' ? pos.tp : pos.sl;
-  const listEl = document.getElementById('tpslOrdersList');
-  const counterEl = document.getElementById('tpslOrdersCounter');
-  const titleEl = document.getElementById('tpslOrdersTitle');
-
-  titleEl.textContent = mode === 'tp' ? 'Active TP Orders' : 'Active SL Orders';
-  counterEl.textContent = `${orders.length}/${MAX_TPSL_ORDERS}`;
-  counterEl.classList.toggle('limit', orders.length >= MAX_TPSL_ORDERS);
-
-  if (!orders.length) {
-    listEl.innerHTML = '<div class="tpsl-no-orders">No orders set</div>';
-    return;
-  }
-
-  let html = '';
-  for (const order of orders) {
-    const volLabel = order.volumePct === 100 ? 'Full' : `${order.volumePct}%`;
-    const sizeForCalc = pos.size * order.volumePct / 100;
-    const marginForCalc = pos.margin * order.volumePct / 100;
-    let pnl;
-    if (pos.type === 'long') { pnl = (order.price - pos.entry) / pos.entry * sizeForCalc; }
-    else { pnl = (pos.entry - order.price) / pos.entry * sizeForCalc; }
-    const pnlCls = pnl >= 0 ? 'positive' : 'negative';
-
-    html += `
-      <div class="tpsl-order-card">
-        <div class="tpsl-order-card-left">
-          <div class="tpsl-order-card-price">${order.price.toFixed(2)}</div>
-          <div class="tpsl-order-card-meta">
-            <span>${volLabel}</span>
-            <span>•</span>
-            <span class="tpsl-order-card-pnl ${pnlCls}">${(pnl >= 0 ? '+' : '') + pnl.toFixed(2)} VP</span>
-          </div>
-        </div>
-        <div class="tpsl-order-delete" onclick="deleteTPSLOrder('${pos.id}','${mode}','${order.id}')">✕</div>
-      </div>
-    `;
-  }
-  listEl.innerHTML = html;
-}
-
-// Confirm TP/SL
-document.getElementById('tpslConfirmBtn').onclick = () => {
-  const { posId, mode, tab } = state.tpslModal;
-  const pos = state.positions.find(p => p.id === posId);
-  if (!pos) return;
-
-  const orders = mode === 'tp' ? pos.tp : pos.sl;
-  if (orders.length >= MAX_TPSL_ORDERS) { showToast(`Max ${MAX_TPSL_ORDERS} ${mode.toUpperCase()} orders`); return; }
-
-  const inputId = tab === 'full' ? 'tpslPriceInputFull' : 'tpslPriceInputPartial';
-  const price = parseFloat(document.getElementById(inputId).value);
-  if (!price || isNaN(price)) return;
-
-  const volumePct = tab === 'partial' ? parseInt(tpslVolSlider.value) : 100;
-  const orderId = Date.now().toString(36) + Math.random().toString(36).substr(2, 3);
-
-  orders.push({ id: orderId, price, volumePct });
-
-  renderTPSLOrders(pos, mode);
-  renderPositions();
-  saveState();
-
-  // Reset input
-  document.getElementById(inputId).value = '';
-  validateTPSLInput();
-
-  showToast(`${mode.toUpperCase()} set @ ${price.toFixed(2)} (${volumePct}%)`);
-};
-
-function deleteTPSLOrder(posId, mode, orderId) {
-  const pos = state.positions.find(p => p.id === posId);
-  if (!pos) return;
-  const arr = mode === 'tp' ? pos.tp : pos.sl;
-  const idx = arr.findIndex(o => o.id === orderId);
-  if (idx >= 0) arr.splice(idx, 1);
-  renderTPSLOrders(pos, mode);
-  renderPositions();
-  validateTPSLInput();
-  saveState();
-  showToast(`${mode.toUpperCase()} order removed`);
-}
-
-// =====================================================
-// === CHECK TP/SL TRIGGER ===
-// =====================================================
-function checkTPSL() {
-  const price = state.currentPrice;
-  if (!price) return;
-
-  const toRemove = [];
-
-  for (const pos of state.positions) {
-    // Check TP orders
-    const triggeredTP = [];
-    for (const tp of pos.tp) {
-      let triggered = false;
-      if (pos.type === 'long' && price >= tp.price) triggered = true;
-      if (pos.type === 'short' && price <= tp.price) triggered = true;
-      if (triggered) triggeredTP.push(tp);
-    }
-    for (const tp of triggeredTP) {
-      executeTPSL(pos, tp, 'tp');
-    }
-
-    // Check SL orders
-    const triggeredSL = [];
-    for (const sl of pos.sl) {
-      let triggered = false;
-      if (pos.type === 'long' && price <= sl.price) triggered = true;
-      if (pos.type === 'short' && price >= sl.price) triggered = true;
-      if (triggered) triggeredSL.push(sl);
-    }
-    for (const sl of triggeredSL) {
-      executeTPSL(pos, sl, 'sl');
-    }
-  }
-
-  // Clean up fully closed positions
-  state.positions = state.positions.filter(p => p.size > 0.01);
-  renderPositions();
-  saveState();
-}
-
-function executeTPSL(pos, order, type) {
-  const price = state.currentPrice;
-  const closePct = order.volumePct / 100;
-  const closeSize = pos.size * closePct;
-  const closeMargin = pos.margin * closePct;
-
-  let pnl;
-  if (pos.type === 'long') { pnl = (price - pos.entry) / pos.entry * closeSize; }
-  else { pnl = (pos.entry - price) / pos.entry * closeSize; }
-
-  state.balance += closeMargin + pnl;
-
-  // Add to history
-  state.history.unshift({
-    pair: pos.pair, type: pos.type, entry: pos.entry, exit: price,
-    leverage: pos.leverage, margin: closeMargin, size: closeSize,
-    pnl, closeTime: new Date(), closedBy: type.toUpperCase()
-  });
-
-  // Reduce position
-  pos.size -= closeSize;
-  pos.margin -= closeMargin;
-
-  // Remove the triggered order
-  const arr = type === 'tp' ? pos.tp : pos.sl;
-  const idx = arr.findIndex(o => o.id === order.id);
-  if (idx >= 0) arr.splice(idx, 1);
-
-  const label = type === 'tp' ? '🎯 TP Hit' : '🛑 SL Hit';
-  showToast(`${label}: ${pos.pair} ${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} VP`);
-  updateHeaderBalance();
-
-  // If modal is open for this position, update it
-  if (state.tpslModal.open && state.tpslModal.posId === pos.id) {
-    if (pos.size <= 0.01) { closeTPSLModal(); }
-    else { renderTPSLOrders(pos, state.tpslModal.mode); }
-  }
-}
-
-// =====================================================
-// === POSITIONS ===
-// =====================================================
-function renderPositions() {
-  const el = document.getElementById('positionsList');
-  if (!state.positions.length) {
-    el.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
-    return;
-  }
-  let html = '';
-  for (const pos of state.positions) {
-    const dp = 2;
-    const pnl = pos.pnl || 0;
-    const roe = pos.roe || 0;
-    const pnlCls = pnl >= 0 ? 'text-green' : 'text-red';
-    const typeCls = pos.type === 'long' ? 'long' : 'short';
-    const typeBg = pos.type === 'long' ? 'var(--accent-green-transparent)' : 'var(--accent-red-transparent)';
-    const typeColor = pos.type === 'long' ? 'var(--accent-green)' : 'var(--accent-red)';
-    const liqPrice = calcLiquidation(pos);
-    const riskPct = calcRiskPercent(pos, liqPrice);
-    const riskColor = riskPct < 50 ? 'var(--accent-green)' : riskPct < 80 ? '#F0B90B' : 'var(--accent-red)';
-
-    let tpslSummaryHtml = '';
-    if (pos.tp.length || pos.sl.length) {
-      tpslSummaryHtml = '<div class="pos-tpsl-summary">';
-      for (const tp of pos.tp) {
-        const dist = ((tp.price - pos.entry) / pos.entry * 100 * (pos.type === 'long' ? 1 : -1)).toFixed(2);
-        const volLabel = tp.volumePct === 100 ? '' : ` (${tp.volumePct}%)`;
-        tpslSummaryHtml += `<div class="tpsl-summary-row tp-row"><span class="tpsl-summary-label">TP${volLabel}</span><span class="tpsl-summary-price">${tp.price.toFixed(dp)}</span><span class="tpsl-summary-pct">+${Math.abs(dist)}%</span></div>`;
-      }
-      for (const sl of pos.sl) {
-        const dist = ((sl.price - pos.entry) / pos.entry * 100 * (pos.type === 'long' ? 1 : -1)).toFixed(2);
-        const volLabel = sl.volumePct === 100 ? '' : ` (${sl.volumePct}%)`;
-        tpslSummaryHtml += `<div class="tpsl-summary-row sl-row"><span class="tpsl-summary-label">SL${volLabel}</span><span class="tpsl-summary-price">${sl.price.toFixed(dp)}</span><span class="tpsl-summary-pct">${dist}%</span></div>`;
-      }
-      tpslSummaryHtml += '</div>';
-    }
-
-    html += `
-      <div class="pos-item ${typeCls}">
-        <div class="pos-header">
-          <div>
-            <span class="pos-pair">${pos.pair}</span>
-            <span class="pos-type-badge" style="background:${typeBg}; color:${typeColor}; font-size:11px;">${pos.type.toUpperCase()} ${pos.leverage}x</span>
-          </div>
-          <span class="${pnlCls}" style="font-family:'Roboto Mono'; font-weight:700; font-size:16px;">
-            ${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} VP
-          </span>
-        </div>
-        <div class="pos-stats-grid">
-          <div class="stat-col">
-            <span class="stat-label">ROE</span>
-            <span class="stat-val ${pnlCls}">${roe >= 0 ? '+' : ''}${roe.toFixed(2)}%</span>
-          </div>
-          <div class="stat-col">
-            <span class="stat-label">Size</span>
-            <span class="stat-val">${pos.size.toFixed(2)}</span>
-          </div>
-          <div class="stat-col">
-            <span class="stat-label">Margin</span>
-            <span class="stat-val">${pos.margin.toFixed(2)}</span>
-          </div>
-        </div>
-        <div class="risk-wrap">
-          <div class="risk-track"><div class="risk-fill" style="width:${Math.min(riskPct, 100)}%; background:${riskColor};"></div></div>
-        </div>
-        <div class="pos-details">
-          <div class="pd-col"><span class="pd-label">Entry</span><span class="pd-val">${pos.entry.toFixed(dp)}</span></div>
-          <div class="pd-col"><span class="pd-label">Market</span><span class="pd-val">${state.currentPrice.toFixed(dp)}</span></div>
-          <div class="pd-col"><span class="pd-label">Liq. Price</span><span class="pd-val" style="color:var(--accent-red)">${liqPrice.toFixed(dp)}</span></div>
-        </div>
-        ${tpslSummaryHtml}
-        <div class="pos-tpsl-actions">
-          <button class="btn-tpsl tp" onclick="openTPSLModal('${pos.id}','tp')">
-            <span class="tpsl-icon">🎯</span>
-            <span>Take Profit</span>
-            ${pos.tp.length ? `<span class="tpsl-count">${pos.tp.length}</span>` : ''}
-          </button>
-          <button class="btn-tpsl sl" onclick="openTPSLModal('${pos.id}','sl')">
-            <span class="tpsl-icon">🛡</span>
-            <span>Stop Loss</span>
-            ${pos.sl.length ? `<span class="tpsl-count">${pos.sl.length}</span>` : ''}
-          </button>
-        </div>
-        <button class="close-btn" onclick="closePosition('${pos.id}')">Close Position</button>
-      </div>
-    `;
-  }
-  el.innerHTML = html;
-}
-
-function updatePositionsPnL() {
-  for (const pos of state.positions) {
-    if (pos.type === 'long') { pos.pnl = (state.currentPrice - pos.entry) / pos.entry * pos.size; }
-    else { pos.pnl = (pos.entry - state.currentPrice) / pos.entry * pos.size; }
-    pos.roe = pos.margin > 0 ? (pos.pnl / pos.margin * 100) : 0;
-
-    // Auto-liquidation
-    const liq = calcLiquidation(pos);
-    const liquidated = pos.type === 'long' ? state.currentPrice <= liq : state.currentPrice >= liq;
-    if (liquidated) { liquidatePosition(pos.id); }
-  }
-  renderPositions();
-}
-
-function calcLiquidation(pos) {
-  if (pos.type === 'long') return pos.entry * (1 - 1 / pos.leverage * 0.95);
-  return pos.entry * (1 + 1 / pos.leverage * 0.95);
-}
-
-function calcRiskPercent(pos, liq) {
-  const dist = Math.abs(state.currentPrice - liq);
-  const total = Math.abs(pos.entry - liq);
-  if (total === 0) return 100;
-  return Math.max(0, (1 - dist / total) * 100);
-}
-
-function closePosition(id) {
-  const idx = state.positions.findIndex(p => p.id === id);
-  if (idx < 0) return;
-  const pos = state.positions[idx];
-  const pnl = pos.pnl;
-  state.balance += pos.margin + pnl;
-  state.history.unshift({
-    pair: pos.pair, type: pos.type, entry: pos.entry, exit: state.currentPrice,
-    leverage: pos.leverage, margin: pos.margin, size: pos.size,
-    pnl, closeTime: new Date(), closedBy: 'Manual'
-  });
-  state.positions.splice(idx, 1);
-  renderPositions();
-  updateHeaderBalance();
-  saveState();
-  showToast(`Closed: ${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} VP`);
-  if (state.tpslModal.open && state.tpslModal.posId === id) closeTPSLModal();
-}
-
-function liquidatePosition(id) {
-  const idx = state.positions.findIndex(p => p.id === id);
-  if (idx < 0) return;
-  const pos = state.positions[idx];
-  state.history.unshift({
-    pair: pos.pair, type: pos.type, entry: pos.entry, exit: state.currentPrice,
-    leverage: pos.leverage, margin: pos.margin, size: pos.size,
-    pnl: -pos.margin, closeTime: new Date(), closedBy: 'Liquidation'
-  });
-  state.positions.splice(idx, 1);
-  renderPositions();
-  updateHeaderBalance();
-  saveState();
-  showToast('💀 Position liquidated!');
-  if (state.tpslModal.open && state.tpslModal.posId === id) closeTPSLModal();
-}
-
-// =====================================================
-// === PROFILE ===
-// =====================================================
-function updateHeaderBalance() {
-  const total = state.balance + state.positions.reduce((s, p) => s + p.margin + p.pnl, 0);
-  document.getElementById('headerBalance').textContent = total.toFixed(2) + ' VP';
-}
-
-function updateProfile() {
-  document.getElementById('profileName').textContent = userName;
-  document.getElementById('profileId').textContent = 'ID: ' + (userId || '---');
-  if (userPhoto) {
-    document.getElementById('profileAvatarBig').src = userPhoto;
-    document.getElementById('avatarImg').src = userPhoto;
-    document.getElementById('avatarImg').style.display = 'block';
-  }
-  const total = state.balance + state.positions.reduce((s, p) => s + p.margin + p.pnl, 0);
-  if (state.balanceHidden) {
-    document.getElementById('profileBalance').textContent = '••••••';
-    document.getElementById('profileBalanceApprox').textContent = '≈ ••••••';
-  } else {
-    document.getElementById('profileBalance').textContent = total.toFixed(2);
-    document.getElementById('profileBalanceApprox').textContent = '≈ $' + (total * 0.005).toFixed(2);
-  }
-  const initBal = 10000;
-  const pnlPct = ((total - initBal) / initBal * 100);
-  const pill = document.getElementById('profilePnlPill');
-  pill.textContent = (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%';
-  pill.className = 'asset-pnl ' + (pnlPct >= 0 ? 'text-green' : 'text-red');
-
-  // Win rate
-  const wins = state.history.filter(h => h.pnl > 0).length;
-  const total_t = state.history.length;
-  const wr = total_t > 0 ? (wins / total_t * 100) : 0;
-  document.getElementById('winRateVal').textContent = wr.toFixed(0) + '%';
-  document.getElementById('totalTradesVal').textContent = total_t + ' Trades';
-  document.getElementById('winRateChart').style.background = `conic-gradient(var(--accent-green) 0% ${wr}%, var(--panel-light) ${wr}% 100%)`;
-
-  // Net PnL
-  const netPnl = state.history.reduce((s, h) => s + h.pnl, 0);
-  const pnlEl = document.getElementById('statPnL');
-  pnlEl.textContent = (netPnl >= 0 ? '+' : '') + netPnl.toFixed(2);
-  pnlEl.style.color = netPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-
-  renderHistory();
-  loadReferrals();
-}
-
-document.getElementById('btnToggleBalance').onclick = () => {
-  state.balanceHidden = !state.balanceHidden;
-  updateProfile();
-};
-
-// =====================================================
-// === HISTORY ===
-// =====================================================
-document.querySelectorAll('.h-filter').forEach(f => {
-  f.onclick = () => {
-    document.querySelectorAll('.h-filter').forEach(ff => ff.classList.remove('active'));
-    f.classList.add('active');
-    state.historyFilter = f.dataset.filter;
-    renderHistory();
-  };
-});
-
-function renderHistory() {
-  const el = document.getElementById('historyList');
-  let list = [...state.history];
-  const now = Date.now();
-  if (state.historyFilter === 'day') list = list.filter(h => now - new Date(h.closeTime).getTime() < 86400000);
-  if (state.historyFilter === 'week') list = list.filter(h => now - new Date(h.closeTime).getTime() < 604800000);
-  if (!list.length) {
-    el.innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No trading history</div>';
-    return;
-  }
-  let html = '';
-  for (const h of list.slice(0, 50)) {
-    const pnlCls = h.pnl >= 0 ? 'text-green' : 'text-red';
-    const typeCls = h.type === 'long' ? 'long' : 'short';
-    const closedLabel = h.closedBy ? ` (${h.closedBy})` : '';
-    html += `
-      <div class="history-card">
-        <div class="hc-header">
-          <span class="hc-pair">${h.pair}</span>
-          <span class="hc-type ${typeCls}">${h.type.toUpperCase()} ${h.leverage}x</span>
-        </div>
-        <div class="hc-row"><span>Entry</span><span class="hc-val">${h.entry.toFixed(2)}</span></div>
-        <div class="hc-row"><span>Exit${closedLabel}</span><span class="hc-val">${h.exit.toFixed(2)}</span></div>
-        <div class="hc-row"><span>Margin</span><span class="hc-val">${h.margin.toFixed(2)}</span></div>
-        <div class="hc-row"><span>PnL</span><span class="hc-pnl ${pnlCls}">${h.pnl >= 0 ? '+' : ''}${h.pnl.toFixed(2)} VP</span></div>
-        <div style="font-size:10px; color:var(--muted); text-align:right;">${new Date(h.closeTime).toLocaleString()}</div>
-      </div>
-    `;
-  }
-  el.innerHTML = html;
-}
-
-// =====================================================
-// === PNL MODAL (statistics) ===
-// =====================================================
-document.getElementById('netPnlCard').onclick = () => openPnlModal();
-document.getElementById('pnlModalClose').onclick = () => document.getElementById('pnlModalOverlay').classList.remove('active');
-document.getElementById('pnlModalOverlay').onclick = (e) => { if (e.target.id === 'pnlModalOverlay') document.getElementById('pnlModalOverlay').classList.remove('active'); };
-
-function openPnlModal() {
-  document.getElementById('pnlModalOverlay').classList.add('active');
-  const hist = state.history;
-  // Avg RR
-  const wins = hist.filter(h => h.pnl > 0);
-  const losses = hist.filter(h => h.pnl < 0);
-  const avgWin = wins.length ? wins.reduce((s, h) => s + h.pnl, 0) / wins.length : 0;
-  const avgLoss = losses.length ? Math.abs(losses.reduce((s, h) => s + h.pnl, 0) / losses.length) : 0;
-  document.getElementById('modalAvgRR').textContent = avgLoss > 0 ? (avgWin / avgLoss).toFixed(2) : '--';
-
-  // Max DD
-  let peak = 10000, maxDD = 0, equity = 10000;
-  for (const h of [...hist].reverse()) {
-    equity += h.pnl;
-    if (equity > peak) peak = equity;
-    const dd = (peak - equity) / peak * 100;
-    if (dd > maxDD) maxDD = dd;
-  }
-  document.getElementById('modalMaxDD').textContent = '-' + maxDD.toFixed(2) + '%';
-
-  // Profit factor
-  const grossProfit = wins.reduce((s, h) => s + h.pnl, 0);
-  const grossLoss = Math.abs(losses.reduce((s, h) => s + h.pnl, 0));
-  document.getElementById('modalProfitFactor').textContent = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : '--';
-
-  // Avg trade
-  const avgTrade = hist.length ? hist.reduce((s, h) => s + h.pnl, 0) / hist.length : 0;
-  const atEl = document.getElementById('modalAvgTrade');
-  atEl.textContent = (avgTrade >= 0 ? '+' : '') + avgTrade.toFixed(2);
-  atEl.className = 'stats-metric-value ' + (avgTrade >= 0 ? 'positive' : 'negative');
-
-  renderEquityChart();
-  renderCalendar();
-}
-
-// Equity chart
-document.querySelectorAll('#equityPeriodSelector .period-btn').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('#equityPeriodSelector .period-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    renderEquityChart(btn.dataset.period);
-  };
-});
-
-function renderEquityChart(period = '7d') {
-  const container = document.getElementById('equityChartContainer');
-  if (state.equityChart) { state.equityChart.remove(); state.equityChart = null; }
-
-  state.equityChart = LightweightCharts.createChart(container, {
-    width: container.clientWidth, height: 160,
-    layout: { background: { color: 'transparent' }, textColor: '#848E9C', fontSize: 10, fontFamily: 'Roboto Mono' },
-    grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(255,255,255,0.03)' } },
-    rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
-    timeScale: { borderColor: 'rgba(255,255,255,0.08)', timeVisible: true },
-    crosshair: { mode: 0 }, handleScroll: { vertTouchDrag: false }
-  });
-
-  state.equitySeries = state.equityChart.addAreaSeries({
-    topColor: 'rgba(14, 203, 129, 0.3)', bottomColor: 'rgba(14, 203, 129, 0.02)',
-    lineColor: '#0ECB81', lineWidth: 2, priceLineVisible: false
-  });
-
-  let data = [];
-  let eq = 10000;
-  const hist = [...state.history].reverse();
-  const now = Date.now();
-  const periodMs = { '7d': 7 * 86400000, '30d': 30 * 86400000, '90d': 90 * 86400000, 'all': Infinity };
-  const cutoff = now - (periodMs[period] || Infinity);
-
-  for (const h of hist) {
-    const t = new Date(h.closeTime).getTime();
-    if (t < cutoff) continue;
-    eq += h.pnl;
-    data.push({ time: Math.floor(t / 1000), value: eq });
-  }
-  if (!data.length) data = [{ time: Math.floor(now / 1000), value: 10000 }];
-  state.equitySeries.setData(data);
-  state.equityChart.timeScale().fitContent();
-}
-
-// Calendar
-document.getElementById('calendarPrev').onclick = () => { state.calendarDate.setMonth(state.calendarDate.getMonth() - 1); renderCalendar(); };
-document.getElementById('calendarNext').onclick = () => { state.calendarDate.setMonth(state.calendarDate.getMonth() + 1); renderCalendar(); };
-
-function renderCalendar() {
-  const d = state.calendarDate;
-  const year = d.getFullYear(), month = d.getMonth();
-  document.getElementById('calendarMonthLabel').textContent = new Date(year, month).toLocaleString('en', { month: 'long', year: 'numeric' });
-
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const offset = (firstDay + 6) % 7;
-
-  // Group PnL by day
-  const dayPnl = {};
-  for (const h of state.history) {
-    const ct = new Date(h.closeTime);
-    if (ct.getFullYear() === year && ct.getMonth() === month) {
-      const day = ct.getDate();
-      dayPnl[day] = (dayPnl[day] || 0) + h.pnl;
-    }
-  }
-
-  const maxAbs = Math.max(1, ...Object.values(dayPnl).map(Math.abs));
-  const today = new Date();
-  const grid = document.getElementById('calendarGrid');
-  let html = '';
-  for (let i = 0; i < offset; i++) html += '<div class="calendar-cell empty"></div>';
-  for (let day = 1; day <= daysInMonth; day++) {
-    const pnl = dayPnl[day] || 0;
-    let cls = '';
-    if (pnl > 0) { cls = 'profit' + (Math.abs(pnl) / maxAbs > 0.5 ? ' high' : ''); }
-    else if (pnl < 0) { cls = 'loss' + (Math.abs(pnl) / maxAbs > 0.5 ? ' high' : ''); }
-    const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
-    html += `<div class="calendar-cell ${cls} ${isToday ? 'today' : ''}" title="${pnl !== 0 ? (pnl > 0 ? '+' : '') + pnl.toFixed(2) + ' VP' : 'No trades'}">${day}</div>`;
-  }
-  grid.innerHTML = html;
-}
-
-// =====================================================
-// === REWARDS / ADS ===
-// =====================================================
-let adController = null;
-try { adController = window.Adsgram ? Adsgram.init({ blockId: '5765' }) : null; } catch(e) {}
-
-function updateRewardsView() {
-  document.getElementById('totalAdsWatched').textContent = state.adsWatched;
-  document.getElementById('totalEarnedFromAds').textContent = state.totalAdEarnings;
-  const todayStr = new Date().toDateString();
-  if (state.adsLastDate !== todayStr) { state.adsToday = 0; state.adsLastDate = todayStr; }
-  const counter = document.getElementById('dailyAdCounter');
-  counter.textContent = `${state.adsToday}/5 today`;
-  counter.classList.toggle('limit-reached', state.adsToday >= 5);
-  document.getElementById('btnWatchAd').disabled = state.adsToday >= 5;
-  const level = Math.floor(state.adsWatched / 10) + 1;
-  document.getElementById('currentLevelText').textContent = 'Level ' + level;
-  const progress = (state.adsWatched % 10);
-  document.getElementById('adsProgressText').textContent = `${progress} / 10 Ads`;
-  document.getElementById('adsProgressBar').style.width = (progress * 10) + '%';
-}
-
-document.getElementById('btnWatchAd').onclick = async () => {
-  if (state.adsToday >= 5) return;
-  const btn = document.getElementById('btnWatchAd');
-  btn.classList.add('loading');
-  try {
-    if (adController) { await adController.show(); }
-    state.adsWatched++;
-    state.adsToday++;
-    state.totalAdEarnings++;
-    state.balance += 1;
-    updateRewardsView();
-    updateHeaderBalance();
-    saveState();
-    showToast('+1 VP earned!');
-  } catch(e) { showToast('Ad not available'); }
-  btn.classList.remove('loading');
-};
-
-// =====================================================
-// === REFERRALS ===
-// =====================================================
-async function loadReferrals() {
-  if (!userId) {
-    document.getElementById('refLinkInput').value = 'Login via Telegram';
-    document.getElementById('refStatus').textContent = 'Login via Telegram to use referrals';
-    return;
-  }
-  const link = `https://t.me/TradeSim_real_bot?start=ref_${userId}`;
-  state.refLink = link;
-  document.getElementById('refLinkInput').value = link;
-  try {
-    const resp = await fetch(`${API}/referrals?user_id=${userId}`);
-    if (resp.ok) {
-      const data = await resp.json();
-      state.referrals = data.referrals || [];
-      document.getElementById('refCountBadge').textContent = 'Invited: ' + state.referrals.length;
-      const listEl = document.getElementById('refList');
-      if (!state.referrals.length) {
-        listEl.innerHTML = '<div class="ref-status">No referrals yet. Share your link!</div>';
-      } else {
-        let html = '';
-        for (const r of state.referrals) {
-          html += `<div class="ref-item"><div class="ref-item-left"><div class="ref-avatar"><img src="${r.photo_url || ''}" onerror="this.style.display='none'"></div><span class="ref-name">${r.first_name || 'User'}</span></div><span class="ref-date">${r.joined || ''}</span></div>`;
-        }
-        listEl.innerHTML = html;
-      }
-    }
-  } catch(e) {
-    document.getElementById('refStatus').textContent = 'Could not load referrals';
-  }
-}
-
-document.getElementById('btnCopyRefLink').onclick = () => {
-  if (!state.refLink) return;
-  navigator.clipboard.writeText(state.refLink).then(() => showToast('Link copied!')).catch(() => {
-    const inp = document.getElementById('refLinkInput');
-    inp.select();
-    document.execCommand('copy');
-    showToast('Link copied!');
-  });
-};
-
-// =====================================================
-// === PERSISTENCE ===
-// =====================================================
-function saveState() {
-  try {
-    const data = {
-      balance: state.balance,
-      positions: state.positions,
-      history: state.history,
-      adsWatched: state.adsWatched,
-      adsToday: state.adsToday,
-      adsLastDate: state.adsLastDate,
-      totalAdEarnings: state.totalAdEarnings
+  (async function(){
+    const $ = (id) => document.getElementById(id);
+
+    const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com";
+    const API_BASE = "https://tradingbot-p9n8.onrender.com";
+    const ALL_PAIRS = ["BTC-USD", "ETH-USD"];
+    
+    const ADSGRAM_BLOCK_ID = "22326";
+    const VP_TO_USD_RATE = 0.005;
+    const DAILY_AD_LIMIT = 5;
+
+    let currentUserId = null;
+    let selectedPair = "BTC-USD";
+    let marketPrices = {};
+    let currentTimeframe = 60;
+    let localCandles = [];
+    let localVolumes = [];
+    let isLoadingHistory = false;
+    let allHistoryLoaded = false;
+
+    let profile = { 
+      balance: 0, name: "Trader", id: 0, photo: "", 
+      adViewsCount: 0, dailyAdViews: 0, dailyAdLimit: DAILY_AD_LIMIT
     };
-    localStorage.setItem('tradesim_state', JSON.stringify(data));
-    if (userId) {
-      fetch(`${API}/save`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: userId, ...data }) }).catch(() => {});
-    }
-  } catch(e) {}
-}
+    let currentLeverage = 10;
+    let localTrades = [];
+    let remoteHistory = [];
 
-function loadState() {
-  try {
-    const raw = localStorage.getItem('tradesim_state');
-    if (raw) {
-      const data = JSON.parse(raw);
-      Object.assign(state, {
-        balance: data.balance ?? 10000,
-        positions: (data.positions || []).map(p => ({ ...p, tp: p.tp || [], sl: p.sl || [] })),
-        history: data.history || [],
-        adsWatched: data.adsWatched || 0,
-        adsToday: data.adsToday || 0,
-        adsLastDate: data.adsLastDate || '',
-        totalAdEarnings: data.totalAdEarnings || 0
+    let isBalanceHidden = false;
+    let historyFilterMode = 'all';
+    const ICON_EYE_OPEN = "https://img.icons8.com/ios-glyphs/60/ffffff/visible.png";
+    const ICON_EYE_CLOSED = "https://img.icons8.com/ios-glyphs/60/ffffff/hide.png";
+
+    let AdController = null;
+
+    let indicatorState = { ema: false, sma: false, vwap: false, volume: false };
+
+    let emaSeries = null;
+    let smaSeries = null;
+    let vwapSeries = null;
+
+    let volumeChartInstance = null;
+    let volumeHistogramSeries = null;
+
+    let currentDrawingTool = 'cursor';
+    let isDrawingToolsOpen = false;
+    let drawnLines = [];
+    let isDrawing = false;
+    let drawStartPoint = null;
+
+    let lastTapTime = 0;
+    const DOUBLE_TAP_DELAY = 300;
+
+    let calendarCurrentMonth = new Date();
+
+    let equityChartInstance = null;
+    let equityLineSeries = null;
+
+    const tg = window.Telegram?.WebApp;
+    if(tg) {
+      tg.ready();
+      try { tg.expand(); } catch(e){}
+      tg.setHeaderColor('#1E2329');
+      tg.setBackgroundColor('#0B0E11');
+      tg.enableClosingConfirmation();
+    }
+
+    // ==================== RESPONSIVE OVERFLOW CHECK ====================
+
+    const TF_OVERLAP_GAP = 12;
+
+    function checkResponsiveOverflows() {
+      checkOhlcOverflow();
+      checkTfSelectorOverflow();
+    }
+
+    function checkOhlcOverflow() {
+      const tooltip = $('ohlcTooltip');
+      const container = $('chartCard');
+      if (!tooltip || !container) return;
+
+      tooltip.classList.remove('ohlc-wrapped');
+
+      const containerWidth = container.clientWidth;
+      const tooltipLeft = 46;
+      const tooltipPaddingH = 16;
+      const availableWidth = containerWidth - tooltipLeft - tooltipPaddingH;
+
+      let totalItemsWidth = 0;
+      const items = tooltip.querySelectorAll('.ohlc-item');
+      const gap = 8;
+      items.forEach((item, i) => {
+        totalItemsWidth += item.offsetWidth;
+        if (i < items.length - 1) totalItemsWidth += gap;
       });
-    }
-  } catch(e) {}
-}
 
-async function loadStateFromServer() {
-  if (!userId) return;
-  try {
-    const resp = await fetch(`${API}/load?user_id=${userId}`);
-    if (resp.ok) {
-      const data = await resp.json();
-      if (data && data.balance !== undefined) {
-        state.balance = data.balance;
-        state.positions = (data.positions || []).map(p => ({ ...p, tp: p.tp || [], sl: p.sl || [] }));
-        state.history = data.history || [];
-        state.adsWatched = data.adsWatched || 0;
-        state.adsToday = data.adsToday || 0;
-        state.adsLastDate = data.adsLastDate || '';
-        state.totalAdEarnings = data.totalAdEarnings || 0;
-        localStorage.setItem('tradesim_state', JSON.stringify(data));
+      if (totalItemsWidth > availableWidth) {
+        tooltip.classList.add('ohlc-wrapped');
       }
     }
-  } catch(e) {}
-}
 
-// Register referral
-async function registerReferral() {
-  if (!userId || !startParam) return;
-  if (!startParam.startsWith('ref_')) return;
-  const referrerId = startParam.replace('ref_', '');
-  if (referrerId === String(userId)) return;
-  try {
-    await fetch(`${API}/referral`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        referrer_id: referrerId,
-        user_id: userId,
-        first_name: userName,
-        photo_url: userPhoto
-      })
+    function checkTfSelectorOverflow() {
+      const tfSelector = $('timeframeSelector');
+      const priceBlock = $('priceBlock');
+      const marketHeader = $('marketHeader');
+      
+      if (!tfSelector || !priceBlock || !marketHeader) return;
+
+      tfSelector.classList.remove('tf-wrapped');
+
+      requestAnimationFrame(() => {
+        const priceRect = priceBlock.getBoundingClientRect();
+        const tfRect = tfSelector.getBoundingClientRect();
+        const headerRect = marketHeader.getBoundingClientRect();
+
+        const priceRightEdge = priceRect.right;
+        const tfLeftEdge = tfRect.left;
+        const gap = tfLeftEdge - priceRightEdge;
+
+        const isOverlapping = gap < TF_OVERLAP_GAP;
+
+        const headerWidth = headerRect.width;
+        const tfWidth = tfRect.width;
+        const priceWidth = priceRect.width;
+        const minRequiredWidth = priceWidth + tfWidth + TF_OVERLAP_GAP;
+        const needsWrapByWidth = minRequiredWidth > headerWidth;
+
+        if (isOverlapping || needsWrapByWidth) {
+          tfSelector.classList.add('tf-wrapped');
+        }
+      });
+    }
+
+    // ==================== ADSGRAM ====================
+
+    function initAdsgram() {
+      if (window.Adsgram && ADSGRAM_BLOCK_ID !== "YOUR_BLOCK_ID_HERE") {
+        try {
+          AdController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
+        } catch(e) { console.error("Adsgram init error:", e); }
+      }
+    }
+
+    function canWatchAd() { return profile.dailyAdViews < profile.dailyAdLimit; }
+
+    function updateWatchAdButton() {
+      const btn = $('btnWatchAd');
+      const counter = $('dailyAdCounter');
+      if (counter) {
+        counter.textContent = `${profile.dailyAdViews}/${profile.dailyAdLimit} today`;
+        counter.classList.toggle('limit-reached', !canWatchAd());
+      }
+      if (btn) {
+        btn.disabled = !canWatchAd();
+        btn.textContent = canWatchAd() ? 'WATCH' : 'LIMIT';
+      }
+    }
+
+    async function showRewardedAd() {
+      const btn = $('btnWatchAd');
+      if (!AdController) { notify("Ad system not available"); return; }
+      if (!canWatchAd()) { notify(`Daily limit reached (${profile.dailyAdLimit} ads). Come back tomorrow!`); return; }
+      btn.classList.add('loading');
+      btn.textContent = 'Loading...';
+      try {
+        await AdController.show();
+        await new Promise(r => setTimeout(r, 1500));
+        await loadAdStats();
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        const remaining = profile.dailyAdLimit - profile.dailyAdViews;
+        notify(remaining > 0 ? `Reward received: +1 VP! (${remaining} ads left today)` : "Reward received: +1 VP! Daily limit reached.");
+      } catch(e) {
+        console.error("Ad error:", e);
+        if (e.error) notify("Ad unavailable. Try again later.");
+      } finally {
+        btn.classList.remove('loading');
+        updateWatchAdButton();
+      }
+    }
+
+    async function loadAdStats() {
+      if (!currentUserId) return;
+      try {
+        const res = await fetch(API_BASE + "/api/user/ad-stats?userId=" + currentUserId);
+        const data = await res.json();
+        if (data.ok) {
+          profile.adViewsCount = data.adViewsCount || 0;
+          profile.dailyAdViews = data.dailyAdViews || 0;
+          profile.dailyAdLimit = data.dailyAdLimit || DAILY_AD_LIMIT;
+          profile.balance = data.balance || profile.balance;
+          updateRewardsUI();
+          updateBalanceUI();
+          updateWatchAdButton();
+        }
+      } catch(e) { console.error("Error loading ad stats:", e); }
+    }
+
+    function updateRewardsUI() {
+      const views = profile.adViewsCount || 0;
+      const level = Math.floor(views / 10) + 1;
+      const viewsInLevel = views % 10;
+      const progressPercent = (viewsInLevel / 10) * 100;
+      $('totalAdsWatched').textContent = views;
+      $('totalEarnedFromAds').textContent = views;
+      $('currentLevelText').textContent = `Level ${level}`;
+      $('adsProgressText').textContent = `${viewsInLevel} / 10 Ads`;
+      $('adsProgressBar').style.width = progressPercent + '%';
+      $('ms-start').classList.add('active');
+      $('ms-5').classList.toggle('active', viewsInLevel >= 5);
+      $('ms-10').classList.toggle('active', viewsInLevel >= 10);
+      updateWatchAdButton();
+    }
+
+    // ==================== FORMATTERS ====================
+
+    function formatPrice(val) {
+      const num = Number(val);
+      if(isNaN(num)) return "--.--";
+      if(num < 1) return num.toFixed(5);
+      if(num < 10) return num.toFixed(4);
+      return num.toFixed(2);
+    }
+
+    function formatUSD(vpAmount) { return (Number(vpAmount) * VP_TO_USD_RATE).toFixed(2); }
+
+    function normalizePair(p) {
+      if (!p) return "";
+      return String(p).trim().replace("/", "-").toUpperCase();
+    }
+
+    function formatVolume(vol) {
+      if (vol >= 1000000) return (vol / 1000000).toFixed(2) + 'M';
+      if (vol >= 1000) return (vol / 1000).toFixed(2) + 'K';
+      return vol.toFixed(2);
+    }
+
+    // ==================== INDICATOR CALCULATIONS ====================
+
+    function calculateEMA(data, period = 20) {
+      if (!data || data.length < period) return [];
+      const k = 2 / (period + 1);
+      const emaData = [];
+      let ema = data.slice(0, period).reduce((sum, c) => sum + c.close, 0) / period;
+      for (let i = period - 1; i < data.length; i++) {
+        if (i === period - 1) {
+          emaData.push({ time: data[i].time, value: ema });
+        } else {
+          ema = data[i].close * k + ema * (1 - k);
+          emaData.push({ time: data[i].time, value: ema });
+        }
+      }
+      return emaData;
+    }
+
+    function calculateSMA(data, period = 50) {
+      if (!data || data.length < period) return [];
+      const smaData = [];
+      for (let i = period - 1; i < data.length; i++) {
+        const sum = data.slice(i - period + 1, i + 1).reduce((s, c) => s + c.close, 0);
+        smaData.push({ time: data[i].time, value: sum / period });
+      }
+      return smaData;
+    }
+
+    function calculateVWAP(data) {
+      if (!data || data.length === 0) return [];
+      const vwapData = [];
+      let cumulativeTPV = 0;
+      let cumulativeVolume = 0;
+      let currentDay = null;
+      for (let i = 0; i < data.length; i++) {
+        const candle = data[i];
+        const candleDate = new Date(candle.time * 1000).toDateString();
+        if (candleDate !== currentDay) {
+          cumulativeTPV = 0;
+          cumulativeVolume = 0;
+          currentDay = candleDate;
+        }
+        const typicalPrice = (candle.high + candle.low + candle.close) / 3;
+        const volume = (localVolumes[i] && localVolumes[i].value) || 1;
+        cumulativeTPV += typicalPrice * volume;
+        cumulativeVolume += volume;
+        vwapData.push({ time: candle.time, value: cumulativeVolume > 0 ? cumulativeTPV / cumulativeVolume : typicalPrice });
+      }
+      return vwapData;
+    }
+
+    function buildVolumeData(candles) {
+      return candles.map(c => ({
+        time: c.time,
+        value: c.volume || (Math.abs(c.close - c.open) * 1000 + Math.random() * 500 + 100),
+        color: c.close >= c.open ? 'rgba(14, 203, 129, 0.5)' : 'rgba(246, 70, 93, 0.5)'
+      }));
+    }
+
+    // ==================== INDICATOR TOGGLE ====================
+
+    function toggleIndicator(indicator) {
+      indicatorState[indicator] = !indicatorState[indicator];
+      const chipId = indicator === 'ema' ? 'chipEMA' : indicator === 'sma' ? 'chipSMA' : indicator === 'vwap' ? 'chipVWAP' : 'chipVolume';
+      const chip = $(chipId);
+      if (chip) chip.classList.toggle('active', indicatorState[indicator]);
+      updateIndicators();
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    }
+
+    function updateIndicators() {
+      if (indicatorState.ema) {
+        if (!emaSeries) {
+          emaSeries = chart.addLineSeries({
+            color: '#1E90FF', lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
+          });
+        }
+        emaSeries.setData(calculateEMA(localCandles, 20));
+      } else if (emaSeries) {
+        chart.removeSeries(emaSeries);
+        emaSeries = null;
+      }
+
+      if (indicatorState.sma) {
+        if (!smaSeries) {
+          smaSeries = chart.addLineSeries({
+            color: '#A855F7', lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
+          });
+        }
+        smaSeries.setData(calculateSMA(localCandles, 50));
+      } else if (smaSeries) {
+        chart.removeSeries(smaSeries);
+        smaSeries = null;
+      }
+
+      if (indicatorState.vwap) {
+        if (!vwapSeries) {
+          vwapSeries = chart.addLineSeries({
+            color: '#F7931A', lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
+          });
+        }
+        vwapSeries.setData(calculateVWAP(localCandles));
+      } else if (vwapSeries) {
+        chart.removeSeries(vwapSeries);
+        vwapSeries = null;
+      }
+
+      const volContainer = $('volumeContainer');
+      const chartCard = $('chartCard');
+      if (indicatorState.volume) {
+        volContainer.classList.add('visible');
+        chartCard.classList.add('has-volume');
+        if (volumeHistogramSeries && localVolumes.length > 0) {
+          volumeHistogramSeries.setData(localVolumes);
+        }
+      } else {
+        volContainer.classList.remove('visible');
+        chartCard.classList.remove('has-volume');
+        if (volumeHistogramSeries) {
+          volumeHistogramSeries.setData([]);
+        }
+      }
+    }
+
+    // ==================== DRAWING TOOLS ====================
+
+    function initDrawingTools() {
+      const toggle = $('drawingToolsToggle');
+      const menu = $('drawingToolsMenu');
+      const panel = $('drawingToolsPanel');
+      const toolBtns = panel.querySelectorAll('.drawing-tool-btn');
+
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        isDrawingToolsOpen = !isDrawingToolsOpen;
+        menu.classList.toggle('open', isDrawingToolsOpen);
+        toggle.classList.toggle('active', isDrawingToolsOpen);
+      });
+
+      toolBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const tool = btn.dataset.tool;
+          if (tool === 'clear') { clearAllDrawings(); return; }
+          toolBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentDrawingTool = tool;
+          if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        });
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!menu.contains(e.target)) {
+          isDrawingToolsOpen = false;
+          menu.classList.remove('open');
+          toggle.classList.remove('active');
+        }
+      });
+    }
+
+    function clearAllDrawings() {
+      drawnLines.forEach(line => { try { chart.removeSeries(line); } catch(e) {} });
+      drawnLines = [];
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    }
+
+    function handleChartClick(param) {
+      if (currentDrawingTool === 'cursor' || !param.point || !param.time) return;
+      const price = candleSeries.coordinateToPrice(param.point.y);
+      if (currentDrawingTool === 'horizline') {
+        drawHorizontalLine(price);
+      } else if (currentDrawingTool === 'trendline') {
+        if (!isDrawing) {
+          isDrawing = true;
+          drawStartPoint = { time: param.time, price: price };
+        } else {
+          drawTrendLine(drawStartPoint, { time: param.time, price: price });
+          isDrawing = false;
+          drawStartPoint = null;
+        }
+      }
+    }
+
+    function drawHorizontalLine(price) {
+      const line = chart.addLineSeries({
+        color: '#F0B90B', lineWidth: 1, lineStyle: 2,
+        priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: false,
+      });
+      const now = Math.floor(Date.now() / 1000);
+      line.setData([{ time: now - 365*86400, value: price }, { time: now + 365*86400, value: price }]);
+      drawnLines.push(line);
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    }
+
+    function drawTrendLine(start, end) {
+      const line = chart.addLineSeries({
+        color: '#1E90FF', lineWidth: 1,
+        priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+      });
+      line.setData([{ time: start.time, value: start.price }, { time: end.time, value: end.price }]);
+      drawnLines.push(line);
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    }
+
+    // ==================== OHLC TOOLTIP ====================
+
+    function updateOHLCTooltip(param) {
+      const tooltip = $('ohlcTooltip');
+      if (!param || !param.time || !param.seriesData) { tooltip.classList.remove('visible'); return; }
+      const candleData = param.seriesData.get(candleSeries);
+      if (!candleData) { tooltip.classList.remove('visible'); return; }
+
+      const { open, high, low, close } = candleData;
+      const isUp = close >= open;
+      const cls = isUp ? 'up' : 'down';
+
+      $('ohlcOpen').textContent = formatPrice(open);
+      $('ohlcOpen').className = `ohlc-value ${cls}`;
+      $('ohlcHigh').textContent = formatPrice(high);
+      $('ohlcHigh').className = `ohlc-value ${cls}`;
+      $('ohlcLow').textContent = formatPrice(low);
+      $('ohlcLow').className = `ohlc-value ${cls}`;
+      $('ohlcClose').textContent = formatPrice(close);
+      $('ohlcClose').className = `ohlc-value ${cls}`;
+
+      const volData = localVolumes.find(v => v.time === param.time);
+      $('ohlcVol').textContent = volData ? formatVolume(volData.value) : '--';
+      $('ohlcVol').className = `ohlc-value ${cls}`;
+
+      tooltip.classList.add('visible');
+
+      requestAnimationFrame(() => { checkOhlcOverflow(); });
+    }
+
+    // ==================== DOUBLE TAP RESET ====================
+
+    function setupDoubleTapHandler() {
+      const chartEl = $('chart');
+      chartEl.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        if (now - lastTapTime < DOUBLE_TAP_DELAY && now - lastTapTime > 0) {
+          e.preventDefault();
+          chart.timeScale().fitContent();
+          chart.priceScale('right').applyOptions({ autoScale: true });
+          if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+        }
+        lastTapTime = now;
+      });
+      chartEl.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        chart.timeScale().fitContent();
+        chart.priceScale('right').applyOptions({ autoScale: true });
+      });
+    }
+
+    // ==================== PNL MODAL ====================
+
+    let currentEquityPeriod = '7d';
+
+    function openPnlModal() {
+      $('pnlModalOverlay').classList.add('active');
+      document.body.style.overflow = 'hidden';
+      renderModalStats();
+      renderEquityChart(currentEquityPeriod);
+      renderCalendarPnL();
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    }
+
+    function closePnlModal() {
+      $('pnlModalOverlay').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function renderModalStats() {
+      if (!remoteHistory || remoteHistory.length === 0) {
+        $('modalAvgRR').textContent = '--';
+        $('modalMaxDD').textContent = '--';
+        $('modalProfitFactor').textContent = '--';
+        $('modalAvgTrade').textContent = '--';
+        return;
+      }
+
+      let totalWins = 0, totalLosses = 0, winCount = 0, lossCount = 0;
+      let maxDrawdown = 0, peak = 0, runningPnL = 0;
+
+      remoteHistory.forEach(trade => {
+        const pnl = Number(trade.pnl);
+        runningPnL += pnl;
+        if (pnl > 0) { totalWins += pnl; winCount++; }
+        else { totalLosses += Math.abs(pnl); lossCount++; }
+        if (runningPnL > peak) peak = runningPnL;
+        const dd = peak - runningPnL;
+        if (dd > maxDrawdown) maxDrawdown = dd;
+      });
+
+      const avgWin = winCount > 0 ? totalWins / winCount : 0;
+      const avgLoss = lossCount > 0 ? totalLosses / lossCount : 1;
+      const avgRR = avgLoss > 0 ? (avgWin / avgLoss).toFixed(2) : '--';
+      const profitFactor = totalLosses > 0 ? (totalWins / totalLosses).toFixed(2) : (totalWins > 0 ? '∞' : '--');
+      const avgTrade = remoteHistory.length > 0 ? (runningPnL / remoteHistory.length).toFixed(2) : '--';
+
+      const rrEl = $('modalAvgRR');
+      rrEl.textContent = avgRR !== '--' ? `1:${avgRR}` : '--';
+      rrEl.className = `stats-metric-value ${Number(avgRR) >= 1 ? 'positive' : ''}`;
+
+      $('modalMaxDD').textContent = maxDrawdown > 0 ? `-${maxDrawdown.toFixed(2)} VP` : '--';
+
+      const pfEl = $('modalProfitFactor');
+      pfEl.textContent = profitFactor;
+      pfEl.className = `stats-metric-value ${Number(profitFactor) >= 1 ? 'positive' : 'negative'}`;
+
+      const atEl = $('modalAvgTrade');
+      atEl.textContent = avgTrade !== '--' ? `${Number(avgTrade) >= 0 ? '+' : ''}${avgTrade} VP` : '--';
+      atEl.className = `stats-metric-value ${Number(avgTrade) >= 0 ? 'positive' : 'negative'}`;
+    }
+
+    function renderEquityChart(period) {
+      const container = $('equityChartContainer');
+      if (equityChartInstance) { equityChartInstance.remove(); equityChartInstance = null; }
+
+      equityChartInstance = LightweightCharts.createChart(container, {
+        width: container.clientWidth, height: container.clientHeight,
+        layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#848E9C' },
+        grid: { horzLines: { color: 'rgba(255,255,255,0.03)' }, vertLines: { color: 'rgba(255,255,255,0.03)' } },
+        rightPriceScale: { borderVisible: false },
+        timeScale: { borderVisible: false, timeVisible: true },
+        crosshair: { mode: 0 }
+      });
+
+      equityLineSeries = equityChartInstance.addAreaSeries({
+        topColor: 'rgba(14, 203, 129, 0.4)', bottomColor: 'rgba(14, 203, 129, 0.0)',
+        lineColor: '#0ECB81', lineWidth: 2,
+      });
+
+      if (!remoteHistory || remoteHistory.length === 0) { equityLineSeries.setData([]); return; }
+
+      const now = Date.now();
+      const periods = { '7d': 7*86400000, '30d': 30*86400000, '90d': 90*86400000, 'all': Infinity };
+      const cutoff = periods[period] === Infinity ? 0 : now - periods[period];
+
+      const filtered = remoteHistory
+        .filter(h => new Date(h.closed_at).getTime() >= cutoff)
+        .sort((a, b) => new Date(a.closed_at) - new Date(b.closed_at));
+
+      if (filtered.length === 0) { equityLineSeries.setData([]); return; }
+
+      let equity = 1000;
+      const equityData = [{ time: Math.floor(new Date(filtered[0].closed_at).getTime() / 1000) - 86400, value: equity }];
+      filtered.forEach(trade => {
+        equity += Number(trade.pnl);
+        equityData.push({ time: Math.floor(new Date(trade.closed_at).getTime() / 1000), value: equity });
+      });
+
+      const unique = equityData.filter((v, i, a) => a.findIndex(t => t.time === v.time) === i).sort((a, b) => a.time - b.time);
+      equityLineSeries.setData(unique);
+      equityChartInstance.timeScale().fitContent();
+
+      const lastEq = unique[unique.length - 1]?.value || 1000;
+      const isPos = lastEq >= 1000;
+      equityLineSeries.applyOptions({
+        topColor: isPos ? 'rgba(14, 203, 129, 0.4)' : 'rgba(246, 70, 93, 0.4)',
+        bottomColor: isPos ? 'rgba(14, 203, 129, 0.0)' : 'rgba(246, 70, 93, 0.0)',
+        lineColor: isPos ? '#0ECB81' : '#F6465D',
+      });
+    }
+
+    function renderCalendarPnL() {
+      const grid = $('calendarGrid');
+      const monthLabel = $('calendarMonthLabel');
+      const year = calendarCurrentMonth.getFullYear();
+      const month = calendarCurrentMonth.getMonth();
+
+      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      monthLabel.textContent = `${monthNames[month]} ${year}`;
+
+      const firstDay = new Date(year, month, 1);
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      let startDay = firstDay.getDay() - 1;
+      if (startDay < 0) startDay = 6;
+
+      const dailyPnL = {};
+      if (remoteHistory && remoteHistory.length > 0) {
+        remoteHistory.forEach(trade => {
+          const d = new Date(trade.closed_at);
+          if (d.getFullYear() === year && d.getMonth() === month) {
+            const day = d.getDate();
+            dailyPnL[day] = (dailyPnL[day] || 0) + Number(trade.pnl);
+          }
+        });
+      }
+
+      const maxPnL = Math.max(...Object.values(dailyPnL).map(Math.abs), 1);
+      const today = new Date();
+      const isCurrentMonth = month === today.getMonth() && year === today.getFullYear();
+
+      let html = '';
+      for (let i = 0; i < startDay; i++) html += '<div class="calendar-cell empty"></div>';
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const pnl = dailyPnL[day];
+        let cls = 'calendar-cell';
+        if (pnl !== undefined) {
+          cls += pnl >= 0 ? ' profit' : ' loss';
+          if (Math.abs(pnl) / maxPnL > 0.5) cls += ' high';
+        }
+        if (isCurrentMonth && day === today.getDate()) cls += ' today';
+        const title = pnl !== undefined ? `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} VP` : 'No trades';
+        html += `<div class="${cls}" title="${title}">${day}</div>`;
+      }
+      grid.innerHTML = html;
+    }
+
+    function changeCalendarMonth(delta) {
+      calendarCurrentMonth.setMonth(calendarCurrentMonth.getMonth() + delta);
+      renderCalendarPnL();
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    }
+
+    function initPnlModal() {
+      $('netPnlCard').addEventListener('click', openPnlModal);
+      $('pnlModalClose').addEventListener('click', closePnlModal);
+      $('pnlModalOverlay').addEventListener('click', (e) => { if (e.target === $('pnlModalOverlay')) closePnlModal(); });
+      $('calendarPrev').addEventListener('click', () => changeCalendarMonth(-1));
+      $('calendarNext').addEventListener('click', () => changeCalendarMonth(1));
+
+      document.querySelectorAll('#equityPeriodSelector .period-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#equityPeriodSelector .period-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentEquityPeriod = btn.dataset.period;
+          renderEquityChart(currentEquityPeriod);
+        });
+      });
+    }
+
+    // ==================== INDICATOR CHIPS ====================
+
+    function initIndicatorChips() {
+      document.querySelectorAll('.indicator-chip').forEach(chip => {
+        chip.addEventListener('click', () => toggleIndicator(chip.dataset.indicator));
+      });
+    }
+
+    // ==================== VIEW MANAGEMENT ====================
+
+    function showView(viewId) {
+      document.querySelectorAll('.view-section').forEach(el => { el.classList.remove('active'); el.classList.add('hidden'); });
+      const target = $(viewId);
+      target.classList.remove('hidden');
+      target.classList.add('active');
+      if (viewId === 'view-profile') { if(tg) tg.BackButton.show(); }
+      else if (viewId === 'view-trade') { if(tg) tg.BackButton.hide(); }
+      else if (viewId === 'view-rewards') { loadAdStats(); }
+    }
+
+    $('btnProfile').onclick = () => { renderProfile(); showView('view-profile'); };
+    $('btnCloseProfile').onclick = () => showView('view-trade');
+    $('btnGoRewards').onclick = () => showView('view-rewards');
+    $('btnBackFromRewards').onclick = () => showView('view-profile');
+    $('btnWatchAd').onclick = () => showRewardedAd();
+
+    if(tg) {
+      tg.BackButton.onClick(() => {
+        const vr = $('view-rewards'), vp = $('view-profile');
+        if(vr.classList.contains('active')) showView('view-profile');
+        else if(vp.classList.contains('active')) showView('view-trade');
+      });
+    }
+
+    const btnEye = $('btnToggleBalance');
+    if(btnEye) {
+      btnEye.onclick = (e) => {
+        e.stopPropagation();
+        isBalanceHidden = !isBalanceHidden;
+        btnEye.src = isBalanceHidden ? ICON_EYE_CLOSED : ICON_EYE_OPEN;
+        updateBalanceUI();
+      };
+    }
+
+    document.querySelectorAll('.h-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.h-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        historyFilterMode = btn.dataset.filter;
+        renderHistoryList();
+      });
     });
-  } catch(e) {}
-}
 
-// =====================================================
-// === TOAST ===
-// =====================================================
-function showToast(msg) {
-  const toast = document.createElement('div');
-  toast.textContent = msg;
-  Object.assign(toast.style, {
-    position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
-    background: 'rgba(30,35,41,0.95)', color: '#EAECEF', padding: '10px 20px',
-    borderRadius: '8px', fontSize: '13px', fontWeight: '600', zIndex: '9999',
-    border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-    transition: 'opacity 0.3s', whiteSpace: 'nowrap'
-  });
-  document.body.appendChild(toast);
-  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 2500);
-}
+    // ==================== UTILS ====================
 
-// =====================================================
-// === INIT ===
-// =====================================================
-async function init() {
-  loadState();
-  await loadStateFromServer();
-  registerReferral();
-  initChart();
-  await loadChart();
-  connectWS();
-  renderPositions();
-  updateHeaderBalance();
+    function notify(msg) {
+      try { if(tg && typeof tg.showPopup === 'function') { tg.showPopup({ title: 'Info', message: msg, buttons: [{type:'ok'}] }); return; } } catch(e) {}
+      alert(msg);
+    }
 
-  // Order book update
-  setInterval(generateOrderBook, 2000);
-  generateOrderBook();
+    async function copyTextToClipboard(text) {
+      const t = String(text || "");
+      if(!t) return false;
+      try { if(tg?.Clipboard?.writeText) { await tg.Clipboard.writeText(t); return true; } } catch(e) {}
+      try { if(navigator.clipboard?.writeText) { await navigator.clipboard.writeText(t); return true; } } catch(e) {}
+      try {
+        const tmp = document.createElement('textarea');
+        tmp.value = t; tmp.style.position = 'fixed'; tmp.style.left = '-9999px';
+        document.body.appendChild(tmp); tmp.focus(); tmp.select();
+        const ok = document.execCommand('copy'); document.body.removeChild(tmp); return ok;
+      } catch(e) { return false; }
+    }
 
-  // Auto-save
-  setInterval(saveState, 30000);
+    const btnCopyRefLink = $('btnCopyRefLink');
+    if(btnCopyRefLink) {
+      btnCopyRefLink.onclick = async () => {
+        const ok = await copyTextToClipboard($('refLinkInput')?.value);
+        notify(ok ? 'Referral link copied' : 'Copy failed');
+      };
+    }
 
-  // Responsive TF selector
-  function checkTFLayout() {
-    const header = document.getElementById('marketHeader');
-    const sel = document.getElementById('timeframeSelector');
-    if (header.offsetWidth < 400) { sel.classList.add('tf-wrapped'); } else { sel.classList.remove('tf-wrapped'); }
-  }
-  checkTFLayout();
-  window.addEventListener('resize', checkTFLayout);
-}
+    function escapeHtml(str) {
+      return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+    }
 
-init();
+    // ==================== PROFILE ====================
+
+    async function renderProfile() {
+      $('profileName').textContent = profile.name || "Trader";
+      $('profileId').textContent = "ID: " + profile.id;
+      updateBalanceUI();
+      if(profile.photo) $('profileAvatarBig').src = profile.photo;
+
+      try {
+        const res = await fetch(API_BASE + "/api/user/history?userId=" + currentUserId);
+        const data = await res.json();
+        if(data.ok) remoteHistory = data.history;
+      } catch(e) { console.error("History fetch error", e); }
+
+      let totalPnL = 0, wins = 0, count = remoteHistory.length;
+      remoteHistory.forEach(h => { const p = Number(h.pnl); totalPnL += p; if(p > 0) wins++; });
+
+      const pnlEl = $('statPnL');
+      pnlEl.textContent = (totalPnL > 0 ? "+" : "") + totalPnL.toFixed(2) + " VP";
+      pnlEl.className = (totalPnL >= 0 ? "text-green" : "text-red");
+
+      let winRate = count > 0 ? Math.round((wins / count) * 100) : 0;
+      $('winRateVal').textContent = winRate + "%";
+      $('totalTradesVal').textContent = count + " Trades";
+      const chartColor = winRate >= 50 ? '#0ECB81' : '#F6465D';
+      $('winRateChart').style.background = `conic-gradient(${chartColor} 0% ${winRate}%, var(--panel-light) ${winRate}% 100%)`;
+
+      renderHistoryList();
+      await renderReferrals();
+    }
+
+    async function renderReferrals() {
+      const listEl = $('refList'), linkInput = $('refLinkInput'), badge = $('refCountBadge');
+      if(!listEl || !linkInput || !badge) return;
+      listEl.innerHTML = "<div class='ref-status'>Loading referrals...</div>";
+      linkInput.value = "Loading..."; badge.textContent = "Invited: ...";
+
+      try {
+        const res = await fetch(API_BASE + "/api/user/referrals?userId=" + encodeURIComponent(currentUserId));
+        const data = await res.json();
+        if(!data.ok) throw new Error(data.error || 'REFERRALS_ERROR');
+        linkInput.value = data.referralLink || "";
+        badge.textContent = "Invited: " + Number(data.invitedCount || 0);
+        const invited = Array.isArray(data.invited) ? data.invited : [];
+        listEl.innerHTML = "";
+        if(invited.length === 0) { listEl.innerHTML = "<div class='ref-status'>No referrals yet</div>"; return; }
+        invited.slice(0, 50).forEach(u => {
+          const div = document.createElement('div'); div.className = 'ref-item';
+          const name = u.first_name || 'User';
+          const when = u.invited_at ? new Date(u.invited_at) : (u.created_at ? new Date(u.created_at) : null);
+          const dateStr = when ? when.toLocaleDateString([], {month:'2-digit', day:'2-digit', year:'2-digit'}) : '--';
+          const photo = u.photo_url || '';
+          div.innerHTML = `<div class="ref-item-left"><div class="ref-avatar">${photo ? `<img src="${photo}" alt="">` : ''}</div><div class="ref-name">${escapeHtml(name)}</div></div><div class="ref-date">${dateStr}</div>`;
+          listEl.appendChild(div);
+        });
+      } catch(e) {
+        listEl.innerHTML = "<div class='ref-status'>Failed to load referrals</div>";
+        console.error('Referrals fetch error', e);
+      }
+    }
+
+    function renderHistoryList() {
+      const list = $('historyList'); list.innerHTML = "";
+      if(remoteHistory.length === 0) { list.innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No trading history yet</div>'; return; }
+      const now = Date.now();
+      const filtered = remoteHistory.filter(h => {
+        if(historyFilterMode === 'all') return true;
+        const t = new Date(h.closed_at).getTime();
+        if(historyFilterMode === 'day') return (now - t) < 86400000;
+        if(historyFilterMode === 'week') return (now - t) < 604800000;
+        return true;
+      });
+      if(filtered.length === 0) { list.innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No trades in this period</div>'; return; }
+      filtered.slice(0, 50).forEach(h => {
+        const pnlVal = Number(h.pnl), sizeVal = Number(h.size), commVal = Number(h.commission || 0);
+        const entryVal = Number(h.entry_price), exitVal = Number(h.exit_price);
+        const pnlClass = pnlVal >= 0 ? "text-green" : "text-red";
+        const dateStr = new Date(h.closed_at).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+        const div = document.createElement('div'); div.className = "history-card";
+        div.innerHTML = `<div class="hc-header"><div class="hc-pair">${h.pair||"UNK"}</div><div class="hc-type ${h.type==='LONG'?'long':'short'}">${h.type} x${h.leverage}</div></div><div class="hc-row"><span>Size: <span class="hc-val">${sizeVal.toFixed(0)}</span></span><span>${dateStr}</span></div><div class="hc-row"><span>Entry: <span class="hc-val">${formatPrice(entryVal)}</span></span><span>Exit: <span class="hc-val">${formatPrice(exitVal)}</span></span></div><div class="hc-row" style="margin-top:4px; border-top:1px solid var(--border); padding-top:4px;"><span>Fee: <span style="color:var(--muted)">-${commVal.toFixed(2)}</span></span><span class="hc-pnl ${pnlClass}">${pnlVal > 0 ? '+' : ''}${pnlVal.toFixed(2)} VP</span></div>`;
+        list.appendChild(div);
+      });
+    }
+
+    // ==================== PAIR / TIMEFRAME ====================
+
+    const pairDropdown = $('pairDropdown'), pairTrigger = $('pairTrigger'), triggerText = $('triggerText');
+    const pairItems = document.querySelectorAll('.pair-item');
+
+    pairTrigger.addEventListener('click', (e) => { e.stopPropagation(); pairDropdown.classList.toggle('open'); });
+    document.addEventListener('click', () => pairDropdown.classList.remove('open'));
+
+    pairItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const newPair = item.dataset.pair;
+        if(newPair === selectedPair) return;
+        pairItems.forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        triggerText.textContent = item.textContent;
+        switchPair(newPair);
+      });
+    });
+
+    function switchPair(newPair) {
+      selectedPair = newPair;
+      $('bookPairLabel').textContent = selectedPair;
+      $('priceDisplay').textContent = marketPrices[selectedPair] ? formatPrice(marketPrices[selectedPair]) : "--.--";
+      $('orderBook').innerHTML = '';
+      $('tradeHistory').innerHTML = "";
+      localTrades = [];
+      candleSeries.setData([]);
+      lastCandle = null;
+      localCandles = [];
+      localVolumes = [];
+      isLoadingMoreHistory = false;
+      allOlderHistoryLoaded = false;
+      lastLoadMoreUntil = null;
+      lockedLeftBoundary = null;
+      hideChartLoadingOverlay();
+      chart.timeScale().fitContent();
+      chart.priceScale('right').applyOptions({ autoScale: true });
+
+      Object.keys(indicatorState).forEach(key => {
+        if (key !== 'volume') { indicatorState[key] = false; }
+        const chipId = key === 'ema' ? 'chipEMA' : key === 'sma' ? 'chipSMA' : key === 'vwap' ? 'chipVWAP' : 'chipVolume';
+        if (key !== 'volume') $(chipId)?.classList.remove('active');
+      });
+      if (emaSeries) { chart.removeSeries(emaSeries); emaSeries = null; }
+      if (smaSeries) { chart.removeSeries(smaSeries); smaSeries = null; }
+      if (vwapSeries) { chart.removeSeries(vwapSeries); vwapSeries = null; }
+      clearAllDrawings();
+
+      if (volumeHistogramSeries) volumeHistogramSeries.setData([]);
+
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: "subscribe", pair: newPair, timeframe: currentTimeframe }));
+      }
+    }
+
+    function changeTimeframe(newTimeframe) {
+      newTimeframe = parseInt(newTimeframe);
+      if (currentTimeframe === newTimeframe) return;
+      currentTimeframe = newTimeframe;
+      document.querySelectorAll('.tf-opt').forEach(opt => { opt.classList.toggle('active', parseInt(opt.dataset.tf) === currentTimeframe); });
+      candleSeries.setData([]);
+      lastCandle = null;
+      localCandles = [];
+      localVolumes = [];
+      isLoadingHistory = false; allHistoryLoaded = false;
+      isLoadingMoreHistory = false; allOlderHistoryLoaded = false;
+      lastLoadMoreUntil = null; lockedLeftBoundary = null;
+      hideChartLoadingOverlay();
+      chart.timeScale().fitContent();
+      chart.priceScale('right').applyOptions({ autoScale: true });
+      if (volumeHistogramSeries) volumeHistogramSeries.setData([]);
+      updateIndicators();
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: "subscribe", pair: selectedPair, timeframe: currentTimeframe }));
+      }
+    }
+
+    document.querySelectorAll('.tf-opt').forEach(opt => {
+      opt.addEventListener('click', () => changeTimeframe(opt.dataset.tf));
+    });
+
+    // ==================== CHART SETUP ====================
+
+    const chartEl = $('chart');
+    const chartLoadingOverlay = $('chartLoadingOverlay');
+    const volumeContainerEl = $('volumeContainer');
+    const volumeChartEl = $('volumeChart');
+
+    const chart = LightweightCharts.createChart(chartEl, {
+      width: chartEl.clientWidth, height: chartEl.clientHeight,
+      layout: { background: { type: 'solid', color: '#0B0E11' }, textColor: '#5E6673' },
+      grid: { horzLines: { color: 'rgba(255,255,255,0.03)' }, vertLines: { color: 'rgba(255,255,255,0.03)' } },
+      rightPriceScale: { borderVisible: false, autoScale: true, scaleMargins: { top: 0.1, bottom: 0.1 } },
+      timeScale: { borderVisible: false, timeVisible: true, rightOffset: 5 },
+      crosshair: { vertLine: { color: 'rgba(255,255,255,0.1)', style: 3 }, horzLine: { color: 'rgba(255,255,255,0.1)', style: 3 } }
+    });
+
+    let candleSeries = chart.addCandlestickSeries({
+      upColor: '#0ECB81', borderUpColor: '#0ECB81', wickUpColor: '#0ECB81',
+      downColor: '#F6465D', borderDownColor: '#F6465D', wickDownColor: '#F6465D'
+    });
+
+    volumeChartInstance = LightweightCharts.createChart(volumeChartEl, {
+      width: volumeChartEl.clientWidth, height: volumeChartEl.clientHeight,
+      layout: { background: { type: 'solid', color: '#0B0E11' }, textColor: '#5E6673' },
+      grid: { horzLines: { visible: false }, vertLines: { visible: false } },
+      rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.1, bottom: 0 } },
+      timeScale: { visible: false },
+      crosshair: { mode: 0 }
+    });
+
+    volumeHistogramSeries = volumeChartInstance.addHistogramSeries({
+      priceFormat: { type: 'volume' },
+      priceScaleId: '',
+    });
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+      if (range) volumeChartInstance.timeScale().setVisibleLogicalRange(range);
+    });
+
+    chart.subscribeCrosshairMove(updateOHLCTooltip);
+    chart.subscribeClick(handleChartClick);
+
+    new ResizeObserver(entries => {
+      if (entries.length === 0 || entries[0].target !== chartEl) return;
+      const r = entries[0].contentRect;
+      chart.applyOptions({ width: r.width, height: r.height });
+      checkResponsiveOverflows();
+    }).observe(chartEl);
+
+    new ResizeObserver(entries => {
+      if (entries.length === 0) return;
+      const r = entries[0].contentRect;
+      volumeChartInstance.applyOptions({ width: r.width, height: r.height });
+    }).observe(volumeChartEl);
+
+    const marketHeaderEl = $('marketHeader');
+    if (marketHeaderEl) {
+      new ResizeObserver(() => {
+        checkTfSelectorOverflow();
+      }).observe(marketHeaderEl);
+    }
+
+    // ==================== HISTORY LOADING ====================
+
+    let isLoadingMoreHistory = false;
+    let allOlderHistoryLoaded = false;
+    let lastLoadMoreUntil = null;
+    let lockedLeftBoundary = null;
+
+    function showChartLoadingOverlay() { if (chartLoadingOverlay) chartLoadingOverlay.classList.add('active'); }
+    function hideChartLoadingOverlay() { if (chartLoadingOverlay) chartLoadingOverlay.classList.remove('active'); }
+
+    chart.timeScale().subscribeVisibleTimeRangeChange(timeRange => {
+      if (!timeRange) return;
+      if (isLoadingMoreHistory && lockedLeftBoundary !== null) {
+        if (timeRange.from < lockedLeftBoundary) {
+          const cr = chart.timeScale().getVisibleRange();
+          if (cr) { const dur = cr.to - cr.from; chart.timeScale().setVisibleRange({ from: lockedLeftBoundary, to: lockedLeftBoundary + dur }); }
+          return;
+        }
+      }
+      if (allOlderHistoryLoaded || isLoadingMoreHistory) return;
+      if (!localCandles || localCandles.length === 0) return;
+      const oldest = localCandles[0].time;
+      const visRange = timeRange.to - timeRange.from;
+      if (timeRange.from <= oldest + (visRange * 0.05)) requestMoreHistory();
+    });
+
+    async function requestMoreHistory() {
+      if (isLoadingMoreHistory || allOlderHistoryLoaded) return;
+      if (!localCandles || localCandles.length === 0) return;
+      const oldest = localCandles[0].time;
+      if (lastLoadMoreUntil === oldest) return;
+      lastLoadMoreUntil = oldest;
+      isLoadingMoreHistory = true;
+      lockedLeftBoundary = oldest;
+      showChartLoadingOverlay();
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: "loadMore", pair: selectedPair, timeframe: currentTimeframe, until: oldest }));
+      } else {
+        isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay();
+      }
+    }
+
+    // ==================== SLIDERS ====================
+
+    const leverageSlider = $('leverageSlider');
+    const levDisplay = $('leverageValText');
+    const levChips = document.querySelectorAll('.chip');
+
+    function updateSliderTrack(slider, pct) {
+      slider.style.background = `linear-gradient(to right, var(--accent-green) 0%, var(--accent-green) ${pct}%, #2A2F36 ${pct}%, #2A2F36 100%)`;
+    }
+
+    function updateLeverageUI(val) {
+      currentLeverage = parseInt(val);
+      leverageSlider.value = currentLeverage;
+      levDisplay.textContent = currentLeverage + 'x';
+      levChips.forEach(chip => chip.classList.toggle('active', parseInt(chip.dataset.v) === currentLeverage));
+      updateSliderTrack(leverageSlider, ((currentLeverage - 1) / 49) * 100);
+    }
+    leverageSlider.addEventListener('input', (e) => updateLeverageUI(e.target.value));
+    levChips.forEach(chip => chip.addEventListener('click', () => updateLeverageUI(chip.dataset.v)));
+    updateLeverageUI(10);
+
+    const marginSlider = $('marginSlider');
+    const marginPercentText = $('marginPercentText');
+    const sizeInput = $('sizeInput');
+    const marginMarks = document.querySelectorAll('.margin-mark');
+    const SNAP_POINTS = [0, 25, 50, 75, 100];
+    const SNAP_THRESHOLD = 4;
+
+    function snapToMagneticPoint(value) {
+      for (const point of SNAP_POINTS) { if (Math.abs(value - point) <= SNAP_THRESHOLD) return point; }
+      return value;
+    }
+
+    function updateMarginSliderUI(pct, fromInput = false, skipSnap = false) {
+      pct = Math.max(0, Math.min(100, parseInt(pct) || 0));
+      if (!skipSnap && !fromInput) pct = snapToMagneticPoint(pct);
+      marginSlider.value = pct;
+      marginPercentText.textContent = pct + '%';
+      updateSliderTrack(marginSlider, pct);
+      marginMarks.forEach(mark => mark.classList.toggle('active', parseInt(mark.dataset.pct) === pct));
+      if (!fromInput && profile.balance > 0) {
+        const marginVal = Math.floor((profile.balance * pct) / 100);
+        sizeInput.value = marginVal > 0 ? marginVal : '';
+      }
+    }
+
+    let lastSnappedValue = null;
+    marginSlider.addEventListener('input', (e) => {
+      const raw = parseInt(e.target.value);
+      const snapped = snapToMagneticPoint(raw);
+      if (snapped !== raw && snapped !== lastSnappedValue) {
+        if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        lastSnappedValue = snapped;
+      } else if (snapped === raw) { lastSnappedValue = null; }
+      updateMarginSliderUI(snapped, false, true);
+    });
+
+    marginMarks.forEach(mark => {
+      mark.addEventListener('click', () => {
+        updateMarginSliderUI(mark.dataset.pct, false, true);
+        if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+      });
+    });
+
+    sizeInput.addEventListener('input', () => {
+      if (profile.balance > 0) {
+        const pct = Math.min(100, Math.round((Number(sizeInput.value) || 0) / profile.balance * 100));
+        updateMarginSliderUI(pct, true);
+      }
+    });
+    updateMarginSliderUI(0);
+
+    // ==================== BALANCE ====================
+
+    let historyResolve = null;
+    const historyPromise = new Promise(r => historyResolve = r);
+
+    function updateBalanceUI() {
+      const val = profile.balance.toFixed(2);
+      const usdVal = formatUSD(profile.balance);
+      $('headerBalance').textContent = isBalanceHidden ? "******" : (val + " VP");
+      const elProBal = $('profileBalance');
+      if(elProBal) elProBal.textContent = isBalanceHidden ? "****" : val;
+      const elApprox = $('profileBalanceApprox');
+      if(elApprox) elApprox.textContent = isBalanceHidden ? "≈ $****" : `≈ $${usdVal}`;
+      const currentMarginPct = parseInt(marginSlider.value) || 0;
+      if (currentMarginPct > 0) updateMarginSliderUI(currentMarginPct, false, true);
+    }
+
+    // ==================== SESSION ====================
+
+    async function initSession() {
+      try {
+        let initData = tg?.initData || "";
+        let res = await fetch(API_BASE + "/api/init", {
+          method: "POST", headers: {"Content-Type":"application/json"},
+          body: JSON.stringify(initData ? {initData} : {})
+        });
+        let data = await res.json();
+        if(data.ok && data.user) {
+          currentUserId = data.user.user_id;
+          profile.balance = Number(data.user.balance || 0);
+          profile.name = data.user.first_name || "User";
+          profile.id = data.user.user_id;
+          profile.adViewsCount = Number(data.user.ad_views_count || 0);
+          profile.dailyAdViews = Number(data.user.daily_ad_views || 0);
+          profile.dailyAdLimit = Number(data.user.daily_ad_limit || DAILY_AD_LIMIT);
+          window._positions = data.positions || [];
+          if(data.user.photo_url) {
+            profile.photo = data.user.photo_url;
+            $('avatarImg').src = data.user.photo_url;
+            $('avatarImg').style.display = 'block';
+          }
+          updateBalanceUI();
+          updateRewardsUI();
+          renderPositions(true);
+        }
+      } catch(e) { console.error(e); }
+    }
+
+    // ==================== WEBSOCKET ====================
+
+    let socket = null;
+    let lastCandle = null;
+
+    function connectWS() {
+      socket = new WebSocket(WSS_PRICE_URL);
+
+      socket.onopen = () => {
+        ALL_PAIRS.forEach(pair => {
+          socket.send(JSON.stringify({ type: "subscribe", pair: pair, timeframe: currentTimeframe }));
+        });
+      };
+
+      socket.onmessage = (evt) => {
+        let msg;
+        try { msg = JSON.parse(evt.data); } catch(e) { return; }
+        if (!msg || !msg.type) return;
+
+        const msgPairNorm = normalizePair(msg.pair);
+        const selPairNorm = normalizePair(selectedPair);
+
+        if (msg.type === "price" && msg.pair && msg.price) {
+          marketPrices[msgPairNorm] = Number(msg.price);
+          if (msgPairNorm === selPairNorm) {
+            const currentPrice = Number(msg.price);
+            $('priceDisplay').textContent = formatPrice(currentPrice);
+            updatePositionsDynamic();
+            if (lastCandle) {
+              const now = Math.floor(Date.now() / 1000);
+              const candleTime = now - (now % currentTimeframe);
+              if (candleTime === lastCandle.time) {
+                lastCandle.high = Math.max(lastCandle.high, currentPrice);
+                lastCandle.low = Math.min(lastCandle.low, currentPrice);
+                lastCandle.close = currentPrice;
+                candleSeries.update(lastCandle);
+                if (localVolumes.length > 0) {
+                  const lastVol = localVolumes[localVolumes.length - 1];
+                  if (lastVol.time === candleTime) {
+                    lastVol.color = currentPrice >= lastCandle.open ? 'rgba(14, 203, 129, 0.5)' : 'rgba(246, 70, 93, 0.5)';
+                    if (indicatorState.volume && volumeHistogramSeries) volumeHistogramSeries.update(lastVol);
+                  }
+                }
+              } else {
+                lastCandle = { time: candleTime, open: lastCandle.close, high: currentPrice, low: currentPrice, close: currentPrice, volume: 0 };
+                localCandles.push(lastCandle);
+                candleSeries.update(lastCandle);
+                const newVol = { time: candleTime, value: Math.random() * 100 + 50, color: 'rgba(14, 203, 129, 0.5)' };
+                localVolumes.push(newVol);
+                if (indicatorState.volume && volumeHistogramSeries) volumeHistogramSeries.update(newVol);
+                updateIndicators();
+              }
+            }
+          }
+          return;
+        }
+
+        if (msgPairNorm !== selPairNorm) return;
+
+        if (msg.type === "orderBook") {
+          renderOrderBook(msg.buy || msg.bids, msg.sell || msg.asks);
+          return;
+        }
+
+        if (msg.type === "moreHistory") {
+          if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) {
+            isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay(); return;
+          }
+          if (!msg.data || msg.data.length === 0) {
+            allOlderHistoryLoaded = true; isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay(); return;
+          }
+          const newCandles = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close, volume: c.volume || 0 }));
+          const newVolumes = buildVolumeData(newCandles);
+          const currentRange = chart.timeScale().getVisibleRange();
+          localCandles = [...newCandles, ...localCandles].filter((v,i,a) => a.findIndex(t => t.time === v.time) === i).sort((a,b) => a.time - b.time);
+          localVolumes = [...newVolumes, ...localVolumes].filter((v,i,a) => a.findIndex(t => t.time === v.time) === i).sort((a,b) => a.time - b.time);
+          candleSeries.setData(localCandles);
+          if (indicatorState.volume && volumeHistogramSeries) volumeHistogramSeries.setData(localVolumes);
+          if (currentRange) chart.timeScale().setVisibleRange(currentRange);
+          updateIndicators();
+          isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay();
+          return;
+        }
+
+        if (msg.type === "history") {
+          if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) return;
+          const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close, volume: c.volume || 0 }));
+          localCandles = data;
+          localVolumes = buildVolumeData(data);
+          candleSeries.setData(data);
+          if (indicatorState.volume && volumeHistogramSeries) volumeHistogramSeries.setData(localVolumes);
+          chart.timeScale().fitContent();
+          chart.priceScale('right').applyOptions({ autoScale: true });
+          if (data.length) {
+            const last = data[data.length - 1];
+            const now = Math.floor(Date.now() / 1000);
+            const currentCandleTime = now - (now % currentTimeframe);
+            if (last.time >= currentCandleTime) { lastCandle = last; }
+            else {
+              lastCandle = { time: currentCandleTime, open: last.close, high: last.close, low: last.close, close: last.close, volume: 0 };
+              candleSeries.update(lastCandle);
+              localCandles.push(lastCandle);
+            }
+            marketPrices[selPairNorm] = lastCandle.close;
+            $('priceDisplay').textContent = formatPrice(lastCandle.close);
+          }
+          updateIndicators();
+          if (historyResolve) { historyResolve(); historyResolve = null; }
+          isLoadingHistory = false;
+          return;
+        }
+
+        if (msg.type === "trades") {
+          const newTrades = msg.trades || [];
+          localTrades = [...newTrades, ...localTrades];
+          if (localTrades.length > 20) localTrades = localTrades.slice(0, 20);
+          renderTrades(localTrades);
+          return;
+        }
+      };
+
+      socket.onclose = () => setTimeout(connectWS, 2000);
+    }
+
+    // ==================== POSITIONS ====================
+
+    function renderPositions(forceRebuild = false) {
+      const list = $('positionsList');
+      if (!window._positions) window._positions = [];
+      const positions = window._positions;
+      if (positions.length === 0) {
+        if (list.innerHTML.includes("pos-item") || forceRebuild) {
+          list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
+        }
+        return;
+      }
+      if (positions.length > 0 && list.innerText.includes("No open positions")) list.innerHTML = "";
+
+      const existingIds = Array.from(list.querySelectorAll('.pos-item')).map(el => el.dataset.id);
+      const currentIds = positions.map(p => String(p.id || p._id));
+      existingIds.forEach(domId => { if (!currentIds.includes(domId)) { const el = document.getElementById('pos-item-' + domId); if(el) el.remove(); } });
+      if(list.children.length === 0 && positions.length === 0) { list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>'; return; }
+
+      [...positions].reverse().forEach(pos => {
+        const id = String(pos.id || pos._id);
+        const pair = normalizePair(pos.pair || "BTC-USD");
+        const entry = Number(pos.entry_price || pos.entryPrice);
+        const size = Number(pos.size);
+        const type = (pos.type || "LONG").toUpperCase();
+        const lev = Number(pos.leverage || 1);
+        let div = document.getElementById('pos-item-' + id);
+        if (!div) {
+          div = document.createElement('div');
+          div.className = `pos-item ${type === 'LONG' ? 'long' : 'short'}`;
+          div.id = 'pos-item-' + id; div.dataset.id = id;
+          div.innerHTML = `<div class="pos-header"><div style="display:flex; align-items:center; gap:6px;"><span class="${type==='LONG'?'text-green':'text-red'}">${type}</span><span class="pos-pair">${pair}</span><span class="pos-type-badge ${type==='LONG'?'text-green':'text-red'}">x${lev}</span></div><div class="pos-pnl" id="pnl-${id}">0.00 VP</div></div><div class="pos-stats-grid"><div class="stat-col"><span class="stat-label">ROE %</span><span class="stat-val" id="roe-${id}">0.00%</span></div><div class="stat-col" style="align-items: center;"><span class="stat-label">Margin Ratio</span><span class="stat-val" id="ratio-${id}">0.00%</span></div><div class="stat-col" style="align-items: flex-end;"><span class="stat-label">Risk</span><span class="stat-val" id="risk-val-${id}">0.0%</span><div class="risk-wrap" style="width: 100%;"><div class="risk-track"><div class="risk-fill" id="risk-bar-${id}"></div></div></div></div></div><div class="pos-details"><div class="pd-col"><span class="pd-label">Entry Price</span><span class="pd-val">${formatPrice(entry)}</span></div><div class="pd-col" style="align-items: center;"><span class="pd-label">Size / Mark</span><span class="pd-val">${size.toFixed(0)} / <span id="mark-${id}">--.--</span></span></div><div class="pd-col" style="align-items: flex-end;"><span class="pd-label">Liquidation Price</span><span class="pd-val text-red" id="liq-${id}">--.--</span></div></div><button class="close-btn" data-id="${id}">Close Position</button>`;
+          list.appendChild(div);
+          div.querySelector('.close-btn').onclick = () => closePosition(id, pair);
+        }
+      });
+      updatePositionsDynamic();
+    }
+
+    function updatePositionsDynamic() {
+      if (!window._positions || window._positions.length === 0) return;
+      window._positions.forEach(pos => {
+        const id = String(pos.id || pos._id);
+        const pair = normalizePair(pos.pair || "BTC-USD");
+        const currentPrice = marketPrices[pair];
+        if (!currentPrice) return;
+        const entry = Number(pos.entry_price || pos.entryPrice);
+        const size = Number(pos.size), margin = Number(pos.margin);
+        const type = (pos.type || "LONG").toUpperCase();
+        let diff = (currentPrice - entry) / entry;
+        if (type === "SHORT") diff = -diff;
+        const pnl = diff * size;
+        const roe = (pnl / margin) * 100;
+        let riskPercent = 1.0;
+        if (pnl < 0) riskPercent = (Math.abs(pnl) / (margin * 0.9)) * 100;
+        riskPercent = Math.max(1, Math.min(100, riskPercent));
+
+        const pnlEl = document.getElementById(`pnl-${id}`);
+        const roeEl = document.getElementById(`roe-${id}`);
+        const ratioEl = document.getElementById(`ratio-${id}`);
+        const riskValEl = document.getElementById(`risk-val-${id}`);
+        const riskBarEl = document.getElementById(`risk-bar-${id}`);
+        const markEl = document.getElementById(`mark-${id}`);
+        const liqEl = document.getElementById(`liq-${id}`);
+
+        if (pnlEl) { pnlEl.textContent = `${pnl > 0 ? '+' : ''}${pnl.toFixed(2)} VP`; pnlEl.className = `pos-pnl ${pnl >= 0 ? 'text-green' : 'text-red'}`; }
+        if (roeEl) { roeEl.textContent = `${roe > 0 ? '+' : ''}${roe.toFixed(2)}%`; roeEl.className = `stat-val ${roe >= 0 ? 'text-green' : 'text-red'}`; }
+        if (riskValEl && riskBarEl) {
+          riskValEl.textContent = riskPercent.toFixed(1) + "%";
+          riskBarEl.style.width = riskPercent + "%";
+          const c = riskPercent < 50 ? "#0ECB81" : riskPercent < 80 ? "#F0B90B" : "#F6465D";
+          riskValEl.style.color = c; riskBarEl.style.background = c;
+        }
+        if (ratioEl) ratioEl.textContent = (riskPercent / 2).toFixed(2) + "%";
+        if (markEl) markEl.textContent = formatPrice(currentPrice);
+        if (liqEl) {
+          const liqDist = (margin * 0.90) / size * entry;
+          liqEl.textContent = formatPrice(type === "LONG" ? entry - liqDist : entry + liqDist);
+        }
+      });
+    }
+
+    // ==================== ORDER BOOK & TRADES ====================
+
+    function renderOrderBook(buys, sells) {
+      const b = Array.isArray(buys) ? buys : (buys?.bids || []);
+      const s = Array.isArray(sells) ? sells : (sells?.asks || []);
+      const container = $('orderBook');
+      const maxLevels = 10;
+      const bidMap = new Map(), askMap = new Map();
+      b.forEach(l => { const sz = Number(l.size) || 0; if (sz > 0) bidMap.set(Number(l.price).toFixed(2), sz); });
+      s.forEach(l => { const sz = Number(l.size) || 0; if (sz > 0) askMap.set(Number(l.price).toFixed(2), sz); });
+      let sortedAsks = Array.from(askMap.entries()).map(([p, sz]) => ({ price: Number(p), size: sz, type: 'ask' })).sort((a, b) => a.price - b.price).slice(0, maxLevels).reverse();
+      let sortedBids = Array.from(bidMap.entries()).map(([p, sz]) => ({ price: Number(p), size: sz, type: 'bid' })).sort((a, b) => b.price - a.price).slice(0, maxLevels);
+      const renderList = [...sortedAsks, ...sortedBids];
+      const maxVol = Math.max(...renderList.map(x => x.size), 0.0000001);
+      container.innerHTML = "";
+      renderList.forEach(level => {
+        const isAsk = level.type === 'ask';
+        const row = document.createElement('div'); row.className = 'ob-row';
+        row.innerHTML = `<div class="ob-bg ${isAsk ? 'bg-red' : 'bg-green'}" style="width:${(level.size / maxVol) * 100}%"></div><span class="${isAsk ? 'text-red' : 'text-green'}">${formatPrice(level.price)}</span><span style="text-align:right;">${level.size.toFixed(5)}</span>`;
+        container.appendChild(row);
+      });
+      const updEl = $('bookUpdated');
+      if (updEl) updEl.textContent = new Date().toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    }
+
+    function renderTrades(trades) {
+      const el = $('tradeHistory');
+      if(!Array.isArray(trades)) return;
+      let html = "";
+      trades.forEach(t => {
+        const color = t.side === 'buy' ? 'text-green' : 'text-red';
+        const timeStr = new Date(t.time).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        html += `<div class="ob-row"><span class="${color}">${formatPrice(t.price)}</span><span class="trade-time">${timeStr}</span></div>`;
+      });
+      el.innerHTML = html;
+    }
+
+    // ==================== OPEN / CLOSE POSITION ====================
+
+    async function openPosition(type) {
+      const margin = Number($('sizeInput').value);
+      const currentPrice = marketPrices[selectedPair];
+      if(!margin || margin <= 0) return alert("Enter margin");
+      if(!currentPrice) return alert("Waiting for price...");
+      const size = margin * currentLeverage;
+      if(tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+      try {
+        const res = await fetch(API_BASE + "/api/order/open", {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ userId: currentUserId, pair: selectedPair, type, size, leverage: currentLeverage, entryPrice: currentPrice })
+        });
+        const data = await res.json();
+        if(data.ok) {
+          window._positions.push(data.position);
+          if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
+          renderPositions(true);
+          if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        } else { alert(data.error || "Error"); }
+      } catch(e) { console.error(e); }
+    }
+
+    async function closePosition(id, pair) {
+      const pos = window._positions.find(p => (p.id == id || p._id == id));
+      if(!pos) return;
+      const closePrice = marketPrices[pair || pos.pair];
+      if(!closePrice) return alert("Price not available for " + pair);
+      if(!confirm("Close position?")) return;
+      try {
+        const res = await fetch(API_BASE + "/api/order/close", {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ userId: currentUserId, positionId: id, closePrice: closePrice })
+        });
+        const data = await res.json();
+        if(data.ok) {
+          window._positions = window._positions.filter(p => (p.id!=id && p._id!=id));
+          if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
+          const el = document.getElementById('pos-item-' + id);
+          if(el) el.remove();
+          renderPositions(false);
+          if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        }
+      } catch(e) { console.error(e); }
+    }
+
+    $('openLong').onclick = () => openPosition("LONG");
+    $('openShort').onclick = () => openPosition("SHORT");
+
+    // ==================== BOOT ====================
+
+    const loaderEl = $('app-loader');
+    const loaderBar = $('loaderBar');
+    function setProgress(pct, txt) { loaderBar.style.width = pct + '%'; $('loaderText').textContent = txt; }
+
+    setProgress(20, "AUTH...");
+    await initSession();
+
+    setProgress(40, "ADSGRAM...");
+    initAdsgram();
+
+    setProgress(50, "TOOLS...");
+    initDrawingTools();
+    initIndicatorChips();
+    initPnlModal();
+    setupDoubleTapHandler();
+
+    setProgress(60, "STREAM...");
+    connectWS();
+
+    await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
+    setProgress(100, "READY");
+
+    setTimeout(() => { checkResponsiveOverflows(); }, 100);
+
+    setTimeout(() => {
+      loaderEl.classList.add('hidden');
+      setTimeout(() => loaderEl.style.display = 'none', 400);
+    }, 500);
+
+  })();
 </script>
 </body>
 </html>
