@@ -269,6 +269,7 @@
     .text-green { color: var(--accent-green); }
     .text-red { color: var(--accent-red); }
 
+    /* ==================== POSITION ITEM ==================== */
     .pos-list { display: flex; flex-direction: column; gap: 8px; }
     .pos-item { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; position: relative; overflow: hidden; }
     .pos-item.long { border-left: 4px solid var(--accent-green); }
@@ -297,71 +298,92 @@
     }
     .close-btn:active { background: var(--accent-red); color: #fff; }
 
-    /* ==================== TP/SL STYLES ==================== */
-    .tpsl-actions {
-      display: flex; gap: 8px; margin-top: 10px; padding-top: 10px;
+    /* ==================== TP/SL BUTTONS IN POSITION ==================== */
+    .pos-tpsl-actions {
+      display: flex; gap: 8px; margin-top: 12px; padding-top: 12px;
       border-top: 1px solid rgba(255,255,255,0.05);
     }
-    .tpsl-btn {
+    .btn-tpsl {
       flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
-      padding: 8px 0; border-radius: 8px; border: 1px solid var(--border);
-      background: rgba(255,255,255,0.03); cursor: pointer; font-size: 12px;
-      font-weight: 600; transition: all 0.2s; color: var(--muted);
+      padding: 10px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
     }
-    .tpsl-btn:hover { background: rgba(255,255,255,0.06); }
-    .tpsl-btn:active { transform: scale(0.97); }
-    .tpsl-btn.tp { color: var(--accent-green); border-color: rgba(14, 203, 129, 0.25); }
-    .tpsl-btn.tp:hover { background: var(--accent-green-transparent); }
-    .tpsl-btn.sl { color: var(--accent-red); border-color: rgba(246, 70, 93, 0.25); }
-    .tpsl-btn.sl:hover { background: var(--accent-red-transparent); }
-    .tpsl-btn .tpsl-count { font-size: 10px; opacity: 0.7; font-weight: 400; }
+    .btn-tpsl:hover { background: rgba(255,255,255,0.06); }
+    .btn-tpsl:active { transform: scale(0.98); }
+    .btn-tpsl.tp { color: var(--accent-green); }
+    .btn-tpsl.tp:hover { border-color: var(--accent-green); background: var(--accent-green-transparent); }
+    .btn-tpsl.sl { color: var(--accent-red); }
+    .btn-tpsl.sl:hover { border-color: var(--accent-red); background: var(--accent-red-transparent); }
+    .btn-tpsl-icon { font-size: 14px; }
+    .btn-tpsl .tpsl-count { font-size: 10px; opacity: 0.7; font-weight: 400; }
 
-    .tpsl-orders-list {
-      margin-top: 8px; display: flex; flex-direction: column; gap: 4px;
+    /* ==================== TP/SL ORDERS LIST IN POSITION ==================== */
+    .pos-tpsl-orders {
+      margin-top: 10px; padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.05);
     }
+    .tpsl-orders-title {
+      font-size: 11px; color: var(--muted); text-transform: uppercase;
+      font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+    }
+    .tpsl-orders-count {
+      background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 10px;
+      font-size: 10px; color: var(--white);
+    }
+    .tpsl-orders-list { display: flex; flex-direction: column; gap: 6px; }
     .tpsl-order-item {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 6px 10px; border-radius: 6px; font-size: 11px;
-      font-family: 'Roboto Mono', monospace; border: 1px solid var(--border);
-      background: rgba(255,255,255,0.02);
+      padding: 8px 10px; border-radius: 8px; font-size: 12px;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      font-family: 'Roboto Mono', monospace;
     }
     .tpsl-order-item.tp-order { border-left: 3px solid var(--accent-green); }
     .tpsl-order-item.sl-order { border-left: 3px solid var(--accent-red); }
-    .tpsl-order-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .tpsl-order-type { font-weight: 700; font-size: 10px; text-transform: uppercase; }
+    .tpsl-order-info { display: flex; flex-direction: column; gap: 2px; }
+    .tpsl-order-type { font-weight: 700; font-size: 11px; text-transform: uppercase; }
     .tpsl-order-type.tp-type { color: var(--accent-green); }
     .tpsl-order-type.sl-type { color: var(--accent-red); }
-    .tpsl-order-price { color: var(--white); font-weight: 600; }
-    .tpsl-order-pct { color: var(--muted); font-size: 10px; }
-    .tpsl-order-right { display: flex; align-items: center; gap: 8px; }
-    .tpsl-order-pnl { font-weight: 600; font-size: 10px; }
-    .tpsl-order-delete {
-      width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
-      background: rgba(255,255,255,0.05); border: none; border-radius: 4px;
-      color: var(--muted); cursor: pointer; font-size: 12px; transition: all 0.2s;
-      flex-shrink: 0;
+    .tpsl-order-details {
+      display: flex; gap: 12px; font-size: 11px; color: var(--muted);
     }
-    .tpsl-order-delete:hover { background: var(--accent-red-transparent); color: var(--accent-red); }
+    .tpsl-order-details span { display: flex; align-items: center; gap: 4px; }
+    .tpsl-order-actions { display: flex; align-items: center; gap: 8px; }
+    .tpsl-order-pnl { font-size: 11px; font-weight: 600; }
+    .tpsl-order-roe { font-size: 9px; font-weight: 600; }
+    .btn-delete-tpsl {
+      width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+      background: rgba(246, 70, 93, 0.1); border: 1px solid transparent;
+      border-radius: 6px; color: var(--accent-red); cursor: pointer;
+      transition: all 0.2s; font-size: 14px;
+    }
+    .btn-delete-tpsl:hover { background: var(--accent-red-transparent); border-color: var(--accent-red); }
+    .btn-delete-tpsl:active { transform: scale(0.9); }
 
-    /* TP/SL Modal */
+    /* ==================== TP/SL MODAL ==================== */
     .tpsl-modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.8); z-index: 1000;
+      background: rgba(0, 0, 0, 0.85); z-index: 1000;
       opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
     }
     .tpsl-modal-overlay.active { opacity: 1; pointer-events: auto; }
+
     .tpsl-modal {
       position: fixed; bottom: 0; left: 0; right: 0;
       background: var(--panel); border-radius: 20px 20px 0 0;
-      max-height: 80vh; overflow-y: auto; z-index: 1001;
+      max-height: 90vh; overflow-y: auto; z-index: 1001;
       transform: translateY(100%); transition: transform 0.3s ease;
     }
     .tpsl-modal-overlay.active .tpsl-modal { transform: translateY(0); }
+
     .tpsl-modal-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 20px 12px; position: sticky; top: 0; background: var(--panel); z-index: 10;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--panel); z-index: 10;
     }
+    .tpsl-modal-header-left { display: flex; flex-direction: column; gap: 2px; }
     .tpsl-modal-title { font-size: 16px; font-weight: 700; color: var(--white); }
+    .tpsl-modal-subtitle { font-size: 12px; color: var(--muted); }
     .tpsl-modal-close {
       width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
       background: rgba(255,255,255,0.05); border-radius: 50%; cursor: pointer;
@@ -369,80 +391,161 @@
     }
     .tpsl-modal-close:hover { background: rgba(255,255,255,0.1); color: var(--white); }
 
+    .tpsl-modal-content { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+
+    /* Position Info in Modal */
+    .tpsl-position-info {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px; background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border); border-radius: 10px;
+    }
+    .tpsl-position-left { display: flex; align-items: center; gap: 10px; }
+    .tpsl-position-type {
+      padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;
+    }
+    .tpsl-position-type.long { background: var(--accent-green-transparent); color: var(--accent-green); }
+    .tpsl-position-type.short { background: var(--accent-red-transparent); color: var(--accent-red); }
+    .tpsl-position-pair { font-size: 14px; font-weight: 600; color: var(--white); }
+    .tpsl-position-leverage { font-size: 12px; color: var(--muted); margin-left: 4px; }
+    .tpsl-position-right { text-align: right; }
+    .tpsl-position-entry-label { font-size: 11px; color: var(--muted); }
+    .tpsl-position-entry-val { font-size: 14px; font-weight: 600; font-family: 'Roboto Mono', monospace; color: var(--white); }
+    .tpsl-position-mark-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .tpsl-position-mark-val { font-size: 12px; font-weight: 600; font-family: 'Roboto Mono', monospace; color: var(--gold); }
+
+    /* Tabs */
     .tpsl-tabs {
-      display: flex; gap: 0; padding: 0 20px; border-bottom: 1px solid var(--border);
+      display: flex; gap: 4px; background: rgba(255,255,255,0.03);
+      padding: 4px; border-radius: 10px; border: 1px solid var(--border);
     }
     .tpsl-tab {
-      padding: 10px 16px; font-size: 13px; font-weight: 600; color: var(--muted);
-      cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s;
-      background: none; border-top: none; border-left: none; border-right: none;
+      flex: 1; padding: 10px 16px; font-size: 13px; font-weight: 600;
+      color: var(--muted); background: transparent; border: none;
+      border-radius: 8px; cursor: pointer; transition: all 0.2s; text-align: center;
     }
     .tpsl-tab:hover { color: var(--white); }
-    .tpsl-tab.active { color: var(--white); border-bottom-color: var(--gold); }
+    .tpsl-tab.active { background: var(--panel-light); color: var(--white); }
 
-    .tpsl-modal-body { padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+    /* Tab Content */
+    .tpsl-tab-content { display: none; flex-direction: column; gap: 16px; }
+    .tpsl-tab-content.active { display: flex; }
 
-    .tpsl-pos-info {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px;
-      border: 1px solid var(--border); font-size: 12px;
+    /* Input Group */
+    .tpsl-input-group { display: flex; flex-direction: column; gap: 8px; }
+    .tpsl-input-label {
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      display: flex; align-items: center; justify-content: space-between;
     }
-    .tpsl-pos-info-left { display: flex; align-items: center; gap: 8px; }
-    .tpsl-pos-badge { font-weight: 700; font-size: 11px; padding: 2px 6px; border-radius: 4px; }
-    .tpsl-pos-badge.long { background: var(--accent-green-transparent); color: var(--accent-green); }
-    .tpsl-pos-badge.short { background: var(--accent-red-transparent); color: var(--accent-red); }
-    .tpsl-pos-pair { font-weight: 600; color: var(--white); }
-    .tpsl-pos-info-right { font-family: 'Roboto Mono', monospace; color: var(--muted); font-size: 11px; }
-
-    .tpsl-input-group { display: flex; flex-direction: column; gap: 6px; }
-    .tpsl-input-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
-    .tpsl-input-row { display: flex; gap: 8px; align-items: center; }
-    .tpsl-price-input {
-      flex: 1; background: #111; border: 1px solid var(--border); color: var(--white);
-      padding: 12px; border-radius: 8px; font-size: 15px; font-family: 'Roboto Mono', monospace;
+    .tpsl-input-hint { font-size: 11px; font-weight: 400; }
+    .tpsl-input-wrapper { position: relative; display: flex; gap: 8px; }
+    .tpsl-input {
+      flex: 1; background: #111; border: 1px solid var(--border);
+      color: var(--white); padding: 14px 16px; border-radius: 10px;
+      font-size: 16px; font-family: 'Roboto Mono', monospace;
       outline: none; transition: border 0.2s;
     }
-    .tpsl-price-input:focus { border-color: var(--gold); }
-    .tpsl-price-input.error { border-color: var(--accent-red); }
+    .tpsl-input:focus { border-color: var(--gold); }
+    .tpsl-input.error { border-color: var(--accent-red); }
     .tpsl-market-btn {
-      padding: 12px 14px; background: rgba(255,255,255,0.05); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--muted); font-size: 10px; font-weight: 600;
+      padding: 14px 14px; background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--muted); font-size: 10px; font-weight: 600;
       cursor: pointer; white-space: nowrap; transition: all 0.2s;
     }
     .tpsl-market-btn:hover { background: rgba(255,255,255,0.1); color: var(--white); }
-    .tpsl-error-text { font-size: 11px; color: var(--accent-red); min-height: 16px; }
-
-    .tpsl-preview {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-      padding: 12px; background: rgba(255,255,255,0.02); border-radius: 8px;
-      border: 1px solid var(--border);
+    .tpsl-input-error {
+      font-size: 11px; color: var(--accent-red); min-height: 16px;
     }
-    .tpsl-preview-item { display: flex; flex-direction: column; gap: 2px; }
-    .tpsl-preview-label { font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 600; }
-    .tpsl-preview-val { font-size: 14px; font-weight: 700; font-family: 'Roboto Mono', monospace; }
 
-    .tpsl-slider-section { display: flex; flex-direction: column; gap: 8px; }
-    .tpsl-slider-header { display: flex; justify-content: space-between; align-items: center; }
-    .tpsl-slider-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
-    .tpsl-slider-val { font-size: 13px; color: var(--accent-green); font-weight: 700; font-family: 'Roboto Mono', monospace; }
-    .tpsl-slider-info { font-size: 10px; color: var(--muted); text-align: right; }
-
-    .tpsl-confirm-btn {
-      width: 100%; padding: 14px; border-radius: 10px; border: none;
-      font-weight: 700; font-size: 14px; cursor: pointer; color: #000;
-      transition: all 0.2s; margin-top: 4px;
+    /* Size Slider */
+    .tpsl-size-section { display: flex; flex-direction: column; gap: 12px; }
+    .tpsl-size-header {
+      display: flex; justify-content: space-between; align-items: center;
     }
-    .tpsl-confirm-btn:active { transform: scale(0.98); }
-    .tpsl-confirm-btn:disabled { background: var(--panel-light) !important; color: var(--muted) !important; cursor: not-allowed; }
-    .tpsl-confirm-btn.tp-confirm { background: var(--accent-green); color: #052e1f; }
-    .tpsl-confirm-btn.sl-confirm { background: var(--accent-red); color: #fff; }
+    .tpsl-size-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; }
+    .tpsl-size-value {
+      font-size: 14px; font-weight: 700; color: var(--accent-green);
+      font-family: 'Roboto Mono', monospace;
+    }
+    .tpsl-size-slider-wrap { padding: 0 4px; }
+    .tpsl-size-marks {
+      display: flex; justify-content: space-between; margin-top: 6px;
+    }
+    .tpsl-size-mark {
+      font-size: 10px; color: var(--muted); cursor: pointer;
+      padding: 4px 8px; border-radius: 4px; transition: 0.2s;
+    }
+    .tpsl-size-mark:hover { color: var(--accent-green); background: rgba(255,255,255,0.05); }
+    .tpsl-size-mark.active { color: var(--accent-green); font-weight: 600; }
+    .tpsl-available-info {
+      display: flex; justify-content: space-between; font-size: 11px;
+      color: var(--muted); padding: 8px 12px; background: rgba(255,255,255,0.02);
+      border-radius: 6px; border: 1px solid var(--border);
+    }
+    .tpsl-available-info span:last-child { color: var(--white); font-family: 'Roboto Mono', monospace; }
 
+    /* PnL Preview */
+    .tpsl-pnl-preview {
+      display: flex; flex-direction: column; gap: 8px; padding: 16px;
+      background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .tpsl-pnl-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px;
+    }
+    .tpsl-pnl-label { color: var(--muted); }
+    .tpsl-pnl-value { font-weight: 600; font-family: 'Roboto Mono', monospace; color: var(--white); }
+    .tpsl-pnl-value.positive { color: var(--accent-green); }
+    .tpsl-pnl-value.negative { color: var(--accent-red); }
+    .tpsl-pnl-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+    /* Existing Orders Warning */
+    .tpsl-existing-orders {
+      padding: 12px 16px; background: rgba(240, 185, 11, 0.1);
+      border: 1px solid rgba(240, 185, 11, 0.3); border-radius: 10px;
+    }
+    .tpsl-existing-title {
+      font-size: 12px; font-weight: 600; color: var(--gold);
+      display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+    }
+    .tpsl-existing-list { display: flex; flex-direction: column; gap: 6px; }
+    .tpsl-existing-item {
+      display: flex; justify-content: space-between; font-size: 12px;
+      padding: 8px 10px; background: rgba(0,0,0,0.2); border-radius: 6px;
+    }
+    .tpsl-existing-item-type { font-weight: 600; }
+    .tpsl-existing-item-type.tp { color: var(--accent-green); }
+    .tpsl-existing-item-type.sl { color: var(--accent-red); }
+    .tpsl-existing-item-info { color: var(--muted); font-family: 'Roboto Mono', monospace; font-size: 11px; }
+
+    /* Limit Notice */
     .tpsl-limit-notice {
       text-align: center; font-size: 11px; color: var(--accent-red);
       padding: 12px; background: var(--accent-red-transparent);
       border-radius: 8px; font-weight: 600;
     }
 
+    /* Submit Button */
+    .tpsl-submit-btn {
+      width: 100%; padding: 16px; border-radius: 10px; border: none;
+      font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .tpsl-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .tpsl-submit-btn:not(:disabled):active { transform: scale(0.98); }
+    .tpsl-submit-btn.tp-confirm { background: var(--accent-green); color: #052e1f; }
+    .tpsl-submit-btn.sl-confirm { background: var(--accent-red); color: #fff; }
+
+    /* ==================== TOAST ==================== */
+    .toast-notification {
+      position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+      padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 600;
+      z-index: 9999; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+    @keyframes toastOut { from { opacity: 1; transform: translateX(-50%) translateY(0); } to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+
+    /* ==================== PROFILE ==================== */
     .profile-container { flex: 1; display: flex; flex-direction: column; padding: 16px; overflow-y: auto; gap: 20px; background: var(--bg); }
     .pro-header, .asset-card, .analysis-block, .rewards-banner, .hist-header-row { flex-shrink: 0; }
     .pro-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -979,63 +1082,155 @@
   </div>
 </div>
 
-<!-- TP/SL Modal -->
+<!-- TP/SL Modal (Enhanced) -->
 <div class="tpsl-modal-overlay" id="tpslModalOverlay">
   <div class="tpsl-modal" id="tpslModal">
     <div class="tpsl-modal-header">
-      <div class="tpsl-modal-title" id="tpslModalTitle">Take Profit</div>
+      <div class="tpsl-modal-header-left">
+        <div class="tpsl-modal-title" id="tpslModalTitle">Take Profit</div>
+        <div class="tpsl-modal-subtitle" id="tpslModalSubtitle">Lock in profits at target price</div>
+      </div>
       <button class="tpsl-modal-close" id="tpslModalClose">×</button>
     </div>
-    <div class="tpsl-tabs">
-      <button class="tpsl-tab active" id="tpslTabFull" data-tab="full">Position</button>
-      <button class="tpsl-tab" id="tpslTabPartial" data-tab="partial">Partial</button>
-    </div>
-    <div class="tpsl-modal-body" id="tpslModalBody">
-      <div class="tpsl-pos-info" id="tpslPosInfo">
-        <div class="tpsl-pos-info-left">
-          <span class="tpsl-pos-badge" id="tpslPosBadge">LONG</span>
-          <span class="tpsl-pos-pair" id="tpslPosPair">BTC-USD</span>
-          <span style="color:var(--muted); font-size:11px;" id="tpslPosLev">x10</span>
+    <div class="tpsl-modal-content">
+      <!-- Position Info -->
+      <div class="tpsl-position-info">
+        <div class="tpsl-position-left">
+          <div class="tpsl-position-type long" id="tpslPositionType">LONG</div>
+          <div>
+            <span class="tpsl-position-pair" id="tpslPositionPair">BTC-USD</span>
+            <span class="tpsl-position-leverage" id="tpslPositionLeverage">x10</span>
+          </div>
         </div>
-        <div class="tpsl-pos-info-right">
-          Entry: <span id="tpslPosEntry">--</span>
-        </div>
-      </div>
-
-      <div class="tpsl-input-group">
-        <div class="tpsl-input-label" id="tpslInputLabel">Trigger Price</div>
-        <div class="tpsl-input-row">
-          <input type="number" class="tpsl-price-input" id="tpslPriceInput" placeholder="Enter price..." step="any">
-          <button class="tpsl-market-btn" id="tpslMarketBtn">Market</button>
-        </div>
-        <div class="tpsl-error-text" id="tpslErrorText"></div>
-      </div>
-
-      <div class="tpsl-slider-section" id="tpslSliderSection" style="display:none;">
-        <div class="tpsl-slider-header">
-          <span class="tpsl-slider-label">Close Volume</span>
-          <span class="tpsl-slider-val" id="tpslSliderVal">100%</span>
-        </div>
-        <input type="range" class="range-slider" id="tpslSizeSlider" min="10" max="100" step="1" value="100">
-        <div class="tpsl-slider-info" id="tpslSliderInfo">Available: 100%</div>
-      </div>
-
-      <div class="tpsl-preview">
-        <div class="tpsl-preview-item">
-          <span class="tpsl-preview-label">Est. PnL</span>
-          <span class="tpsl-preview-val" id="tpslPreviewPnl">--</span>
-        </div>
-        <div class="tpsl-preview-item">
-          <span class="tpsl-preview-label">ROE</span>
-          <span class="tpsl-preview-val" id="tpslPreviewRoe">--</span>
+        <div class="tpsl-position-right">
+          <div class="tpsl-position-entry-label">Entry Price</div>
+          <div class="tpsl-position-entry-val" id="tpslEntryPrice">0.00</div>
+          <div class="tpsl-position-mark-label">Mark Price</div>
+          <div class="tpsl-position-mark-val" id="tpslMarkPrice">0.00</div>
         </div>
       </div>
 
-      <div id="tpslLimitNotice" class="tpsl-limit-notice" style="display:none;">
-        Maximum 3 orders reached for this type
+      <!-- Tabs -->
+      <div class="tpsl-tabs">
+        <button class="tpsl-tab active" id="tpslTabFull" data-tab="full">Position TP/SL</button>
+        <button class="tpsl-tab" id="tpslTabPartial" data-tab="partial">Partial TP/SL</button>
       </div>
 
-      <button class="tpsl-confirm-btn" id="tpslConfirmBtn" disabled>Confirm</button>
+      <!-- Full Position Tab -->
+      <div class="tpsl-tab-content active" id="tabFull">
+        <div class="tpsl-input-group">
+          <div class="tpsl-input-label">
+            <span>Trigger Price</span>
+            <span class="tpsl-input-hint" id="tpslPriceHint">Must be above current price</span>
+          </div>
+          <div class="tpsl-input-wrapper">
+            <input type="number" class="tpsl-input" id="tpslPriceInput" placeholder="0.00" step="any">
+            <button class="tpsl-market-btn" id="tpslMarketBtn">Market</button>
+          </div>
+          <div class="tpsl-input-error" id="tpslErrorText"></div>
+        </div>
+
+        <div class="tpsl-pnl-preview">
+          <div class="tpsl-pnl-row">
+            <span class="tpsl-pnl-label">Expected PnL</span>
+            <span class="tpsl-pnl-value" id="tpslExpectedPnl">-- VP</span>
+          </div>
+          <div class="tpsl-pnl-divider"></div>
+          <div class="tpsl-pnl-row">
+            <span class="tpsl-pnl-label">ROE</span>
+            <span class="tpsl-pnl-value" id="tpslExpectedRoe">--%</span>
+          </div>
+          <div class="tpsl-pnl-row">
+            <span class="tpsl-pnl-label">Close Size</span>
+            <span class="tpsl-pnl-value" id="tpslCloseSize">100%</span>
+          </div>
+        </div>
+
+        <!-- Existing Orders -->
+        <div class="tpsl-existing-orders" id="tpslExistingOrders" style="display: none;">
+          <div class="tpsl-existing-title">
+            <span>⚠️</span>
+            <span>Existing Orders</span>
+          </div>
+          <div class="tpsl-existing-list" id="tpslExistingList"></div>
+        </div>
+
+        <div id="tpslLimitNotice" class="tpsl-limit-notice" style="display:none;">
+          Maximum 3 orders reached for this type
+        </div>
+
+        <button class="tpsl-submit-btn tp-confirm" id="tpslSubmitFull" disabled>
+          <span>Confirm Take Profit</span>
+        </button>
+      </div>
+
+      <!-- Partial Position Tab -->
+      <div class="tpsl-tab-content" id="tabPartial">
+        <div class="tpsl-input-group">
+          <div class="tpsl-input-label">
+            <span>Trigger Price</span>
+            <span class="tpsl-input-hint" id="tpslPriceHintPartial">Must be above current price</span>
+          </div>
+          <div class="tpsl-input-wrapper">
+            <input type="number" class="tpsl-input" id="tpslPriceInputPartial" placeholder="0.00" step="any">
+            <button class="tpsl-market-btn" id="tpslMarketBtnPartial">Market</button>
+          </div>
+          <div class="tpsl-input-error" id="tpslErrorTextPartial"></div>
+        </div>
+
+        <div class="tpsl-size-section">
+          <div class="tpsl-size-header">
+            <span class="tpsl-size-label">Close Size</span>
+            <span class="tpsl-size-value" id="tpslSizeValue">50%</span>
+          </div>
+          <div class="tpsl-size-slider-wrap">
+            <input type="range" class="range-slider" id="tpslSizeSlider" min="10" max="100" step="5" value="50">
+          </div>
+          <div class="tpsl-size-marks">
+            <span class="tpsl-size-mark" data-size="25">25%</span>
+            <span class="tpsl-size-mark active" data-size="50">50%</span>
+            <span class="tpsl-size-mark" data-size="75">75%</span>
+            <span class="tpsl-size-mark" data-size="100">100%</span>
+          </div>
+          <div class="tpsl-available-info">
+            <span>Available to close</span>
+            <span id="tpslAvailableSize">100%</span>
+          </div>
+        </div>
+
+        <div class="tpsl-pnl-preview">
+          <div class="tpsl-pnl-row">
+            <span class="tpsl-pnl-label">Expected PnL</span>
+            <span class="tpsl-pnl-value" id="tpslExpectedPnlPartial">-- VP</span>
+          </div>
+          <div class="tpsl-pnl-divider"></div>
+          <div class="tpsl-pnl-row">
+            <span class="tpsl-pnl-label">ROE</span>
+            <span class="tpsl-pnl-value" id="tpslExpectedRoePartial">--%</span>
+          </div>
+          <div class="tpsl-pnl-row">
+            <span class="tpsl-pnl-label">Close Amount</span>
+            <span class="tpsl-pnl-value" id="tpslCloseSizePartial">-- VP</span>
+          </div>
+        </div>
+
+        <!-- Existing Orders Partial -->
+        <div class="tpsl-existing-orders" id="tpslExistingOrdersPartial" style="display: none;">
+          <div class="tpsl-existing-title">
+            <span>⚠️</span>
+            <span>Existing Orders (<span id="tpslUsedPercent">0</span>% used)</span>
+          </div>
+          <div class="tpsl-existing-list" id="tpslExistingListPartial"></div>
+        </div>
+
+        <div id="tpslLimitNoticePartial" class="tpsl-limit-notice" style="display:none;">
+          Maximum 3 orders reached for this type
+        </div>
+
+        <button class="tpsl-submit-btn tp-confirm" id="tpslSubmitPartial" disabled>
+          <span>Confirm Take Profit</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -1764,7 +1959,7 @@
       if (currentMarginPct > 0) updateMarginSliderUI(currentMarginPct, false, true);
     }
 
-    // ==================== TP/SL MODULE ====================
+    // ==================== TP/SL MODULE (ENHANCED) ====================
 
     function getTpSlOrdersForPosition(positionId) {
       return (window._tpSlOrders || []).filter(o => String(o.position_id) === String(positionId) && o.status === 'ACTIVE');
@@ -1800,68 +1995,151 @@
 
       const roe = closeMargin > 0 ? (pnl / closeMargin) * 100 : 0;
 
-      return { pnl, roe };
+      return { pnl, roe, closeSize, closeMargin };
+    }
+
+    function getHintText(posType, orderType) {
+      const isTP = orderType === 'TP';
+      if (posType === 'LONG') {
+        return isTP ? 'Must be above current price' : 'Must be below current price';
+      } else {
+        return isTP ? 'Must be below current price' : 'Must be above current price';
+      }
     }
 
     function openTpSlModal(positionId, orderType) {
       const pos = (window._positions || []).find(p => String(p.id || p._id) === String(positionId));
       if (!pos) return;
 
-      const counts = getTpSlCounts(positionId);
-      const maxReached = orderType === 'TP' ? counts.tp >= MAX_TP_PER_POSITION : counts.sl >= MAX_SL_PER_POSITION;
-
       tpslModalState = { positionId, orderType, tab: 'full', position: pos };
 
       const isTP = orderType === 'TP';
+      const posType = (pos.type || 'LONG').toUpperCase();
+      const pair = normalizePair(pos.pair || 'BTC-USD');
+      const currentPrice = marketPrices[pair];
+
+      // Title
       $('tpslModalTitle').textContent = isTP ? 'Take Profit' : 'Stop Loss';
       $('tpslModalTitle').style.color = isTP ? 'var(--accent-green)' : 'var(--accent-red)';
+      $('tpslModalSubtitle').textContent = isTP ? 'Lock in profits at target price' : 'Limit losses at trigger price';
 
-      const posType = (pos.type || 'LONG').toUpperCase();
-      const badge = $('tpslPosBadge');
-      badge.textContent = posType;
-      badge.className = `tpsl-pos-badge ${posType.toLowerCase()}`;
-      $('tpslPosPair').textContent = normalizePair(pos.pair || 'BTC-USD');
-      $('tpslPosLev').textContent = `x${pos.leverage}`;
-      $('tpslPosEntry').textContent = formatPrice(pos.entry_price);
+      // Position info
+      const typeEl = $('tpslPositionType');
+      typeEl.textContent = posType;
+      typeEl.className = `tpsl-position-type ${posType.toLowerCase()}`;
+      $('tpslPositionPair').textContent = pair;
+      $('tpslPositionLeverage').textContent = `x${pos.leverage}`;
+      $('tpslEntryPrice').textContent = formatPrice(pos.entry_price);
+      $('tpslMarkPrice').textContent = currentPrice ? formatPrice(currentPrice) : '--.--';
 
+      // Hint text
+      const hint = getHintText(posType, orderType);
+      $('tpslPriceHint').textContent = hint;
+      $('tpslPriceHintPartial').textContent = hint;
+
+      // Reset full tab
       $('tpslPriceInput').value = '';
       $('tpslPriceInput').classList.remove('error');
       $('tpslErrorText').textContent = '';
-      $('tpslPreviewPnl').textContent = '--';
-      $('tpslPreviewPnl').style.color = 'var(--white)';
-      $('tpslPreviewRoe').textContent = '--';
-      $('tpslPreviewRoe').style.color = 'var(--white)';
+      $('tpslExpectedPnl').textContent = '-- VP';
+      $('tpslExpectedPnl').className = 'tpsl-pnl-value';
+      $('tpslExpectedRoe').textContent = '--%';
+      $('tpslExpectedRoe').className = 'tpsl-pnl-value';
+      $('tpslCloseSize').textContent = '100%';
 
+      // Reset partial tab
+      $('tpslPriceInputPartial').value = '';
+      $('tpslPriceInputPartial').classList.remove('error');
+      $('tpslErrorTextPartial').textContent = '';
+      $('tpslExpectedPnlPartial').textContent = '-- VP';
+      $('tpslExpectedPnlPartial').className = 'tpsl-pnl-value';
+      $('tpslExpectedRoePartial').textContent = '--%';
+      $('tpslExpectedRoePartial').className = 'tpsl-pnl-value';
+      $('tpslCloseSizePartial').textContent = '-- VP';
+
+      // Tabs reset
       $('tpslTabFull').classList.add('active');
       $('tpslTabPartial').classList.remove('active');
-      $('tpslSliderSection').style.display = 'none';
+      $('tabFull').classList.add('active');
+      $('tabPartial').classList.remove('active');
       tpslModalState.tab = 'full';
 
+      // Size slider setup
+      const counts = getTpSlCounts(positionId);
       const usedPct = isTP ? counts.tpUsed : counts.slUsed;
       const availablePct = Math.max(0, 100 - usedPct);
       const slider = $('tpslSizeSlider');
       slider.max = Math.max(10, availablePct);
-      slider.value = Math.min(100, availablePct);
-      $('tpslSliderVal').textContent = slider.value + '%';
-      $('tpslSliderInfo').textContent = `Available: ${Math.floor(availablePct)}%`;
+      slider.value = Math.min(50, availablePct);
+      $('tpslSizeValue').textContent = slider.value + '%';
+      $('tpslAvailableSize').textContent = Math.floor(availablePct) + '%';
+      $('tpslUsedPercent').textContent = Math.floor(usedPct);
       updateSliderTrack(slider, ((Number(slider.value) - 10) / (Number(slider.max) - 10)) * 100);
 
-      const confirmBtn = $('tpslConfirmBtn');
-      confirmBtn.className = `tpsl-confirm-btn ${isTP ? 'tp-confirm' : 'sl-confirm'}`;
-      confirmBtn.textContent = isTP ? 'Set Take Profit' : 'Set Stop Loss';
-      confirmBtn.disabled = true;
+      // Size marks
+      document.querySelectorAll('.tpsl-size-mark').forEach(m => {
+        m.classList.toggle('active', Number(m.dataset.size) === Number(slider.value));
+      });
 
+      // Submit buttons style
+      const fullBtn = $('tpslSubmitFull');
+      const partialBtn = $('tpslSubmitPartial');
+      fullBtn.className = `tpsl-submit-btn ${isTP ? 'tp-confirm' : 'sl-confirm'}`;
+      fullBtn.innerHTML = `<span>Confirm ${isTP ? 'Take Profit' : 'Stop Loss'}</span>`;
+      fullBtn.disabled = true;
+      partialBtn.className = `tpsl-submit-btn ${isTP ? 'tp-confirm' : 'sl-confirm'}`;
+      partialBtn.innerHTML = `<span>Confirm Partial ${isTP ? 'TP' : 'SL'}</span>`;
+      partialBtn.disabled = true;
+
+      // Check limit
+      const maxReached = isTP ? counts.tp >= MAX_TP_PER_POSITION : counts.sl >= MAX_SL_PER_POSITION;
+      $('tpslLimitNotice').style.display = maxReached ? 'block' : 'none';
+      $('tpslLimitNoticePartial').style.display = maxReached ? 'block' : 'none';
       if (maxReached) {
-        $('tpslLimitNotice').style.display = 'block';
-        $('tpslLimitNotice').textContent = `Maximum ${isTP ? MAX_TP_PER_POSITION : MAX_SL_PER_POSITION} ${isTP ? 'TP' : 'SL'} orders reached`;
-        confirmBtn.disabled = true;
-      } else {
-        $('tpslLimitNotice').style.display = 'none';
+        const limitText = `Maximum ${isTP ? MAX_TP_PER_POSITION : MAX_SL_PER_POSITION} ${isTP ? 'TP' : 'SL'} orders reached`;
+        $('tpslLimitNotice').textContent = limitText;
+        $('tpslLimitNoticePartial').textContent = limitText;
       }
+
+      // Render existing orders in modal
+      renderExistingOrdersInModal(positionId, isTP);
 
       $('tpslModalOverlay').classList.add('active');
       document.body.style.overflow = 'hidden';
       if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    }
+
+    function renderExistingOrdersInModal(positionId, isTP) {
+      const orders = getTpSlOrdersForPosition(positionId).filter(o => o.order_type === (isTP ? 'TP' : 'SL'));
+      const pos = tpslModalState.position;
+
+      // Full tab existing
+      const fullContainer = $('tpslExistingOrders');
+      const fullList = $('tpslExistingList');
+      // Partial tab existing
+      const partialContainer = $('tpslExistingOrdersPartial');
+      const partialList = $('tpslExistingListPartial');
+
+      if (orders.length === 0) {
+        fullContainer.style.display = 'none';
+        partialContainer.style.display = 'none';
+        return;
+      }
+
+      fullContainer.style.display = 'block';
+      partialContainer.style.display = 'block';
+
+      let html = '';
+      orders.forEach(order => {
+        const { pnl } = calculateTpSlPnl(pos, order.trigger_price, order.size_percent);
+        html += `<div class="tpsl-existing-item">
+          <span class="tpsl-existing-item-type ${isTP ? 'tp' : 'sl'}">${order.order_type} @ ${formatPrice(order.trigger_price)}</span>
+          <span class="tpsl-existing-item-info">${Number(order.size_percent).toFixed(0)}% · ${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} VP</span>
+        </div>`;
+      });
+
+      fullList.innerHTML = html;
+      partialList.innerHTML = html;
     }
 
     function closeTpSlModal() {
@@ -1870,111 +2148,111 @@
       tpslModalState = { positionId: null, orderType: null, tab: 'full', position: null };
     }
 
-    function validateTpSlPrice() {
+    /**
+     * CORE VALIDATION: Only checks against CURRENT MARKET PRICE, not entry price.
+     * This fixes the bug where TP/SL could not be set after the price moved past entry.
+     */
+    function validateTpSlPriceForTab(tab) {
       const pos = tpslModalState.position;
       if (!pos) return false;
 
-      const inputEl = $('tpslPriceInput');
-      const errorEl = $('tpslErrorText');
-      const confirmBtn = $('tpslConfirmBtn');
-      const triggerPrice = Number(inputEl.value);
+      const isPartial = tab === 'partial';
+      const inputEl = $(isPartial ? 'tpslPriceInputPartial' : 'tpslPriceInput');
+      const errorEl = $(isPartial ? 'tpslErrorTextPartial' : 'tpslErrorText');
+      const submitBtn = $(isPartial ? 'tpslSubmitPartial' : 'tpslSubmitFull');
+      const pnlEl = $(isPartial ? 'tpslExpectedPnlPartial' : 'tpslExpectedPnl');
+      const roeEl = $(isPartial ? 'tpslExpectedRoePartial' : 'tpslExpectedRoe');
+      const closeSizeEl = $(isPartial ? 'tpslCloseSizePartial' : 'tpslCloseSize');
 
       inputEl.classList.remove('error');
       errorEl.textContent = '';
-      confirmBtn.disabled = true;
+      submitBtn.disabled = true;
+
+      const triggerPrice = Number(inputEl.value);
 
       if (!triggerPrice || triggerPrice <= 0) {
-        $('tpslPreviewPnl').textContent = '--'; $('tpslPreviewPnl').style.color = 'var(--white)';
-        $('tpslPreviewRoe').textContent = '--'; $('tpslPreviewRoe').style.color = 'var(--white)';
+        pnlEl.textContent = '-- VP'; pnlEl.className = 'tpsl-pnl-value';
+        roeEl.textContent = '--%'; roeEl.className = 'tpsl-pnl-value';
+        if (closeSizeEl) closeSizeEl.textContent = isPartial ? '-- VP' : '100%';
         return false;
       }
 
-      const entry = Number(pos.entry_price);
       const posType = (pos.type || 'LONG').toUpperCase();
       const pair = normalizePair(pos.pair || 'BTC-USD');
       const currentPrice = marketPrices[pair];
       const isTP = tpslModalState.orderType === 'TP';
 
-      if (isTP) {
-        if (posType === 'LONG' && triggerPrice <= entry) {
-          inputEl.classList.add('error');
-          errorEl.textContent = 'TP must be above entry price for Long';
-          return false;
-        }
-        if (posType === 'SHORT' && triggerPrice >= entry) {
-          inputEl.classList.add('error');
-          errorEl.textContent = 'TP must be below entry price for Short';
-          return false;
-        }
-        if (currentPrice) {
+      // ONLY validate against current market price
+      if (currentPrice) {
+        if (isTP) {
           if (posType === 'LONG' && triggerPrice <= currentPrice) {
             inputEl.classList.add('error');
-            errorEl.textContent = 'TP must be above current market price';
+            errorEl.textContent = `TP must be above current price (${formatPrice(currentPrice)})`;
             return false;
           }
           if (posType === 'SHORT' && triggerPrice >= currentPrice) {
             inputEl.classList.add('error');
-            errorEl.textContent = 'TP must be below current market price';
+            errorEl.textContent = `TP must be below current price (${formatPrice(currentPrice)})`;
             return false;
           }
-        }
-      } else {
-        if (posType === 'LONG' && triggerPrice >= entry) {
-          inputEl.classList.add('error');
-          errorEl.textContent = 'SL must be below entry price for Long';
-          return false;
-        }
-        if (posType === 'SHORT' && triggerPrice <= entry) {
-          inputEl.classList.add('error');
-          errorEl.textContent = 'SL must be above entry price for Short';
-          return false;
-        }
-        if (currentPrice) {
+        } else {
           if (posType === 'LONG' && triggerPrice >= currentPrice) {
             inputEl.classList.add('error');
-            errorEl.textContent = 'SL must be below current market price';
+            errorEl.textContent = `SL must be below current price (${formatPrice(currentPrice)})`;
             return false;
           }
           if (posType === 'SHORT' && triggerPrice <= currentPrice) {
             inputEl.classList.add('error');
-            errorEl.textContent = 'SL must be above current market price';
+            errorEl.textContent = `SL must be above current price (${formatPrice(currentPrice)})`;
             return false;
           }
         }
       }
 
+      // Check count limits
       const counts = getTpSlCounts(tpslModalState.positionId);
       const maxCount = isTP ? MAX_TP_PER_POSITION : MAX_SL_PER_POSITION;
       const currentCount = isTP ? counts.tp : counts.sl;
       if (currentCount >= maxCount) {
-        $('tpslLimitNotice').style.display = 'block';
+        const noticeId = isPartial ? 'tpslLimitNoticePartial' : 'tpslLimitNotice';
+        $(noticeId).style.display = 'block';
         return false;
       }
 
-      const sizePercent = tpslModalState.tab === 'partial' ? Number($('tpslSizeSlider').value) : 100;
-      const { pnl, roe } = calculateTpSlPnl(pos, triggerPrice, sizePercent);
+      // Calculate PnL
+      const sizePercent = isPartial ? Number($('tpslSizeSlider').value) : 100;
+      const { pnl, roe, closeSize } = calculateTpSlPnl(pos, triggerPrice, sizePercent);
 
-      const pnlEl = $('tpslPreviewPnl');
       pnlEl.textContent = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} VP`;
-      pnlEl.style.color = pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+      pnlEl.className = `tpsl-pnl-value ${pnl >= 0 ? 'positive' : 'negative'}`;
 
-      const roeEl = $('tpslPreviewRoe');
       roeEl.textContent = `${roe >= 0 ? '+' : ''}${roe.toFixed(2)}%`;
-      roeEl.style.color = roe >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+      roeEl.className = `tpsl-pnl-value ${roe >= 0 ? 'positive' : 'negative'}`;
 
-      confirmBtn.disabled = false;
+      if (closeSizeEl) {
+        closeSizeEl.textContent = isPartial ? `${closeSize.toFixed(2)} VP` : '100%';
+      }
+
+      submitBtn.disabled = false;
       return true;
     }
 
-    async function confirmTpSlOrder() {
+    async function confirmTpSlOrder(tab) {
       if (!tpslModalState.positionId || !tpslModalState.orderType) return;
-      const triggerPrice = Number($('tpslPriceInput').value);
+
+      const isPartial = tab === 'partial';
+      const inputEl = $(isPartial ? 'tpslPriceInputPartial' : 'tpslPriceInput');
+      const submitBtn = $(isPartial ? 'tpslSubmitPartial' : 'tpslSubmitFull');
+      const errorEl = $(isPartial ? 'tpslErrorTextPartial' : 'tpslErrorText');
+
+      const triggerPrice = Number(inputEl.value);
       if (!triggerPrice || triggerPrice <= 0) return;
 
-      const sizePercent = tpslModalState.tab === 'partial' ? Number($('tpslSizeSlider').value) : 100;
-      const confirmBtn = $('tpslConfirmBtn');
-      confirmBtn.disabled = true;
-      confirmBtn.textContent = 'Processing...';
+      const sizePercent = isPartial ? Number($('tpslSizeSlider').value) : 100;
+      const isTP = tpslModalState.orderType === 'TP';
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span>Processing...</span>';
 
       try {
         const res = await fetch(API_BASE + "/api/tp-sl/create", {
@@ -1996,23 +2274,21 @@
           closeTpSlModal();
           renderPositions(true);
           if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-          notify(`${tpslModalState.orderType === 'TP' ? 'Take Profit' : 'Stop Loss'} set at ${formatPrice(triggerPrice)}`);
+          notify(`${isTP ? 'Take Profit' : 'Stop Loss'} set at ${formatPrice(triggerPrice)}`);
         } else {
-          const isTP = tpslModalState.orderType === 'TP';
-          confirmBtn.disabled = false;
-          confirmBtn.textContent = isTP ? 'Set Take Profit' : 'Set Stop Loss';
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<span>Confirm ${isTP ? (isPartial ? 'Partial TP' : 'Take Profit') : (isPartial ? 'Partial SL' : 'Stop Loss')}</span>`;
           let errorMsg = data.error || 'Failed to create order';
           if (data.error === 'EXCEEDS_AVAILABLE_VOLUME') {
             errorMsg = `Exceeds available volume. Available: ${data.availablePercent}%`;
           }
-          $('tpslErrorText').textContent = errorMsg;
+          errorEl.textContent = errorMsg;
         }
       } catch (e) {
         console.error("TP/SL create error:", e);
-        const isTP = tpslModalState.orderType === 'TP';
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = isTP ? 'Set Take Profit' : 'Set Stop Loss';
-        $('tpslErrorText').textContent = 'Network error. Try again.';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<span>Confirm ${isTP ? (isPartial ? 'Partial TP' : 'Take Profit') : (isPartial ? 'Partial SL' : 'Stop Loss')}</span>`;
+        errorEl.textContent = 'Network error. Try again.';
       }
     }
 
@@ -2042,37 +2318,70 @@
       $('tpslModalClose').addEventListener('click', closeTpSlModal);
       $('tpslModalOverlay').addEventListener('click', (e) => { if (e.target === $('tpslModalOverlay')) closeTpSlModal(); });
 
+      // Tab switching
       $('tpslTabFull').addEventListener('click', () => {
         tpslModalState.tab = 'full';
-        $('tpslTabFull').classList.add('active'); $('tpslTabPartial').classList.remove('active');
-        $('tpslSliderSection').style.display = 'none';
-        validateTpSlPrice();
+        $('tpslTabFull').classList.add('active');
+        $('tpslTabPartial').classList.remove('active');
+        $('tabFull').classList.add('active');
+        $('tabPartial').classList.remove('active');
       });
 
       $('tpslTabPartial').addEventListener('click', () => {
         tpslModalState.tab = 'partial';
-        $('tpslTabPartial').classList.add('active'); $('tpslTabFull').classList.remove('active');
-        $('tpslSliderSection').style.display = 'flex';
-        validateTpSlPrice();
+        $('tpslTabPartial').classList.add('active');
+        $('tpslTabFull').classList.remove('active');
+        $('tabPartial').classList.add('active');
+        $('tabFull').classList.remove('active');
       });
 
-      $('tpslPriceInput').addEventListener('input', () => validateTpSlPrice());
-
+      // Full tab inputs
+      $('tpslPriceInput').addEventListener('input', () => validateTpSlPriceForTab('full'));
       $('tpslMarketBtn').addEventListener('click', () => {
         if (!tpslModalState.position) return;
         const pair = normalizePair(tpslModalState.position.pair || 'BTC-USD');
         const cp = marketPrices[pair];
-        if (cp) { $('tpslPriceInput').value = formatPrice(cp); validateTpSlPrice(); }
+        if (cp) { $('tpslPriceInput').value = formatPrice(cp); validateTpSlPriceForTab('full'); }
       });
+      $('tpslSubmitFull').addEventListener('click', () => confirmTpSlOrder('full'));
 
+      // Partial tab inputs
+      $('tpslPriceInputPartial').addEventListener('input', () => validateTpSlPriceForTab('partial'));
+      $('tpslMarketBtnPartial').addEventListener('click', () => {
+        if (!tpslModalState.position) return;
+        const pair = normalizePair(tpslModalState.position.pair || 'BTC-USD');
+        const cp = marketPrices[pair];
+        if (cp) { $('tpslPriceInputPartial').value = formatPrice(cp); validateTpSlPriceForTab('partial'); }
+      });
+      $('tpslSubmitPartial').addEventListener('click', () => confirmTpSlOrder('partial'));
+
+      // Size slider
       const sizeSlider = $('tpslSizeSlider');
       sizeSlider.addEventListener('input', () => {
-        $('tpslSliderVal').textContent = sizeSlider.value + '%';
+        $('tpslSizeValue').textContent = sizeSlider.value + '%';
         updateSliderTrack(sizeSlider, ((Number(sizeSlider.value) - 10) / (Number(sizeSlider.max) - 10)) * 100);
-        validateTpSlPrice();
+        document.querySelectorAll('.tpsl-size-mark').forEach(m => {
+          m.classList.toggle('active', Number(m.dataset.size) === Number(sizeSlider.value));
+        });
+        validateTpSlPriceForTab('partial');
       });
 
-      $('tpslConfirmBtn').addEventListener('click', confirmTpSlOrder);
+      // Size marks
+      document.querySelectorAll('.tpsl-size-mark').forEach(mark => {
+        mark.addEventListener('click', () => {
+          const val = Number(mark.dataset.size);
+          const max = Number(sizeSlider.max);
+          if (val <= max) {
+            sizeSlider.value = val;
+            $('tpslSizeValue').textContent = val + '%';
+            updateSliderTrack(sizeSlider, ((val - 10) / (max - 10)) * 100);
+            document.querySelectorAll('.tpsl-size-mark').forEach(m => m.classList.remove('active'));
+            mark.classList.add('active');
+            validateTpSlPriceForTab('partial');
+            if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+          }
+        });
+      });
     }
 
     // ==================== SESSION ====================
@@ -2217,50 +2526,61 @@
           const counts = getTpSlCounts(id);
           const orders = getTpSlOrdersForPosition(id);
 
+          // Build TP/SL orders section
           let ordersHtml = '';
           if (orders.length > 0) {
-            ordersHtml = '<div class="tpsl-orders-list" id="tpsl-list-' + id + '">';
+            ordersHtml = `<div class="pos-tpsl-orders" id="tpsl-section-${id}">
+              <div class="tpsl-orders-title">Active Orders <span class="tpsl-orders-count">${orders.length}</span></div>
+              <div class="tpsl-orders-list" id="tpsl-list-${id}">`;
             orders.forEach(order => {
               const isTP = order.order_type === 'TP';
               const { pnl, roe } = calculateTpSlPnl(pos, order.trigger_price, order.size_percent);
               ordersHtml += `<div class="tpsl-order-item ${isTP ? 'tp-order' : 'sl-order'}">
-                <div class="tpsl-order-left">
+                <div class="tpsl-order-info">
                   <span class="tpsl-order-type ${isTP ? 'tp-type' : 'sl-type'}">${order.order_type}</span>
-                  <span class="tpsl-order-price">${formatPrice(order.trigger_price)}</span>
-                  <span class="tpsl-order-pct">${Number(order.size_percent).toFixed(0)}%</span>
+                  <div class="tpsl-order-details">
+                    <span>@ ${formatPrice(order.trigger_price)}</span>
+                    <span>${Number(order.size_percent).toFixed(0)}%</span>
+                  </div>
                 </div>
-                <div class="tpsl-order-right">
-                  <span class="tpsl-order-pnl ${pnl >= 0 ? 'text-green' : 'text-red'}" id="tpsl-pnl-${order.id}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</span>
-                  <span class="tpsl-order-pnl ${roe >= 0 ? 'text-green' : 'text-red'}" id="tpsl-roe-${order.id}" style="font-size:9px;">${roe >= 0 ? '+' : ''}${roe.toFixed(1)}%</span>
-                  <button class="tpsl-order-delete" data-order-id="${order.id}" title="Cancel">×</button>
+                <div class="tpsl-order-actions">
+                  <div style="text-align:right;">
+                    <div class="tpsl-order-pnl ${pnl >= 0 ? 'text-green' : 'text-red'}" id="tpsl-pnl-${order.id}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</div>
+                    <div class="tpsl-order-roe ${roe >= 0 ? 'text-green' : 'text-red'}" id="tpsl-roe-${order.id}">${roe >= 0 ? '+' : ''}${roe.toFixed(1)}%</div>
+                  </div>
+                  <button class="btn-delete-tpsl" data-order-id="${order.id}" title="Cancel">×</button>
                 </div>
               </div>`;
             });
-            ordersHtml += '</div>';
+            ordersHtml += '</div></div>';
           } else {
-            ordersHtml = '<div class="tpsl-orders-list" id="tpsl-list-' + id + '"></div>';
+            ordersHtml = `<div class="pos-tpsl-orders" id="tpsl-section-${id}" style="display:none;"></div>`;
           }
 
-          div.innerHTML = `<div class="pos-header"><div style="display:flex; align-items:center; gap:6px;"><span class="${type==='LONG'?'text-green':'text-red'}">${type}</span><span class="pos-pair">${pair}</span><span class="pos-type-badge ${type==='LONG'?'text-green':'text-red'}">x${lev}</span></div><div class="pos-pnl" id="pnl-${id}">0.00 VP</div></div>` +
+          div.innerHTML =
+            `<div class="pos-header"><div style="display:flex; align-items:center; gap:6px;"><span class="${type==='LONG'?'text-green':'text-red'}">${type}</span><span class="pos-pair">${pair}</span><span class="pos-type-badge ${type==='LONG'?'text-green':'text-red'}">x${lev}</span></div><div class="pos-pnl" id="pnl-${id}">0.00 VP</div></div>` +
             `<div class="pos-stats-grid"><div class="stat-col"><span class="stat-label">ROE %</span><span class="stat-val" id="roe-${id}">0.00%</span></div><div class="stat-col" style="align-items: center;"><span class="stat-label">Margin Ratio</span><span class="stat-val" id="ratio-${id}">0.00%</span></div><div class="stat-col" style="align-items: flex-end;"><span class="stat-label">Risk</span><span class="stat-val" id="risk-val-${id}">0.0%</span><div class="risk-wrap" style="width: 100%;"><div class="risk-track"><div class="risk-fill" id="risk-bar-${id}"></div></div></div></div></div>` +
             `<div class="pos-details"><div class="pd-col"><span class="pd-label">Entry Price</span><span class="pd-val">${formatPrice(entry)}</span></div><div class="pd-col" style="align-items: center;"><span class="pd-label">Size / Mark</span><span class="pd-val">${size.toFixed(0)} / <span id="mark-${id}">--.--</span></span></div><div class="pd-col" style="align-items: flex-end;"><span class="pd-label">Liquidation Price</span><span class="pd-val text-red" id="liq-${id}">--.--</span></div></div>` +
-            `<div class="tpsl-actions"><button class="tpsl-btn tp" data-pos-id="${id}" data-type="TP">🎯 TP <span class="tpsl-count">${counts.tp}/${MAX_TP_PER_POSITION}</span></button><button class="tpsl-btn sl" data-pos-id="${id}" data-type="SL">🛡️ SL <span class="tpsl-count">${counts.sl}/${MAX_SL_PER_POSITION}</span></button></div>` +
+            `<div class="pos-tpsl-actions">` +
+              `<button class="btn-tpsl tp" data-pos-id="${id}" data-type="TP"><span class="btn-tpsl-icon">🎯</span> Take Profit <span class="tpsl-count">${counts.tp}/${MAX_TP_PER_POSITION}</span></button>` +
+              `<button class="btn-tpsl sl" data-pos-id="${id}" data-type="SL"><span class="btn-tpsl-icon">🛡️</span> Stop Loss <span class="tpsl-count">${counts.sl}/${MAX_SL_PER_POSITION}</span></button>` +
+            `</div>` +
             ordersHtml +
             `<button class="close-btn" data-id="${id}">Close Position</button>`;
 
           list.appendChild(div);
 
+          // Event listeners
           div.querySelector('.close-btn').onclick = () => closePosition(id, pair);
 
-          div.querySelectorAll('.tpsl-btn').forEach(btn => {
+          div.querySelectorAll('.btn-tpsl').forEach(btn => {
             btn.addEventListener('click', () => openTpSlModal(btn.dataset.posId, btn.dataset.type));
           });
 
-          div.querySelectorAll('.tpsl-order-delete').forEach(btn => {
+          div.querySelectorAll('.btn-delete-tpsl').forEach(btn => {
             btn.addEventListener('click', (e) => {
               e.stopPropagation();
-              const orderId = btn.dataset.orderId;
-              deleteTpSlOrder(orderId);
+              deleteTpSlOrder(btn.dataset.orderId);
             });
           });
         }
@@ -2315,7 +2635,7 @@
           const oPnlEl = document.getElementById(`tpsl-pnl-${order.id}`);
           const oRoeEl = document.getElementById(`tpsl-roe-${order.id}`);
           if (oPnlEl) { oPnlEl.textContent = `${oPnl >= 0 ? '+' : ''}${oPnl.toFixed(2)}`; oPnlEl.className = `tpsl-order-pnl ${oPnl >= 0 ? 'text-green' : 'text-red'}`; }
-          if (oRoeEl) { oRoeEl.textContent = `${oRoe >= 0 ? '+' : ''}${oRoe.toFixed(1)}%`; oRoeEl.className = `tpsl-order-pnl ${oRoe >= 0 ? 'text-green' : 'text-red'}`; }
+          if (oRoeEl) { oRoeEl.textContent = `${oRoe >= 0 ? '+' : ''}${oRoe.toFixed(1)}%`; oRoeEl.className = `tpsl-order-roe ${oRoe >= 0 ? 'text-green' : 'text-red'}`; }
         });
       });
     }
