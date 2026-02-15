@@ -830,6 +830,7 @@ app.post("/api/order/close", async (req, res) => {
 // ======================== TP/SL ENDPOINTS ========================
 
 app.post("/api/tp-sl/create", async (req, res) => {
+    let client = null;
     try {
         const user = await getAuthenticatedUser(req);
         const { positionId, orderType, triggerPrice, sizePercent } = req.body;
@@ -853,117 +854,120 @@ app.post("/api/tp-sl/create", async (req, res) => {
             return res.status(400).json({ ok: false, error: `SIZE_PERCENT_MUST_BE_${MIN_PARTIAL_PERCENT}_TO_${MAX_PARTIAL_PERCENT}` });
         }
 
-        const client = await db.pool ? db.connect() : db.connect();
-        try {
-            await client.query("BEGIN");
+        // ИСПРАВЛЕНИЕ: правильное получение клиента из пула
+        client = await db.connect();
 
-            const posRes = await client.query(
-                "SELECT * FROM positions WHERE id = $1 AND user_id = $2 FOR UPDATE",
-                [positionId, user.user_id]
-            );
+        await client.query("BEGIN");
 
-            if (!posRes.rows.length) {
-                await client.query("ROLLBACK");
-                return res.status(404).json({ ok: false, error: "POSITION_NOT_FOUND" });
-            }
+        const posRes = await client.query(
+            "SELECT * FROM positions WHERE id = $1 AND user_id = $2 FOR UPDATE",
+            [positionId, user.user_id]
+        );
 
-            const pos = posRes.rows[0];
-            const entryPrice = Number(pos.entry_price);
-            const posType = pos.type.toUpperCase();
-
-            if (normalizedType === 'TP') {
-                if (posType === 'LONG' && trigPrice <= entryPrice) {
-                    await client.query("ROLLBACK");
-                    return res.status(400).json({ ok: false, error: "TP_MUST_BE_ABOVE_ENTRY_FOR_LONG" });
-                }
-                if (posType === 'SHORT' && trigPrice >= entryPrice) {
-                    await client.query("ROLLBACK");
-                    return res.status(400).json({ ok: false, error: "TP_MUST_BE_BELOW_ENTRY_FOR_SHORT" });
-                }
-            }
-
-            if (normalizedType === 'SL') {
-                if (posType === 'LONG' && trigPrice >= entryPrice) {
-                    await client.query("ROLLBACK");
-                    return res.status(400).json({ ok: false, error: "SL_MUST_BE_BELOW_ENTRY_FOR_LONG" });
-                }
-                if (posType === 'SHORT' && trigPrice <= entryPrice) {
-                    await client.query("ROLLBACK");
-                    return res.status(400).json({ ok: false, error: "SL_MUST_BE_ABOVE_ENTRY_FOR_SHORT" });
-                }
-            }
-
-            const existingOrders = await client.query(
-                "SELECT * FROM tp_sl_orders WHERE position_id = $1 AND status = 'ACTIVE'",
-                [positionId]
-            );
-
-            const tpCount = existingOrders.rows.filter(o => o.order_type === 'TP').length;
-            const slCount = existingOrders.rows.filter(o => o.order_type === 'SL').length;
-
-            if (normalizedType === 'TP' && tpCount >= MAX_TP_PER_POSITION) {
-                await client.query("ROLLBACK");
-                return res.status(400).json({ ok: false, error: `MAX_${MAX_TP_PER_POSITION}_TP_ORDERS_REACHED` });
-            }
-
-            if (normalizedType === 'SL' && slCount >= MAX_SL_PER_POSITION) {
-                await client.query("ROLLBACK");
-                return res.status(400).json({ ok: false, error: `MAX_${MAX_SL_PER_POSITION}_SL_ORDERS_REACHED` });
-            }
-
-            const sameTypeOrders = existingOrders.rows.filter(o => o.order_type === normalizedType);
-            const usedPercent = sameTypeOrders.reduce((sum, o) => sum + Number(o.size_percent), 0);
-            const availablePercent = 100 - usedPercent;
-
-            if (percent > availablePercent) {
-                await client.query("ROLLBACK");
-                return res.status(400).json({
-                    ok: false,
-                    error: "EXCEEDS_AVAILABLE_VOLUME",
-                    availablePercent: Math.floor(availablePercent),
-                    usedPercent: Math.ceil(usedPercent)
-                });
-            }
-
-            const duplicatePrice = sameTypeOrders.find(o => Math.abs(Number(o.trigger_price) - trigPrice) < 0.0001);
-            if (duplicatePrice) {
-                await client.query("ROLLBACK");
-                return res.status(400).json({ ok: false, error: "DUPLICATE_TRIGGER_PRICE" });
-            }
-
-            const orderRes = await client.query(`
-                INSERT INTO tp_sl_orders (position_id, user_id, pair, order_type, trigger_price, size_percent, status)
-                VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE')
-                RETURNING *
-            `, [positionId, user.user_id, pos.pair, normalizedType, trigPrice, percent]);
-
-            await client.query("COMMIT");
-
-            const allOrders = await db.query(
-                "SELECT * FROM tp_sl_orders WHERE position_id = $1 AND status = 'ACTIVE' ORDER BY created_at ASC",
-                [positionId]
-            );
-
-            console.log(`✅ ${normalizedType} order created for position ${positionId}: price=${trigPrice}, size=${percent}%`);
-
-            res.json({
-                ok: true,
-                order: orderRes.rows[0],
-                allOrders: allOrders.rows,
-                tpCount: allOrders.rows.filter(o => o.order_type === 'TP').length,
-                slCount: allOrders.rows.filter(o => o.order_type === 'SL').length
-            });
-
-        } catch (innerErr) {
+        if (!posRes.rows.length) {
             await client.query("ROLLBACK");
-            throw innerErr;
-        } finally {
-            client.release();
+            return res.status(404).json({ ok: false, error: "POSITION_NOT_FOUND" });
         }
 
+        const pos = posRes.rows[0];
+        const entryPrice = Number(pos.entry_price);
+        const posType = pos.type.toUpperCase();
+
+        // Валидация TP: для LONG должен быть выше entry, для SHORT — ниже
+        if (normalizedType === 'TP') {
+            if (posType === 'LONG' && trigPrice <= entryPrice) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({ ok: false, error: "TP_MUST_BE_ABOVE_ENTRY_FOR_LONG" });
+            }
+            if (posType === 'SHORT' && trigPrice >= entryPrice) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({ ok: false, error: "TP_MUST_BE_BELOW_ENTRY_FOR_SHORT" });
+            }
+        }
+
+        // Валидация SL: для LONG должен быть ниже entry, для SHORT — выше
+        if (normalizedType === 'SL') {
+            if (posType === 'LONG' && trigPrice >= entryPrice) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({ ok: false, error: "SL_MUST_BE_BELOW_ENTRY_FOR_LONG" });
+            }
+            if (posType === 'SHORT' && trigPrice <= entryPrice) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({ ok: false, error: "SL_MUST_BE_ABOVE_ENTRY_FOR_SHORT" });
+            }
+        }
+
+        const existingOrders = await client.query(
+            "SELECT * FROM tp_sl_orders WHERE position_id = $1 AND status = 'ACTIVE'",
+            [positionId]
+        );
+
+        const tpCount = existingOrders.rows.filter(o => o.order_type === 'TP').length;
+        const slCount = existingOrders.rows.filter(o => o.order_type === 'SL').length;
+
+        if (normalizedType === 'TP' && tpCount >= MAX_TP_PER_POSITION) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({ ok: false, error: `MAX_${MAX_TP_PER_POSITION}_TP_ORDERS_REACHED` });
+        }
+
+        if (normalizedType === 'SL' && slCount >= MAX_SL_PER_POSITION) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({ ok: false, error: `MAX_${MAX_SL_PER_POSITION}_SL_ORDERS_REACHED` });
+        }
+
+        const sameTypeOrders = existingOrders.rows.filter(o => o.order_type === normalizedType);
+        const usedPercent = sameTypeOrders.reduce((sum, o) => sum + Number(o.size_percent), 0);
+        const availablePercent = 100 - usedPercent;
+
+        if (percent > availablePercent) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+                ok: false,
+                error: "EXCEEDS_AVAILABLE_VOLUME",
+                availablePercent: Math.floor(availablePercent),
+                usedPercent: Math.ceil(usedPercent)
+            });
+        }
+
+        const duplicatePrice = sameTypeOrders.find(o => Math.abs(Number(o.trigger_price) - trigPrice) < 0.0001);
+        if (duplicatePrice) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({ ok: false, error: "DUPLICATE_TRIGGER_PRICE" });
+        }
+
+        const orderRes = await client.query(`
+            INSERT INTO tp_sl_orders (position_id, user_id, pair, order_type, trigger_price, size_percent, status)
+            VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE')
+            RETURNING *
+        `, [positionId, user.user_id, pos.pair, normalizedType, trigPrice, percent]);
+
+        await client.query("COMMIT");
+
+        const allOrders = await db.query(
+            "SELECT * FROM tp_sl_orders WHERE position_id = $1 AND status = 'ACTIVE' ORDER BY created_at ASC",
+            [positionId]
+        );
+
+        console.log(`✅ ${normalizedType} order created for position ${positionId}: price=${trigPrice}, size=${percent}%`);
+
+        res.json({
+            ok: true,
+            order: orderRes.rows[0],
+            allOrders: allOrders.rows,
+            tpCount: allOrders.rows.filter(o => o.order_type === 'TP').length,
+            slCount: allOrders.rows.filter(o => o.order_type === 'SL').length
+        });
+
     } catch (err) {
+        if (client) {
+            try { await client.query("ROLLBACK"); } catch (e) {}
+        }
         console.error("❌ Error creating TP/SL:", err.message);
         res.status(500).json({ ok: false, error: err.message });
+    } finally {
+        if (client) {
+            try { client.release(); } catch (e) {}
+        }
     }
 });
 
