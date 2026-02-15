@@ -257,17 +257,45 @@ async function initDB() {
         order_type TEXT NOT NULL CHECK (order_type IN ('TP', 'SL')),
         trigger_price NUMERIC NOT NULL,
         size_percent NUMERIC NOT NULL DEFAULT 100 CHECK (size_percent >= 10 AND size_percent <= 100),
+        size_amount NUMERIC NOT NULL DEFAULT 0,
         status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'TRIGGERED', 'CANCELLED')),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         triggered_at TIMESTAMP
       );
     `);
 
+        // Миграция: добавить колонку size_amount если её нет
+        try { 
+            await db.query(`ALTER TABLE tp_sl_orders ADD COLUMN IF NOT EXISTS size_amount NUMERIC NOT NULL DEFAULT 0`); 
+            console.log("✅ Added size_amount column to tp_sl_orders");
+        } catch(e) {
+            // Если колонка уже существует с NOT NULL, но без DEFAULT, попробуем другой подход
+            try {
+                // Проверим, существует ли колонка
+                const checkCol = await db.query(`
+                    SELECT column_name FROM information_schema.columns 
+                    WHERE table_name = 'tp_sl_orders' AND column_name = 'size_amount'
+                `);
+                if (checkCol.rows.length === 0) {
+                    // Колонки нет, добавим с DEFAULT
+                    await db.query(`ALTER TABLE tp_sl_orders ADD COLUMN size_amount NUMERIC DEFAULT 0`);
+                    // Обновим существующие записи
+                    await db.query(`UPDATE tp_sl_orders SET size_amount = 0 WHERE size_amount IS NULL`);
+                    // Теперь установим NOT NULL
+                    await db.query(`ALTER TABLE tp_sl_orders ALTER COLUMN size_amount SET NOT NULL`);
+                    await db.query(`ALTER TABLE tp_sl_orders ALTER COLUMN size_amount SET DEFAULT 0`);
+                    console.log("✅ Added and configured size_amount column");
+                }
+            } catch(e2) {
+                console.log("ℹ️ size_amount column handling:", e2.message);
+            }
+        }
+
         await db.query(`CREATE INDEX IF NOT EXISTS tp_sl_orders_position_idx ON tp_sl_orders(position_id) WHERE status = 'ACTIVE';`);
         await db.query(`CREATE INDEX IF NOT EXISTS tp_sl_orders_status_idx ON tp_sl_orders(status) WHERE status = 'ACTIVE';`);
         await db.query(`CREATE INDEX IF NOT EXISTS tp_sl_orders_user_idx ON tp_sl_orders(user_id);`);
 
-        console.log("✅ DB tables ready (including tp_sl_orders)!");
+        console.log("✅ DB tables ready (including tp_sl_orders with size_amount)!");
 
         try {
             const missing = await db.query("SELECT user_id FROM users WHERE referral_code IS NULL");
@@ -854,7 +882,7 @@ app.post("/api/tp-sl/create", async (req, res) => {
             return res.status(400).json({ ok: false, error: `SIZE_PERCENT_MUST_BE_${MIN_PARTIAL_PERCENT}_TO_${MAX_PARTIAL_PERCENT}` });
         }
 
-        // ИСПРАВЛЕНИЕ: правильное получение клиента из пула
+        // Правильное получение клиента из пула
         client = await db.connect();
 
         await client.query("BEGIN");
@@ -871,6 +899,7 @@ app.post("/api/tp-sl/create", async (req, res) => {
 
         const pos = posRes.rows[0];
         const entryPrice = Number(pos.entry_price);
+        const posSize = Number(pos.size);
         const posType = pos.type.toUpperCase();
 
         // Валидация TP: для LONG должен быть выше entry, для SHORT — ниже
@@ -935,11 +964,14 @@ app.post("/api/tp-sl/create", async (req, res) => {
             return res.status(400).json({ ok: false, error: "DUPLICATE_TRIGGER_PRICE" });
         }
 
+        // Вычисляем size_amount - абсолютный размер позиции для закрытия
+        const sizeAmount = (posSize * percent) / 100;
+
         const orderRes = await client.query(`
-            INSERT INTO tp_sl_orders (position_id, user_id, pair, order_type, trigger_price, size_percent, status)
-            VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE')
+            INSERT INTO tp_sl_orders (position_id, user_id, pair, order_type, trigger_price, size_percent, size_amount, status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACTIVE')
             RETURNING *
-        `, [positionId, user.user_id, pos.pair, normalizedType, trigPrice, percent]);
+        `, [positionId, user.user_id, pos.pair, normalizedType, trigPrice, percent, sizeAmount]);
 
         await client.query("COMMIT");
 
@@ -948,7 +980,7 @@ app.post("/api/tp-sl/create", async (req, res) => {
             [positionId]
         );
 
-        console.log(`✅ ${normalizedType} order created for position ${positionId}: price=${trigPrice}, size=${percent}%`);
+        console.log(`✅ ${normalizedType} order created for position ${positionId}: price=${trigPrice}, size=${percent}% (${sizeAmount.toFixed(2)} VP)`);
 
         res.json({
             ok: true,
