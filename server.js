@@ -264,31 +264,40 @@ async function initDB() {
       );
     `);
 
-        // Миграция: добавить колонку size_amount если её нет
-        try { 
-            await db.query(`ALTER TABLE tp_sl_orders ADD COLUMN IF NOT EXISTS size_amount NUMERIC NOT NULL DEFAULT 0`); 
-            console.log("✅ Added size_amount column to tp_sl_orders");
-        } catch(e) {
-            // Если колонка уже существует с NOT NULL, но без DEFAULT, попробуем другой подход
-            try {
-                // Проверим, существует ли колонка
-                const checkCol = await db.query(`
-                    SELECT column_name FROM information_schema.columns 
-                    WHERE table_name = 'tp_sl_orders' AND column_name = 'size_amount'
-                `);
-                if (checkCol.rows.length === 0) {
-                    // Колонки нет, добавим с DEFAULT
-                    await db.query(`ALTER TABLE tp_sl_orders ADD COLUMN size_amount NUMERIC DEFAULT 0`);
-                    // Обновим существующие записи
+        // Миграция: добавить и гарантировать правильные ограничения для size_amount
+        try {
+            // Проверим, существует ли колонка
+            const checkCol = await db.query(`
+                SELECT column_name, is_nullable, column_default FROM information_schema.columns 
+                WHERE table_name = 'tp_sl_orders' AND column_name = 'size_amount'
+            `);
+            
+            if (checkCol.rows.length === 0) {
+                // Колонка не существует - добавляем с полными ограничениями
+                await db.query(`ALTER TABLE tp_sl_orders ADD COLUMN size_amount NUMERIC NOT NULL DEFAULT 0`);
+                console.log("✅ Created size_amount column with NOT NULL and DEFAULT 0");
+            } else {
+                const col = checkCol.rows[0];
+                // Если колонка nullable, обновляем её
+                if (col.is_nullable === 'YES') {
+                    console.log("🔧 Fixing size_amount column constraints...");
+                    // Обновляем NULL значения
                     await db.query(`UPDATE tp_sl_orders SET size_amount = 0 WHERE size_amount IS NULL`);
-                    // Теперь установим NOT NULL
+                    // Добавляем NOT NULL
                     await db.query(`ALTER TABLE tp_sl_orders ALTER COLUMN size_amount SET NOT NULL`);
+                    // Гарантируем DEFAULT
                     await db.query(`ALTER TABLE tp_sl_orders ALTER COLUMN size_amount SET DEFAULT 0`);
-                    console.log("✅ Added and configured size_amount column");
+                    console.log("✅ Fixed size_amount column constraints");
                 }
-            } catch(e2) {
-                console.log("ℹ️ size_amount column handling:", e2.message);
+                // Если нет DEFAULT, добавляем
+                if (!col.column_default || !col.column_default.includes('0')) {
+                    console.log("🔧 Adding DEFAULT to size_amount...");
+                    await db.query(`ALTER TABLE tp_sl_orders ALTER COLUMN size_amount SET DEFAULT 0`);
+                    console.log("✅ Added DEFAULT 0 to size_amount");
+                }
             }
+        } catch(e) {
+            console.error("⚠️ Warning during size_amount migration:", e.message);
         }
 
         await db.query(`CREATE INDEX IF NOT EXISTS tp_sl_orders_position_idx ON tp_sl_orders(position_id) WHERE status = 'ACTIVE';`);
@@ -965,11 +974,19 @@ app.post("/api/tp-sl/create", async (req, res) => {
         }
 
         // Вычисляем size_amount - абсолютный размер позиции для закрытия
-        const sizeAmount = (posSize * percent) / 100;
+        let sizeAmount = 0;
+        if (posSize && !isNaN(posSize) && posSize > 0 && !isNaN(percent) && percent > 0) {
+            sizeAmount = (Number(posSize) * Number(percent)) / 100;
+            if (isNaN(sizeAmount) || !isFinite(sizeAmount)) {
+                sizeAmount = 0;
+            }
+        }
+        // Гарантированно не передаём NULL - используем 0 как fallback
+        sizeAmount = Math.max(0, Number(sizeAmount) || 0);
 
         const orderRes = await client.query(`
             INSERT INTO tp_sl_orders (position_id, user_id, pair, order_type, trigger_price, size_percent, size_amount, status)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACTIVE')
+            VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 0), 'ACTIVE')
             RETURNING *
         `, [positionId, user.user_id, pos.pair, normalizedType, trigPrice, percent, sizeAmount]);
 
