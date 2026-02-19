@@ -2416,45 +2416,124 @@
     // ==================== WEBSOCKET ====================
     let socket = null;
     let lastCandle = null;
+    let priceUpdateCount = 0;
 
     function connectWS() {
       socket = new WebSocket(WSS_PRICE_URL);
-      socket.onopen = () => { ALL_PAIRS.forEach(pair => { socket.send(JSON.stringify({ type: "subscribe", pair: pair, timeframe: currentTimeframe })); }); };
+      
+      socket.onopen = () => {
+        console.log("✅ Connected to price server");
+        priceUpdateCount = 0;
+        // Subscribe to all pairs
+        ALL_PAIRS.forEach(pair => {
+          socket.send(JSON.stringify({ type: "subscribe", pair: pair, timeframe: currentTimeframe }));
+          console.log("📡 Subscribed to:", pair, "TF:", currentTimeframe);
+        });
+      };
+      
       socket.onmessage = (evt) => {
-        let msg; try { msg = JSON.parse(evt.data); } catch(e) { return; }
+        let msg;
+        try {
+          msg = JSON.parse(evt.data);
+        } catch(e) {
+          console.error("Parse error:", e);
+          return;
+        }
         if (!msg || !msg.type) return;
-        const msgPairNorm = normalizePair(msg.pair); const selPairNorm = normalizePair(selectedPair);
+        
+        const msgPairNorm = normalizePair(msg.pair);
+        const selPairNorm = normalizePair(selectedPair);
 
-        if (msg.type === "price" && msg.pair && msg.price) {
-          marketPrices[msgPairNorm] = Number(msg.price);
-          if (msgPairNorm === selPairNorm) {
-            const currentPrice = Number(msg.price);
-            $('priceDisplay').textContent = formatPrice(currentPrice);
-            updatePositionsDynamic();
-            if (lastCandle) {
-              const now = Math.floor(Date.now() / 1000); const candleTime = now - (now % currentTimeframe);
-              if (candleTime === lastCandle.time) {
-                lastCandle.high = Math.max(lastCandle.high, currentPrice); lastCandle.low = Math.min(lastCandle.low, currentPrice); lastCandle.close = currentPrice;
+        // Price update - handle ALL pairs
+        if (msg.type === "price" && msg.pair && msg.price !== undefined && msg.price !== null) {
+          const price = Number(msg.price);
+          if (!isNaN(price) && price > 0) {
+            marketPrices[msgPairNorm] = price;
+            priceUpdateCount++;
+            
+            // Update display if this is the selected pair
+            if (msgPairNorm === selPairNorm) {
+              $('priceDisplay').textContent = formatPrice(price);
+              
+              // Initialize or update candle
+              if (!lastCandle) {
+                const now = Math.floor(Date.now() / 1000);
+                const candleTime = now - (now % currentTimeframe);
+                lastCandle = { time: candleTime, open: price, high: price, low: price, close: price, volume: 0 };
+                localCandles.push(lastCandle);
                 candleSeries.update(lastCandle);
-                if (localVolumes.length > 0) { const lastVol = localVolumes[localVolumes.length - 1]; if (lastVol.time === candleTime) { lastVol.color = currentPrice >= lastCandle.open ? 'rgba(14, 203, 129, 0.5)' : 'rgba(246, 70, 93, 0.5)'; if (indicatorState.volume && volumeHistogramSeries) volumeHistogramSeries.update(lastVol); } }
               } else {
-                lastCandle = { time: candleTime, open: lastCandle.close, high: currentPrice, low: currentPrice, close: currentPrice, volume: 0 };
-                localCandles.push(lastCandle); candleSeries.update(lastCandle);
-                const newVol = { time: candleTime, value: Math.random() * 100 + 50, color: 'rgba(14, 203, 129, 0.5)' };
-                localVolumes.push(newVol);
-                if (indicatorState.volume && volumeHistogramSeries) volumeHistogramSeries.update(newVol);
-                updateIndicators();
+                const now = Math.floor(Date.now() / 1000);
+                const candleTime = now - (now % currentTimeframe);
+                
+                if (candleTime === lastCandle.time) {
+                  // Update current candle
+                  lastCandle.high = Math.max(lastCandle.high, price);
+                  lastCandle.low = Math.min(lastCandle.low, price);
+                  lastCandle.close = price;
+                  candleSeries.update(lastCandle);
+                  
+                  // Update volume color if exists
+                  if (localVolumes.length > 0) {
+                    const lastVol = localVolumes[localVolumes.length - 1];
+                    if (lastVol.time === candleTime) {
+                      lastVol.color = price >= lastCandle.open ? 'rgba(14, 203, 129, 0.5)' : 'rgba(246, 70, 93, 0.5)';
+                      if (indicatorState.volume && volumeHistogramSeries) {
+                        volumeHistogramSeries.update(lastVol);
+                      }
+                    }
+                  }
+                } else {
+                  // New candle
+                  lastCandle = { time: candleTime, open: lastCandle.close, high: price, low: price, close: price, volume: 0 };
+                  localCandles.push(lastCandle);
+                  candleSeries.update(lastCandle);
+                  
+                  const newVol = { time: candleTime, value: Math.random() * 100 + 50, color: price >= lastCandle.open ? 'rgba(14, 203, 129, 0.5)' : 'rgba(246, 70, 93, 0.5)' };
+                  localVolumes.push(newVol);
+                  if (indicatorState.volume && volumeHistogramSeries) {
+                    volumeHistogramSeries.update(newVol);
+                  }
+                  updateIndicators();
+                }
               }
+              updatePositionsDynamic();
+            } else {
+              // Update positions for non-selected pairs too
+              updatePositionsDynamic();
             }
           }
           return;
         }
 
+        // Only handle orderbook and trades for selected pair
         if (msgPairNorm !== selPairNorm) return;
-        if (msg.type === "orderBook") { renderOrderBook(msg.buy || msg.bids, msg.sell || msg.asks); return; }
+        
+        // Orderbook update
+        if (msg.type === "orderBook") {
+          const buyData = msg.buy || msg.bids || msg.buys || [];
+          const sellData = msg.sell || msg.asks || msg.sells || [];
+          if (Array.isArray(buyData) && Array.isArray(sellData) && (buyData.length > 0 || sellData.length > 0)) {
+            renderOrderBook(buyData, sellData);
+          }
+          return;
+        }
+        
+        // Load more history
         if (msg.type === "moreHistory") {
-          if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) { isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay(); return; }
-          if (!msg.data || msg.data.length === 0) { allOlderHistoryLoaded = true; isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay(); return; }
+          if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) {
+            isLoadingMoreHistory = false;
+            lockedLeftBoundary = null;
+            hideChartLoadingOverlay();
+            return;
+          }
+          if (!msg.data || msg.data.length === 0) {
+            allOlderHistoryLoaded = true;
+            isLoadingMoreHistory = false;
+            lockedLeftBoundary = null;
+            hideChartLoadingOverlay();
+            return;
+          }
           const newCandles = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close, volume: c.volume || 0 }));
           const newVolumes = buildVolumeData(newCandles);
           const currentRange = chart.timeScale().getVisibleRange();
@@ -2463,32 +2542,67 @@
           candleSeries.setData(localCandles);
           if (indicatorState.volume && volumeHistogramSeries) volumeHistogramSeries.setData(localVolumes);
           if (currentRange) chart.timeScale().setVisibleRange(currentRange);
-          updateIndicators(); isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay(); return;
+          updateIndicators();
+          isLoadingMoreHistory = false;
+          lockedLeftBoundary = null;
+          hideChartLoadingOverlay();
+          return;
         }
+        
+        // Initial history load
         if (msg.type === "history") {
           if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) return;
           const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close, volume: c.volume || 0 }));
-          localCandles = data; localVolumes = buildVolumeData(data);
+          localCandles = data;
+          localVolumes = buildVolumeData(data);
           candleSeries.setData(data);
           if (indicatorState.volume && volumeHistogramSeries) volumeHistogramSeries.setData(localVolumes);
-          chart.timeScale().fitContent(); chart.priceScale('right').applyOptions({ autoScale: true });
+          chart.timeScale().fitContent();
+          chart.priceScale('right').applyOptions({ autoScale: true });
+          
           if (data.length) {
-            const last = data[data.length - 1]; const now = Math.floor(Date.now() / 1000); const currentCandleTime = now - (now % currentTimeframe);
-            if (last.time >= currentCandleTime) { lastCandle = last; }
-            else { lastCandle = { time: currentCandleTime, open: last.close, high: last.close, low: last.close, close: last.close, volume: 0 }; candleSeries.update(lastCandle); localCandles.push(lastCandle); }
-            marketPrices[selPairNorm] = lastCandle.close; $('priceDisplay').textContent = formatPrice(lastCandle.close);
+            const last = data[data.length - 1];
+            const now = Math.floor(Date.now() / 1000);
+            const currentCandleTime = now - (now % currentTimeframe);
+            if (last.time >= currentCandleTime) {
+              lastCandle = last;
+            } else {
+              lastCandle = { time: currentCandleTime, open: last.close, high: last.close, low: last.close, close: last.close, volume: 0 };
+              candleSeries.update(lastCandle);
+              localCandles.push(lastCandle);
+            }
+            marketPrices[selPairNorm] = lastCandle.close;
+            $('priceDisplay').textContent = formatPrice(lastCandle.close);
           }
           updateIndicators();
-          if (historyResolve) { historyResolve(); historyResolve = null; }
-          isLoadingHistory = false; return;
+          if (historyResolve) {
+            historyResolve();
+            historyResolve = null;
+          }
+          isLoadingHistory = false;
+          return;
         }
+        
+        // Trades update
         if (msg.type === "trades") {
-          const newTrades = msg.trades || []; localTrades = [...newTrades, ...localTrades];
-          if (localTrades.length > 20) localTrades = localTrades.slice(0, 20);
-          renderTrades(localTrades); return;
+          const newTrades = msg.trades || [];
+          if (Array.isArray(newTrades) && newTrades.length > 0) {
+            localTrades = [...newTrades, ...localTrades];
+            if (localTrades.length > 50) localTrades = localTrades.slice(0, 50);
+            renderTrades(localTrades);
+          }
+          return;
         }
       };
-      socket.onclose = () => setTimeout(connectWS, 2000);
+      
+      socket.onerror = (err) => {
+        console.error("❌ WebSocket error:", err);
+      };
+      
+      socket.onclose = () => {
+        console.log("🔄 WebSocket closed, reconnecting...");
+        setTimeout(connectWS, 2000);
+      };
     }
 
     // ==================== POSITIONS ====================
@@ -2642,12 +2756,12 @@
 
     // ==================== ORDER BOOK & TRADES ====================
     function renderOrderBook(buys, sells) {
-      const b = Array.isArray(buys) ? buys : (buys?.bids || []);
-      const s = Array.isArray(sells) ? sells : (sells?.asks || []);
+      const b = Array.isArray(buys) ? buys : (buys?.bids || buys?.buy || []);
+      const s = Array.isArray(sells) ? sells : (sells?.asks || sells?.sell || []);
       const container = $('orderBook'); const maxLevels = 10;
       const bidMap = new Map(), askMap = new Map();
-      b.forEach(l => { const sz = Number(l.size) || 0; if (sz > 0) bidMap.set(Number(l.price).toFixed(2), sz); });
-      s.forEach(l => { const sz = Number(l.size) || 0; if (sz > 0) askMap.set(Number(l.price).toFixed(2), sz); });
+      b.forEach(l => { const sz = Number(l.size) || 0; const price = Number(l.price) || 0; if (sz > 0 && price > 0) bidMap.set(price.toFixed(2), sz); });
+      s.forEach(l => { const sz = Number(l.size) || 0; const price = Number(l.price) || 0; if (sz > 0 && price > 0) askMap.set(price.toFixed(2), sz); });
       let sortedAsks = Array.from(askMap.entries()).map(([p, sz]) => ({ price: Number(p), size: sz, type: 'ask' })).sort((a, b) => a.price - b.price).slice(0, maxLevels).reverse();
       let sortedBids = Array.from(bidMap.entries()).map(([p, sz]) => ({ price: Number(p), size: sz, type: 'bid' })).sort((a, b) => b.price - a.price).slice(0, maxLevels);
       const renderList = [...sortedAsks, ...sortedBids]; const maxVol = Math.max(...renderList.map(x => x.size), 0.0000001);
@@ -2661,8 +2775,22 @@
     }
 
     function renderTrades(trades) {
-      const el = $('tradeHistory'); if(!Array.isArray(trades)) return; let html = "";
-      trades.forEach(t => { const color = t.side === 'buy' ? 'text-green' : 'text-red'; const timeStr = new Date(t.time).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'}); html += `<div class="ob-row"><span class="${color}">${formatPrice(t.price)}</span><span class="trade-time">${timeStr}</span></div>`; });
+      const el = $('tradeHistory');
+      if(!Array.isArray(trades) || trades.length === 0) {
+        el.innerHTML = '<div style="text-align:center; color:var(--muted); padding:10px; font-size:11px;">No trades</div>';
+        return;
+      }
+      let html = "";
+      trades.slice(0, 30).forEach(t => {
+        if (!t) return;
+        const color = t.side === 'buy' ? 'text-green' : 'text-red';
+        const time = t.time || Date.now();
+        const timeNum = typeof time === 'number' ? time : new Date(time).getTime();
+        const timeStr = new Date(timeNum).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        const price = Number(t.price) || 0;
+        const size = Number(t.size) || 0;
+        html += `<div class="ob-row"><span class="${color}"><strong>${formatPrice(price)}</strong></span><span style="font-size:10px; color:var(--muted);">${size.toFixed(4)}</span><span class="trade-time">${timeStr}</span></div>`;
+      });
       el.innerHTML = html;
     }
 
