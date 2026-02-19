@@ -269,7 +269,6 @@
     .text-green { color: var(--accent-green); }
     .text-red { color: var(--accent-red); }
 
-    /* ==================== POSITION ITEM ==================== */
     .pos-list { display: flex; flex-direction: column; gap: 8px; }
     .pos-item { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; position: relative; overflow: hidden; }
     .pos-item.long { border-left: 4px solid var(--accent-green); }
@@ -298,7 +297,6 @@
     }
     .close-btn:active { background: var(--accent-red); color: #fff; }
 
-    /* ==================== TP/SL BUTTONS IN POSITION ==================== */
     .pos-tpsl-actions {
       display: flex; gap: 8px; margin-top: 12px; padding-top: 12px;
       border-top: 1px solid rgba(255,255,255,0.05);
@@ -318,7 +316,6 @@
     .btn-tpsl-icon { font-size: 14px; }
     .btn-tpsl .tpsl-count { font-size: 10px; opacity: 0.7; font-weight: 400; }
 
-    /* ==================== TP/SL ORDERS LIST IN POSITION ==================== */
     .pos-tpsl-orders {
       margin-top: 10px; padding-top: 10px;
       border-top: 1px solid rgba(255,255,255,0.05);
@@ -360,7 +357,6 @@
     .btn-delete-tpsl:hover { background: var(--accent-red-transparent); border-color: var(--accent-red); }
     .btn-delete-tpsl:active { transform: scale(0.9); }
 
-    /* ==================== TP/SL MODAL ==================== */
     .tpsl-modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.85); z-index: 1000;
@@ -393,7 +389,6 @@
 
     .tpsl-modal-content { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
 
-    /* Position Info in Modal */
     .tpsl-position-info {
       display: flex; justify-content: space-between; align-items: center;
       padding: 12px 16px; background: rgba(255,255,255,0.03);
@@ -413,7 +408,6 @@
     .tpsl-position-mark-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
     .tpsl-position-mark-val { font-size: 12px; font-weight: 600; font-family: 'Roboto Mono', monospace; color: var(--gold); }
 
-    /* Tabs */
     .tpsl-tabs {
       display: flex; gap: 4px; background: rgba(255,255,255,0.03);
       padding: 4px; border-radius: 10px; border: 1px solid var(--border);
@@ -426,11 +420,9 @@
     .tpsl-tab:hover { color: var(--white); }
     .tpsl-tab.active { background: var(--panel-light); color: var(--white); }
 
-    /* Tab Content */
     .tpsl-tab-content { display: none; flex-direction: column; gap: 16px; }
     .tpsl-tab-content.active { display: flex; }
 
-    /* Input Group */
     .tpsl-input-group { display: flex; flex-direction: column; gap: 8px; }
     .tpsl-input-label {
       font-size: 12px; font-weight: 600; color: var(--muted);
@@ -456,7 +448,6 @@
       font-size: 11px; color: var(--accent-red); min-height: 16px;
     }
 
-    /* Size Slider */
     .tpsl-size-section { display: flex; flex-direction: column; gap: 12px; }
     .tpsl-size-header {
       display: flex; justify-content: space-between; align-items: center;
@@ -483,7 +474,6 @@
     }
     .tpsl-available-info span:last-child { color: var(--white); font-family: 'Roboto Mono', monospace; }
 
-    /* PnL Preview */
     .tpsl-pnl-preview {
       display: flex; flex-direction: column; gap: 8px; padding: 16px;
       background: rgba(255,255,255,0.02); border: 1px solid var(--border);
@@ -499,7 +489,6 @@
     .tpsl-pnl-value.negative { color: var(--accent-red); }
     .tpsl-pnl-divider { height: 1px; background: var(--border); margin: 4px 0; }
 
-    /* Existing Orders Warning */
     .tpsl-existing-orders {
       padding: 12px 16px; background: rgba(240, 185, 11, 0.1);
       border: 1px solid rgba(240, 185, 11, 0.3); border-radius: 10px;
@@ -518,14 +507,12 @@
     .tpsl-existing-item-type.sl { color: var(--accent-red); }
     .tpsl-existing-item-info { color: var(--muted); font-family: 'Roboto Mono', monospace; font-size: 11px; }
 
-    /* Limit Notice */
     .tpsl-limit-notice {
       text-align: center; font-size: 11px; color: var(--accent-red);
       padding: 12px; background: var(--accent-red-transparent);
       border-radius: 8px; font-weight: 600;
     }
 
-    /* Submit Button */
     .tpsl-submit-btn {
       width: 100%; padding: 16px; border-radius: 10px; border: none;
       font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s;
@@ -536,7 +523,6 @@
     .tpsl-submit-btn.tp-confirm { background: var(--accent-green); color: #052e1f; }
     .tpsl-submit-btn.sl-confirm { background: var(--accent-red); color: #fff; }
 
-    /* ==================== TOAST ==================== */
     .toast-notification {
       position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
       padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 600;
@@ -545,7 +531,6 @@
     @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
     @keyframes toastOut { from { opacity: 1; transform: translateX(-50%) translateY(0); } to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
 
-    /* ==================== PROFILE ==================== */
     .profile-container { flex: 1; display: flex; flex-direction: column; padding: 16px; overflow-y: auto; gap: 20px; background: var(--bg); }
     .pro-header, .asset-card, .analysis-block, .rewards-banner, .hist-header-row { flex-shrink: 0; }
     .pro-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -1082,7 +1067,7 @@
   </div>
 </div>
 
-<!-- TP/SL Modal (Enhanced) -->
+<!-- TP/SL Modal -->
 <div class="tpsl-modal-overlay" id="tpslModalOverlay">
   <div class="tpsl-modal" id="tpslModal">
     <div class="tpsl-modal-header">
@@ -1093,7 +1078,6 @@
       <button class="tpsl-modal-close" id="tpslModalClose">×</button>
     </div>
     <div class="tpsl-modal-content">
-      <!-- Position Info -->
       <div class="tpsl-position-info">
         <div class="tpsl-position-left">
           <div class="tpsl-position-type long" id="tpslPositionType">LONG</div>
@@ -1110,13 +1094,11 @@
         </div>
       </div>
 
-      <!-- Tabs -->
       <div class="tpsl-tabs">
         <button class="tpsl-tab active" id="tpslTabFull" data-tab="full">Position TP/SL</button>
         <button class="tpsl-tab" id="tpslTabPartial" data-tab="partial">Partial TP/SL</button>
       </div>
 
-      <!-- Full Position Tab -->
       <div class="tpsl-tab-content active" id="tabFull">
         <div class="tpsl-input-group">
           <div class="tpsl-input-label">
@@ -1146,7 +1128,6 @@
           </div>
         </div>
 
-        <!-- Existing Orders -->
         <div class="tpsl-existing-orders" id="tpslExistingOrders" style="display: none;">
           <div class="tpsl-existing-title">
             <span>⚠️</span>
@@ -1164,7 +1145,6 @@
         </button>
       </div>
 
-      <!-- Partial Position Tab -->
       <div class="tpsl-tab-content" id="tabPartial">
         <div class="tpsl-input-group">
           <div class="tpsl-input-label">
@@ -1214,7 +1194,6 @@
           </div>
         </div>
 
-        <!-- Existing Orders Partial -->
         <div class="tpsl-existing-orders" id="tpslExistingOrdersPartial" style="display: none;">
           <div class="tpsl-existing-title">
             <span>⚠️</span>
@@ -1959,7 +1938,7 @@
       if (currentMarginPct > 0) updateMarginSliderUI(currentMarginPct, false, true);
     }
 
-    // ==================== TP/SL MODULE (ENHANCED) ====================
+    // ==================== TP/SL MODULE ====================
 
     function getTpSlOrdersForPosition(positionId) {
       return (window._tpSlOrders || []).filter(o => String(o.position_id) === String(positionId) && o.status === 'ACTIVE');
@@ -2018,12 +1997,10 @@
       const pair = normalizePair(pos.pair || 'BTC-USD');
       const currentPrice = marketPrices[pair];
 
-      // Title
       $('tpslModalTitle').textContent = isTP ? 'Take Profit' : 'Stop Loss';
       $('tpslModalTitle').style.color = isTP ? 'var(--accent-green)' : 'var(--accent-red)';
       $('tpslModalSubtitle').textContent = isTP ? 'Lock in profits at target price' : 'Limit losses at trigger price';
 
-      // Position info
       const typeEl = $('tpslPositionType');
       typeEl.textContent = posType;
       typeEl.className = `tpsl-position-type ${posType.toLowerCase()}`;
@@ -2032,12 +2009,10 @@
       $('tpslEntryPrice').textContent = formatPrice(pos.entry_price);
       $('tpslMarkPrice').textContent = currentPrice ? formatPrice(currentPrice) : '--.--';
 
-      // Hint text
       const hint = getHintText(posType, orderType);
       $('tpslPriceHint').textContent = hint;
       $('tpslPriceHintPartial').textContent = hint;
 
-      // Reset full tab
       $('tpslPriceInput').value = '';
       $('tpslPriceInput').classList.remove('error');
       $('tpslErrorText').textContent = '';
@@ -2047,7 +2022,6 @@
       $('tpslExpectedRoe').className = 'tpsl-pnl-value';
       $('tpslCloseSize').textContent = '100%';
 
-      // Reset partial tab
       $('tpslPriceInputPartial').value = '';
       $('tpslPriceInputPartial').classList.remove('error');
       $('tpslErrorTextPartial').textContent = '';
@@ -2057,14 +2031,12 @@
       $('tpslExpectedRoePartial').className = 'tpsl-pnl-value';
       $('tpslCloseSizePartial').textContent = '-- VP';
 
-      // Tabs reset
       $('tpslTabFull').classList.add('active');
       $('tpslTabPartial').classList.remove('active');
       $('tabFull').classList.add('active');
       $('tabPartial').classList.remove('active');
       tpslModalState.tab = 'full';
 
-      // Size slider setup
       const counts = getTpSlCounts(positionId);
       const usedPct = isTP ? counts.tpUsed : counts.slUsed;
       const availablePct = Math.max(0, 100 - usedPct);
@@ -2076,12 +2048,10 @@
       $('tpslUsedPercent').textContent = Math.floor(usedPct);
       updateSliderTrack(slider, ((Number(slider.value) - 10) / (Number(slider.max) - 10)) * 100);
 
-      // Size marks
       document.querySelectorAll('.tpsl-size-mark').forEach(m => {
         m.classList.toggle('active', Number(m.dataset.size) === Number(slider.value));
       });
 
-      // Submit buttons style
       const fullBtn = $('tpslSubmitFull');
       const partialBtn = $('tpslSubmitPartial');
       fullBtn.className = `tpsl-submit-btn ${isTP ? 'tp-confirm' : 'sl-confirm'}`;
@@ -2091,7 +2061,6 @@
       partialBtn.innerHTML = `<span>Confirm Partial ${isTP ? 'TP' : 'SL'}</span>`;
       partialBtn.disabled = true;
 
-      // Check limit
       const maxReached = isTP ? counts.tp >= MAX_TP_PER_POSITION : counts.sl >= MAX_SL_PER_POSITION;
       $('tpslLimitNotice').style.display = maxReached ? 'block' : 'none';
       $('tpslLimitNoticePartial').style.display = maxReached ? 'block' : 'none';
@@ -2101,7 +2070,6 @@
         $('tpslLimitNoticePartial').textContent = limitText;
       }
 
-      // Render existing orders in modal
       renderExistingOrdersInModal(positionId, isTP);
 
       $('tpslModalOverlay').classList.add('active');
@@ -2113,10 +2081,8 @@
       const orders = getTpSlOrdersForPosition(positionId).filter(o => o.order_type === (isTP ? 'TP' : 'SL'));
       const pos = tpslModalState.position;
 
-      // Full tab existing
       const fullContainer = $('tpslExistingOrders');
       const fullList = $('tpslExistingList');
-      // Partial tab existing
       const partialContainer = $('tpslExistingOrdersPartial');
       const partialList = $('tpslExistingListPartial');
 
@@ -2148,10 +2114,6 @@
       tpslModalState = { positionId: null, orderType: null, tab: 'full', position: null };
     }
 
-    /**
-     * CORE VALIDATION: Only checks against CURRENT MARKET PRICE, not entry price.
-     * This fixes the bug where TP/SL could not be set after the price moved past entry.
-     */
     function validateTpSlPriceForTab(tab) {
       const pos = tpslModalState.position;
       if (!pos) return false;
@@ -2182,7 +2144,6 @@
       const currentPrice = marketPrices[pair];
       const isTP = tpslModalState.orderType === 'TP';
 
-      // ONLY validate against current market price
       if (currentPrice) {
         if (isTP) {
           if (posType === 'LONG' && triggerPrice <= currentPrice) {
@@ -2209,7 +2170,6 @@
         }
       }
 
-      // Check count limits
       const counts = getTpSlCounts(tpslModalState.positionId);
       const maxCount = isTP ? MAX_TP_PER_POSITION : MAX_SL_PER_POSITION;
       const currentCount = isTP ? counts.tp : counts.sl;
@@ -2219,7 +2179,6 @@
         return false;
       }
 
-      // Calculate PnL
       const sizePercent = isPartial ? Number($('tpslSizeSlider').value) : 100;
       const { pnl, roe, closeSize } = calculateTpSlPnl(pos, triggerPrice, sizePercent);
 
@@ -2318,7 +2277,6 @@
       $('tpslModalClose').addEventListener('click', closeTpSlModal);
       $('tpslModalOverlay').addEventListener('click', (e) => { if (e.target === $('tpslModalOverlay')) closeTpSlModal(); });
 
-      // Tab switching
       $('tpslTabFull').addEventListener('click', () => {
         tpslModalState.tab = 'full';
         $('tpslTabFull').classList.add('active');
@@ -2335,7 +2293,6 @@
         $('tabFull').classList.remove('active');
       });
 
-      // Full tab inputs
       $('tpslPriceInput').addEventListener('input', () => validateTpSlPriceForTab('full'));
       $('tpslMarketBtn').addEventListener('click', () => {
         if (!tpslModalState.position) return;
@@ -2345,7 +2302,6 @@
       });
       $('tpslSubmitFull').addEventListener('click', () => confirmTpSlOrder('full'));
 
-      // Partial tab inputs
       $('tpslPriceInputPartial').addEventListener('input', () => validateTpSlPriceForTab('partial'));
       $('tpslMarketBtnPartial').addEventListener('click', () => {
         if (!tpslModalState.position) return;
@@ -2355,7 +2311,6 @@
       });
       $('tpslSubmitPartial').addEventListener('click', () => confirmTpSlOrder('partial'));
 
-      // Size slider
       const sizeSlider = $('tpslSizeSlider');
       sizeSlider.addEventListener('input', () => {
         $('tpslSizeValue').textContent = sizeSlider.value + '%';
@@ -2366,7 +2321,6 @@
         validateTpSlPriceForTab('partial');
       });
 
-      // Size marks
       document.querySelectorAll('.tpsl-size-mark').forEach(mark => {
         mark.addEventListener('click', () => {
           const val = Number(mark.dataset.size);
@@ -2382,6 +2336,21 @@
           }
         });
       });
+    }
+
+    // ==================== LOAD TP/SL ORDERS ====================
+    async function loadTpSlOrders() {
+      if (!currentUserId) return;
+      try {
+        const res = await fetch(API_BASE + "/api/tp-sl/list?userId=" + currentUserId);
+        const data = await res.json();
+        if (data.ok && data.orders) {
+          window._tpSlOrders = data.orders;
+          renderPositions(true);
+        }
+      } catch (e) {
+        console.error("Failed to load TP/SL orders:", e);
+      }
     }
 
     // ==================== SESSION ====================
@@ -2402,7 +2371,15 @@
           profile.dailyAdViews = Number(data.user.daily_ad_views || 0);
           profile.dailyAdLimit = Number(data.user.daily_ad_limit || DAILY_AD_LIMIT);
           window._positions = data.positions || [];
-          window._tpSlOrders = data.tpSlOrders || [];
+          
+          // Load TP/SL orders from init response or fetch separately
+          if (data.tpSlOrders && Array.isArray(data.tpSlOrders)) {
+            window._tpSlOrders = data.tpSlOrders;
+          } else {
+            // Fetch separately if not included in init
+            await loadTpSlOrders();
+          }
+          
           if(data.user.photo_url) {
             profile.photo = data.user.photo_url;
             $('avatarImg').src = data.user.photo_url;
@@ -2526,7 +2503,6 @@
           const counts = getTpSlCounts(id);
           const orders = getTpSlOrdersForPosition(id);
 
-          // Build TP/SL orders section
           let ordersHtml = '';
           if (orders.length > 0) {
             ordersHtml = `<div class="pos-tpsl-orders" id="tpsl-section-${id}">
@@ -2570,7 +2546,6 @@
 
           list.appendChild(div);
 
-          // Event listeners
           div.querySelector('.close-btn').onclick = () => closePosition(id, pair);
 
           div.querySelectorAll('.btn-tpsl').forEach(btn => {
@@ -2628,7 +2603,6 @@
           liqEl.textContent = formatPrice(type === "LONG" ? entry - liqDist : entry + liqDist);
         }
 
-        // Update TP/SL PnL dynamically
         const orders = getTpSlOrdersForPosition(id);
         orders.forEach(order => {
           const { pnl: oPnl, roe: oRoe } = calculateTpSlPnl(pos, order.trigger_price, order.size_percent);
