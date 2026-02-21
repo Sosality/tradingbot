@@ -746,7 +746,6 @@
     }
     #app-loader.hidden { opacity: 0; pointer-events: none; }
     .loader-logo { width: 80px; height: auto; margin-bottom: 20px; animation: pulse 2s infinite ease-in-out; }
-    @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
     .loader-bar-bg { width: 140px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
     .loader-bar-fill { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.2s; }
 
@@ -1213,6 +1212,7 @@
     </div>
   </div>
 </div>
+
 <script>
   (async function(){
     const $ = (id) => document.getElementById(id);
@@ -1455,7 +1455,8 @@
         if (candleDate !== currentDay) { cumulativeTPV = 0; cumulativeVolume = 0; currentDay = candleDate; }
         const typicalPrice = (candle.high + candle.low + candle.close) / 3;
         const volume = (localVolumes[i] && localVolumes[i].value) || 1;
-        cumulativeTPV += typicalPrice * volume; cumulativeVolume += volume;
+        cumulativeTPV += typicalPrice * volume;
+        cumulativeVolume += volume;
         vwapData.push({ time: candle.time, value: cumulativeVolume > 0 ? cumulativeTPV / cumulativeVolume : typicalPrice });
       }
       return vwapData;
@@ -1596,7 +1597,8 @@
       let totalWins = 0, totalLosses = 0, winCount = 0, lossCount = 0, maxDrawdown = 0, peak = 0, runningPnL = 0;
       remoteHistory.forEach(trade => {
         const pnl = Number(trade.pnl); runningPnL += pnl;
-        if (pnl > 0) { totalWins += pnl; winCount++; } else { totalLosses += Math.abs(pnl); lossCount++; }
+        if (pnl > 0) { totalWins += pnl; winCount++; }
+        else { totalLosses += Math.abs(pnl); lossCount++; }
         if (runningPnL > peak) peak = runningPnL;
         const dd = peak - runningPnL; if (dd > maxDrawdown) maxDrawdown = dd;
       });
@@ -1669,7 +1671,12 @@
       $('calendarPrev').addEventListener('click', () => changeCalendarMonth(-1));
       $('calendarNext').addEventListener('click', () => changeCalendarMonth(1));
       document.querySelectorAll('#equityPeriodSelector .period-btn').forEach(btn => {
-        btn.addEventListener('click', () => { document.querySelectorAll('#equityPeriodSelector .period-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); currentEquityPeriod = btn.dataset.period; renderEquityChart(currentEquityPeriod); });
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#equityPeriodSelector .period-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentEquityPeriod = btn.dataset.period;
+          renderEquityChart(currentEquityPeriod);
+        });
       });
     }
 
@@ -1696,12 +1703,17 @@
     if(btnEye) { btnEye.onclick = (e) => { e.stopPropagation(); isBalanceHidden = !isBalanceHidden; btnEye.src = isBalanceHidden ? ICON_EYE_CLOSED : ICON_EYE_OPEN; updateBalanceUI(); }; }
 
     document.querySelectorAll('.h-filter').forEach(btn => {
-      btn.addEventListener('click', () => { document.querySelectorAll('.h-filter').forEach(b => b.classList.remove('active')); btn.classList.add('active'); historyFilterMode = btn.dataset.filter; renderHistoryList(); });
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.h-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        historyFilterMode = btn.dataset.filter;
+        renderHistoryList();
+      });
     });
 
     // ==================== UTILS ====================
     function notify(msg) {
-      try { if(tg && typeof tg.showPopup === 'function') { tg.showPopup({ title: 'Info', message: msg, buttons: [{type:'ok'}] }); return; } } catch(e) {}
+      try { if(tg && typeof tg.showPopup === 'function') { tg.showPopup({ title: 'Info', message: msg, buttons: [{type:'ok'}] }); return; } } catch(e){}
       alert(msg);
     }
 
@@ -1743,7 +1755,8 @@
         const res = await fetch(API_BASE + "/api/user/referrals?userId=" + encodeURIComponent(currentUserId));
         const data = await res.json();
         if(!data.ok) throw new Error(data.error || 'REFERRALS_ERROR');
-        linkInput.value = data.referralLink || ""; badge.textContent = "Invited: " + Number(data.invitedCount || 0);
+        linkInput.value = data.referralLink || "";
+        badge.textContent = "Invited: " + Number(data.invitedCount || 0);
         const invited = Array.isArray(data.invited) ? data.invited : [];
         listEl.innerHTML = "";
         if(invited.length === 0) { listEl.innerHTML = "<div class='ref-status'>No referrals yet</div>"; return; }
@@ -1763,8 +1776,14 @@
       const list = $('historyList'); list.innerHTML = "";
       if(remoteHistory.length === 0) { list.innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No trading history yet</div>'; return; }
       const now = Date.now();
-      const filtered = remoteHistory.filter(h => { if(historyFilterMode === 'all') return true; const t = new Date(h.closed_at).getTime(); if(historyFilterMode === 'day') return (now - t) < 86400000; if(historyFilterMode === 'week') return (now - t) < 604800000; return true; });
-      if(filtered.length === 0) { list.innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No trades in this period</div>'; return; }
+      const filtered = remoteHistory.filter(h => {
+        if (historyFilterMode === 'all') return true;
+        const t = new Date(h.closed_at).getTime();
+        if (historyFilterMode === 'day') return (now - t) < 86400000;
+        if (historyFilterMode === 'week') return (now - t) < 604800000;
+        return true;
+      });
+      if (filtered.length === 0) { list.innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px; font-size:13px;">No trades in this period</div>'; return; }
       filtered.slice(0, 50).forEach(h => {
         const pnlVal = Number(h.pnl), sizeVal = Number(h.size), commVal = Number(h.commission || 0);
         const entryVal = Number(h.entry_price), exitVal = Number(h.exit_price);
@@ -1870,7 +1889,16 @@
 
     chart.timeScale().subscribeVisibleTimeRangeChange(timeRange => {
       if (!timeRange) return;
-      if (isLoadingMoreHistory && lockedLeftBoundary !== null) { if (timeRange.from < lockedLeftBoundary) { const cr = chart.timeScale().getVisibleRange(); if (cr) { const dur = cr.to - cr.from; chart.timeScale().setVisibleRange({ from: lockedLeftBoundary, to: lockedLeftBoundary + dur }); } return; } }
+      if (isLoadingMoreHistory && lockedLeftBoundary !== null) {
+        if (timeRange.from < lockedLeftBoundary) {
+          const cr = chart.timeScale().getVisibleRange();
+          if (cr) {
+            const dur = cr.to - cr.from;
+            chart.timeScale().setVisibleRange({ from: lockedLeftBoundary, to: lockedLeftBoundary + dur });
+          }
+          return;
+        }
+      }
       if (allOlderHistoryLoaded || isLoadingMoreHistory) return;
       if (!localCandles || localCandles.length === 0) return;
       const oldest = localCandles[0].time; const visRange = timeRange.to - timeRange.from;
@@ -1918,7 +1946,10 @@
     let lastSnappedValue = null;
     marginSlider.addEventListener('input', (e) => {
       const raw = parseInt(e.target.value); const snapped = snapToMagneticPoint(raw);
-      if (snapped !== raw && snapped !== lastSnappedValue) { if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light'); lastSnappedValue = snapped; } else if (snapped === raw) { lastSnappedValue = null; }
+      if (snapped !== raw && snapped !== lastSnappedValue) {
+        if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        lastSnappedValue = snapped;
+      } else if (snapped === raw) { lastSnappedValue = null; }
       updateMarginSliderUI(snapped, false, true);
     });
     marginMarks.forEach(mark => { mark.addEventListener('click', () => { updateMarginSliderUI(mark.dataset.pct, false, true); if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light'); }); });
@@ -1926,9 +1957,6 @@
     updateMarginSliderUI(0);
 
     // ==================== BALANCE ====================
-    let historyResolve = null;
-    const historyPromise = new Promise(r => historyResolve = r);
-
     function updateBalanceUI() {
       const val = profile.balance.toFixed(2); const usdVal = formatUSD(profile.balance);
       $('headerBalance').textContent = isBalanceHidden ? "******" : (val + " VP");
@@ -2215,7 +2243,7 @@
 
       try {
         const res = await fetch(API_BASE + "/api/tp-sl/create", {
-          method: "POST", headers: { "Content-Type": "application/json" },
+          method: "POST", headers: {"Content-Type":"application/json"},
           body: JSON.stringify({
             userId: currentUserId,
             positionId: tpslModalState.positionId,
@@ -2254,7 +2282,7 @@
     async function deleteTpSlOrder(orderId) {
       try {
         const res = await fetch(API_BASE + "/api/tp-sl/delete", {
-          method: "POST", headers: { "Content-Type": "application/json" },
+          method: "POST", headers: {"Content-Type":"application/json"},
           body: JSON.stringify({ userId: currentUserId, orderId: orderId })
         });
         const data = await res.json();
@@ -2401,6 +2429,27 @@
         let msg; try { msg = JSON.parse(evt.data); } catch(e) { return; }
         if (!msg || !msg.type) return;
         const msgPairNorm = normalizePair(msg.pair); const selPairNorm = normalizePair(selectedPair);
+
+        // ----------- NEW: POSITION UPDATE -----------
+        if (msg.type === "positionUpdate") {
+          // msg contains: positions, tpSlOrders, balance, eventType, details
+          window._positions = msg.positions || [];
+          window._tpSlOrders = msg.tpSlOrders || [];
+          profile.balance = Number(msg.balance || profile.balance);
+          updateBalanceUI();
+          renderPositions(true);
+          // optional toast for user feedback
+          if (msg.eventType) {
+            const toast = document.createElement('div');
+            toast.className = 'toast-notification';
+            toast.textContent = `⚡ ${msg.eventType.replace('_', ' ')}`;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.animation = 'toastOut 0.3s forwards'; }, 2000);
+            setTimeout(() => toast.remove(), 2500);
+          }
+          return;
+        }
+        // -------------------------------------------
 
         if (msg.type === "price" && msg.pair && msg.price) {
           marketPrices[msgPairNorm] = Number(msg.price);
@@ -2624,7 +2673,8 @@
       s.forEach(l => { const sz = Number(l.size) || 0; if (sz > 0) askMap.set(Number(l.price).toFixed(2), sz); });
       let sortedAsks = Array.from(askMap.entries()).map(([p, sz]) => ({ price: Number(p), size: sz, type: 'ask' })).sort((a, b) => a.price - b.price).slice(0, maxLevels).reverse();
       let sortedBids = Array.from(bidMap.entries()).map(([p, sz]) => ({ price: Number(p), size: sz, type: 'bid' })).sort((a, b) => b.price - a.price).slice(0, maxLevels);
-      const renderList = [...sortedAsks, ...sortedBids]; const maxVol = Math.max(...renderList.map(x => x.size), 0.0000001);
+      const renderList = [...sortedAsks, ...sortedBids];
+      const maxVol = Math.max(...renderList.map(x => x.size), 0.0000001);
       container.innerHTML = "";
       renderList.forEach(level => {
         const isAsk = level.type === 'ask'; const row = document.createElement('div'); row.className = 'ob-row';
@@ -2702,7 +2752,7 @@
     setProgress(60, "STREAM...");
     connectWS();
 
-    await Promise.race([historyPromise, new Promise(r => setTimeout(r, 4000))]);
+    await Promise.race([new Promise(r => historyResolve = r), new Promise(r => setTimeout(r, 4000))]);
     setProgress(100, "READY");
 
     setTimeout(() => { checkResponsiveOverflows(); }, 100);
