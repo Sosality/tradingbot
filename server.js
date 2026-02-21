@@ -42,7 +42,7 @@ cron.schedule("*/10 * * * *", async () => {
     }
 });
 
-const CONNECTION_STRING = "postgresql://neondb_owner:npg_igxGcyUQmX52@ep-ancient-sky-a9db2z9z-pooler.gwc.azure.neon.tech/neondb?sslmode=require&channel_binding=require";
+const DATABASE_URL = process.env.DATABASE_URL;
 
 console.log("=== ENV CHECK ===");
 console.log("BOT_TOKEN set:", !!process.env.BOT_TOKEN);
