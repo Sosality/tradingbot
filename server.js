@@ -60,7 +60,9 @@ if (!process.env.ADSGRAM_SECRET) {
 
 const db = new Pool({
     connectionString: DATABASE_URL,
-    ssl: true
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
 const BOT_USERNAME = process.env.BOT_USERNAME || "";
