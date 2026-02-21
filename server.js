@@ -59,7 +59,7 @@ if (!process.env.ADSGRAM_SECRET) {
 }
 
 const db = new Pool({
-    connectionString: CONNECTION_STRING,
+    connectionString: DATABASE_URL,
     ssl: true
 });
 
