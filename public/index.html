@@ -527,7 +527,11 @@
       position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
       padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 600;
       z-index: 9999; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      background: var(--panel); border: 1px solid var(--border); color: var(--white);
+      animation: toastIn 0.3s ease forwards;
     }
+    .toast-notification.success { border-color: var(--accent-green); background: rgba(14, 203, 129, 0.15); }
+    .toast-notification.error { border-color: var(--accent-red); background: rgba(246, 70, 93, 0.15); }
     @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
     @keyframes toastOut { from { opacity: 1; transform: translateX(-50%) translateY(0); } to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
 
@@ -1212,7 +1216,6 @@
     </div>
   </div>
 </div>
-
 <script>
   (async function(){
     const $ = (id) => document.getElementById(id);
@@ -1272,7 +1275,6 @@
     let equityChartInstance = null;
     let equityLineSeries = null;
 
-    // ==================== TP/SL STATE ====================
     window._tpSlOrders = [];
     let tpslModalState = {
       positionId: null,
@@ -1280,6 +1282,8 @@
       tab: 'full',
       position: null
     };
+
+    let historyResolve = null;
 
     const tg = window.Telegram?.WebApp;
     if(tg) {
@@ -1290,7 +1294,6 @@
       tg.enableClosingConfirmation();
     }
 
-    // ==================== RESPONSIVE OVERFLOW CHECK ====================
     const TF_OVERLAP_GAP = 12;
 
     function checkResponsiveOverflows() {
@@ -1334,7 +1337,6 @@
       });
     }
 
-    // ==================== ADSGRAM ====================
     function initAdsgram() {
       if (window.Adsgram && ADSGRAM_BLOCK_ID !== "YOUR_BLOCK_ID_HERE") {
         try { AdController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID }); } catch(e) { console.error("Adsgram init error:", e); }
@@ -1355,8 +1357,8 @@
 
     async function showRewardedAd() {
       const btn = $('btnWatchAd');
-      if (!AdController) { notify("Ad system not available"); return; }
-      if (!canWatchAd()) { notify(`Daily limit reached (${profile.dailyAdLimit} ads). Come back tomorrow!`); return; }
+      if (!AdController) { showToast("Ad system not available", "error"); return; }
+      if (!canWatchAd()) { showToast(`Daily limit reached (${profile.dailyAdLimit} ads). Come back tomorrow!`, "error"); return; }
       btn.classList.add('loading'); btn.textContent = 'Loading...';
       try {
         await AdController.show();
@@ -1364,10 +1366,10 @@
         await loadAdStats();
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         const remaining = profile.dailyAdLimit - profile.dailyAdViews;
-        notify(remaining > 0 ? `Reward received: +1 VP! (${remaining} ads left today)` : "Reward received: +1 VP! Daily limit reached.");
+        showToast(remaining > 0 ? `Reward received: +1 VP! (${remaining} ads left today)` : "Reward received: +1 VP! Daily limit reached.", "success");
       } catch(e) {
         console.error("Ad error:", e);
-        if (e.error) notify("Ad unavailable. Try again later.");
+        if (e.error) showToast("Ad unavailable. Try again later.", "error");
       } finally { btn.classList.remove('loading'); updateWatchAdButton(); }
     }
 
@@ -1402,7 +1404,6 @@
       updateWatchAdButton();
     }
 
-    // ==================== FORMATTERS ====================
     function formatPrice(val) {
       const num = Number(val);
       if(isNaN(num)) return "--.--";
@@ -1424,7 +1425,21 @@
       return vol.toFixed(2);
     }
 
-    // ==================== INDICATOR CALCULATIONS ====================
+    function showToast(message, type = 'info') {
+      const existing = document.querySelector('.toast-notification');
+      if (existing) existing.remove();
+      
+      const toast = document.createElement('div');
+      toast.className = `toast-notification ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.animation = 'toastOut 0.3s forwards';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
     function calculateEMA(data, period = 20) {
       if (!data || data.length < period) return [];
       const k = 2 / (period + 1); const emaData = [];
@@ -1470,7 +1485,6 @@
       }));
     }
 
-    // ==================== INDICATOR TOGGLE ====================
     function toggleIndicator(indicator) {
       indicatorState[indicator] = !indicatorState[indicator];
       const chipId = indicator === 'ema' ? 'chipEMA' : indicator === 'sma' ? 'chipSMA' : indicator === 'vwap' ? 'chipVWAP' : 'chipVolume';
@@ -1504,7 +1518,6 @@
       }
     }
 
-    // ==================== DRAWING TOOLS ====================
     function initDrawingTools() {
       const toggle = $('drawingToolsToggle'); const menu = $('drawingToolsMenu'); const panel = $('drawingToolsPanel');
       const toolBtns = panel.querySelectorAll('.drawing-tool-btn');
@@ -1551,7 +1564,6 @@
       if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
     }
 
-    // ==================== OHLC TOOLTIP ====================
     function updateOHLCTooltip(param) {
       const tooltip = $('ohlcTooltip');
       if (!param || !param.time || !param.seriesData) { tooltip.classList.remove('visible'); return; }
@@ -1570,7 +1582,6 @@
       requestAnimationFrame(() => { checkOhlcOverflow(); });
     }
 
-    // ==================== DOUBLE TAP RESET ====================
     function setupDoubleTapHandler() {
       const chartEl = $('chart');
       chartEl.addEventListener('touchend', (e) => {
@@ -1581,7 +1592,6 @@
       chartEl.addEventListener('dblclick', (e) => { e.preventDefault(); chart.timeScale().fitContent(); chart.priceScale('right').applyOptions({ autoScale: true }); });
     }
 
-    // ==================== PNL MODAL ====================
     let currentEquityPeriod = '7d';
 
     function openPnlModal() {
@@ -1682,7 +1692,6 @@
 
     function initIndicatorChips() { document.querySelectorAll('.indicator-chip').forEach(chip => { chip.addEventListener('click', () => toggleIndicator(chip.dataset.indicator)); }); }
 
-    // ==================== VIEW MANAGEMENT ====================
     function showView(viewId) {
       document.querySelectorAll('.view-section').forEach(el => { el.classList.remove('active'); el.classList.add('hidden'); });
       const target = $(viewId); target.classList.remove('hidden'); target.classList.add('active');
@@ -1711,12 +1720,6 @@
       });
     });
 
-    // ==================== UTILS ====================
-    function notify(msg) {
-      try { if(tg && typeof tg.showPopup === 'function') { tg.showPopup({ title: 'Info', message: msg, buttons: [{type:'ok'}] }); return; } } catch(e){}
-      alert(msg);
-    }
-
     async function copyTextToClipboard(text) {
       const t = String(text || ""); if(!t) return false;
       try { if(tg?.Clipboard?.writeText) { await tg.Clipboard.writeText(t); return true; } } catch(e) {}
@@ -1725,11 +1728,10 @@
     }
 
     const btnCopyRefLink = $('btnCopyRefLink');
-    if(btnCopyRefLink) { btnCopyRefLink.onclick = async () => { const ok = await copyTextToClipboard($('refLinkInput')?.value); notify(ok ? 'Referral link copied' : 'Copy failed'); }; }
+    if(btnCopyRefLink) { btnCopyRefLink.onclick = async () => { const ok = await copyTextToClipboard($('refLinkInput')?.value); showToast(ok ? 'Referral link copied' : 'Copy failed', ok ? 'success' : 'error'); }; }
 
     function escapeHtml(str) { return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
 
-    // ==================== PROFILE ====================
     async function renderProfile() {
       $('profileName').textContent = profile.name || "Trader";
       $('profileId').textContent = "ID: " + profile.id;
@@ -1795,7 +1797,6 @@
       });
     }
 
-    // ==================== PAIR / TIMEFRAME ====================
     const pairDropdown = $('pairDropdown'), pairTrigger = $('pairTrigger'), triggerText = $('triggerText');
     const pairItems = document.querySelectorAll('.pair-item');
 
@@ -1841,7 +1842,6 @@
 
     document.querySelectorAll('.tf-opt').forEach(opt => { opt.addEventListener('click', () => changeTimeframe(opt.dataset.tf)); });
 
-    // ==================== CHART SETUP ====================
     const chartEl = $('chart');
     const chartLoadingOverlay = $('chartLoadingOverlay');
     const volumeChartEl = $('volumeChart');
@@ -1878,7 +1878,6 @@
     const marketHeaderEl = $('marketHeader');
     if (marketHeaderEl) { new ResizeObserver(() => { checkTfSelectorOverflow(); }).observe(marketHeaderEl); }
 
-    // ==================== HISTORY LOADING ====================
     let isLoadingMoreHistory = false;
     let allOlderHistoryLoaded = false;
     let lastLoadMoreUntil = null;
@@ -1914,7 +1913,6 @@
       else { isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay(); }
     }
 
-    // ==================== SLIDERS ====================
     const leverageSlider = $('leverageSlider'); const levDisplay = $('leverageValText'); const levChips = document.querySelectorAll('.chip');
 
     function updateSliderTrack(slider, pct) { slider.style.background = `linear-gradient(to right, var(--accent-green) 0%, var(--accent-green) ${pct}%, #2A2F36 ${pct}%, #2A2F36 100%)`; }
@@ -1956,7 +1954,6 @@
     sizeInput.addEventListener('input', () => { if (profile.balance > 0) { const pct = Math.min(100, Math.round((Number(sizeInput.value) || 0) / profile.balance * 100)); updateMarginSliderUI(pct, true); } });
     updateMarginSliderUI(0);
 
-    // ==================== BALANCE ====================
     function updateBalanceUI() {
       const val = profile.balance.toFixed(2); const usdVal = formatUSD(profile.balance);
       $('headerBalance').textContent = isBalanceHidden ? "******" : (val + " VP");
@@ -1965,8 +1962,6 @@
       const currentMarginPct = parseInt(marginSlider.value) || 0;
       if (currentMarginPct > 0) updateMarginSliderUI(currentMarginPct, false, true);
     }
-
-    // ==================== TP/SL MODULE ====================
 
     function getTpSlOrdersForPosition(positionId) {
       return (window._tpSlOrders || []).filter(o => String(o.position_id) === String(positionId) && o.status === 'ACTIVE');
@@ -2261,7 +2256,7 @@
           closeTpSlModal();
           renderPositions(true);
           if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-          notify(`${isTP ? 'Take Profit' : 'Stop Loss'} set at ${formatPrice(triggerPrice)}`);
+          showToast(`${isTP ? 'Take Profit' : 'Stop Loss'} set at ${formatPrice(triggerPrice)}`, 'success');
         } else {
           submitBtn.disabled = false;
           submitBtn.innerHTML = `<span>Confirm ${isTP ? (isPartial ? 'Partial TP' : 'Take Profit') : (isPartial ? 'Partial SL' : 'Stop Loss')}</span>`;
@@ -2297,8 +2292,8 @@
           }
           renderPositions(true);
           if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        } else { notify(data.error || 'Failed to delete order'); }
-      } catch (e) { console.error("TP/SL delete error:", e); notify('Network error'); }
+        } else { showToast(data.error || 'Failed to delete order', 'error'); }
+      } catch (e) { console.error("TP/SL delete error:", e); showToast('Network error', 'error'); }
     }
 
     function initTpSlModal() {
@@ -2366,7 +2361,6 @@
       });
     }
 
-    // ==================== LOAD TP/SL ORDERS ====================
     async function loadTpSlOrders() {
       if (!currentUserId) return;
       try {
@@ -2381,7 +2375,6 @@
       }
     }
 
-    // ==================== SESSION ====================
     async function initSession() {
       try {
         let initData = tg?.initData || "";
@@ -2400,11 +2393,9 @@
           profile.dailyAdLimit = Number(data.user.daily_ad_limit || DAILY_AD_LIMIT);
           window._positions = data.positions || [];
           
-          // Load TP/SL orders from init response or fetch separately
           if (data.tpSlOrders && Array.isArray(data.tpSlOrders)) {
             window._tpSlOrders = data.tpSlOrders;
           } else {
-            // Fetch separately if not included in init
             await loadTpSlOrders();
           }
           
@@ -2418,38 +2409,83 @@
       } catch(e) { console.error(e); }
     }
 
-    // ==================== WEBSOCKET ====================
     let socket = null;
     let lastCandle = null;
 
     function connectWS() {
       socket = new WebSocket(WSS_PRICE_URL);
-      socket.onopen = () => { ALL_PAIRS.forEach(pair => { socket.send(JSON.stringify({ type: "subscribe", pair: pair, timeframe: currentTimeframe })); }); };
+      
+      socket.onopen = () => {
+        console.log("✅ WebSocket connected");
+        
+        // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Отправляем auth сообщение с userId
+        if (currentUserId) {
+          socket.send(JSON.stringify({ type: "auth", userId: currentUserId }));
+          console.log("📤 Sent auth message for user:", currentUserId);
+        }
+        
+        ALL_PAIRS.forEach(pair => {
+          socket.send(JSON.stringify({ type: "subscribe", pair: pair, timeframe: currentTimeframe }));
+        });
+      };
+      
       socket.onmessage = (evt) => {
-        let msg; try { msg = JSON.parse(evt.data); } catch(e) { return; }
+        let msg;
+        try { msg = JSON.parse(evt.data); } catch(e) { return; }
         if (!msg || !msg.type) return;
-        const msgPairNorm = normalizePair(msg.pair); const selPairNorm = normalizePair(selectedPair);
+        
+        const msgPairNorm = normalizePair(msg.pair);
+        const selPairNorm = normalizePair(selectedPair);
 
-        // ----------- NEW: POSITION UPDATE -----------
+        // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Обработка positionUpdate от сервера
         if (msg.type === "positionUpdate") {
-          // msg contains: positions, tpSlOrders, balance, eventType, details
+          console.log("📥 Received positionUpdate:", msg.eventType);
+          
+          // Обновляем данные
           window._positions = msg.positions || [];
           window._tpSlOrders = msg.tpSlOrders || [];
           profile.balance = Number(msg.balance || profile.balance);
+          
+          // Обновляем UI
           updateBalanceUI();
           renderPositions(true);
-          // optional toast for user feedback
+          
+          // Показываем уведомление пользователю
           if (msg.eventType) {
-            const toast = document.createElement('div');
-            toast.className = 'toast-notification';
-            toast.textContent = `⚡ ${msg.eventType.replace('_', ' ')}`;
-            document.body.appendChild(toast);
-            setTimeout(() => { toast.style.animation = 'toastOut 0.3s forwards'; }, 2000);
-            setTimeout(() => toast.remove(), 2500);
+            let toastMsg = '';
+            let toastType = 'success';
+            
+            switch(msg.eventType) {
+              case 'TP_SL_FULL_CLOSE':
+                toastMsg = `⚡ ${msg.details?.orderType || 'Order'} triggered - Position closed`;
+                toastType = msg.details?.pnl >= 0 ? 'success' : 'error';
+                break;
+              case 'TP_SL_PARTIAL_CLOSE':
+                toastMsg = `⚡ Partial ${msg.details?.orderType || 'order'} triggered (${msg.details?.sizePercent}%)`;
+                toastType = msg.details?.pnl >= 0 ? 'success' : 'error';
+                break;
+              case 'LIQUIDATION':
+                toastMsg = `💀 Position liquidated`;
+                toastType = 'error';
+                break;
+              default:
+                toastMsg = `⚡ ${msg.eventType.replace(/_/g, ' ')}`;
+            }
+            
+            showToast(toastMsg, toastType);
+            
+            if (tg?.HapticFeedback) {
+              tg.HapticFeedback.notificationOccurred(toastType === 'success' ? 'success' : 'error');
+            }
           }
           return;
         }
-        // -------------------------------------------
+
+        // Обработка подтверждения auth
+        if (msg.type === "authOk") {
+          console.log("✅ Auth confirmed for user:", msg.userId);
+          return;
+        }
 
         if (msg.type === "price" && msg.pair && msg.price) {
           marketPrices[msgPairNorm] = Number(msg.price);
@@ -2458,14 +2494,24 @@
             $('priceDisplay').textContent = formatPrice(currentPrice);
             updatePositionsDynamic();
             if (lastCandle) {
-              const now = Math.floor(Date.now() / 1000); const candleTime = now - (now % currentTimeframe);
+              const now = Math.floor(Date.now() / 1000);
+              const candleTime = now - (now % currentTimeframe);
               if (candleTime === lastCandle.time) {
-                lastCandle.high = Math.max(lastCandle.high, currentPrice); lastCandle.low = Math.min(lastCandle.low, currentPrice); lastCandle.close = currentPrice;
+                lastCandle.high = Math.max(lastCandle.high, currentPrice);
+                lastCandle.low = Math.min(lastCandle.low, currentPrice);
+                lastCandle.close = currentPrice;
                 candleSeries.update(lastCandle);
-                if (localVolumes.length > 0) { const lastVol = localVolumes[localVolumes.length - 1]; if (lastVol.time === candleTime) { lastVol.color = currentPrice >= lastCandle.open ? 'rgba(14, 203, 129, 0.5)' : 'rgba(246, 70, 93, 0.5)'; if (indicatorState.volume && volumeHistogramSeries) volumeHistogramSeries.update(lastVol); } }
+                if (localVolumes.length > 0) {
+                  const lastVol = localVolumes[localVolumes.length - 1];
+                  if (lastVol.time === candleTime) {
+                    lastVol.color = currentPrice >= lastCandle.open ? 'rgba(14, 203, 129, 0.5)' : 'rgba(246, 70, 93, 0.5)';
+                    if (indicatorState.volume && volumeHistogramSeries) volumeHistogramSeries.update(lastVol);
+                  }
+                }
               } else {
                 lastCandle = { time: candleTime, open: lastCandle.close, high: currentPrice, low: currentPrice, close: currentPrice, volume: 0 };
-                localCandles.push(lastCandle); candleSeries.update(lastCandle);
+                localCandles.push(lastCandle);
+                candleSeries.update(lastCandle);
                 const newVol = { time: candleTime, value: Math.random() * 100 + 50, color: 'rgba(14, 203, 129, 0.5)' };
                 localVolumes.push(newVol);
                 if (indicatorState.volume && volumeHistogramSeries) volumeHistogramSeries.update(newVol);
@@ -2477,61 +2523,121 @@
         }
 
         if (msgPairNorm !== selPairNorm) return;
-        if (msg.type === "orderBook") { renderOrderBook(msg.buy || msg.bids, msg.sell || msg.asks); return; }
+        
+        if (msg.type === "orderBook") {
+          renderOrderBook(msg.buy || msg.bids, msg.sell || msg.asks);
+          return;
+        }
+        
         if (msg.type === "moreHistory") {
-          if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) { isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay(); return; }
-          if (!msg.data || msg.data.length === 0) { allOlderHistoryLoaded = true; isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay(); return; }
-          const newCandles = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close, volume: c.volume || 0 }));
+          if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) {
+            isLoadingMoreHistory = false;
+            lockedLeftBoundary = null;
+            hideChartLoadingOverlay();
+            return;
+          }
+          if (!msg.data || msg.data.length === 0) {
+            allOlderHistoryLoaded = true;
+            isLoadingMoreHistory = false;
+            lockedLeftBoundary = null;
+            hideChartLoadingOverlay();
+            return;
+          }
+          const newCandles = msg.data.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume || 0 }));
           const newVolumes = buildVolumeData(newCandles);
           const currentRange = chart.timeScale().getVisibleRange();
-          localCandles = [...newCandles, ...localCandles].filter((v,i,a) => a.findIndex(t => t.time === v.time) === i).sort((a,b) => a.time - b.time);
-          localVolumes = [...newVolumes, ...localVolumes].filter((v,i,a) => a.findIndex(t => t.time === v.time) === i).sort((a,b) => a.time - b.time);
+          localCandles = [...newCandles, ...localCandles].filter((v, i, a) => a.findIndex(t => t.time === v.time) === i).sort((a, b) => a.time - b.time);
+          localVolumes = [...newVolumes, ...localVolumes].filter((v, i, a) => a.findIndex(t => t.time === v.time) === i).sort((a, b) => a.time - b.time);
           candleSeries.setData(localCandles);
           if (indicatorState.volume && volumeHistogramSeries) volumeHistogramSeries.setData(localVolumes);
           if (currentRange) chart.timeScale().setVisibleRange(currentRange);
-          updateIndicators(); isLoadingMoreHistory = false; lockedLeftBoundary = null; hideChartLoadingOverlay(); return;
+          updateIndicators();
+          isLoadingMoreHistory = false;
+          lockedLeftBoundary = null;
+          hideChartLoadingOverlay();
+          return;
         }
+        
         if (msg.type === "history") {
           if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) return;
-          const data = msg.data.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close, volume: c.volume || 0 }));
-          localCandles = data; localVolumes = buildVolumeData(data);
+          const data = msg.data.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume || 0 }));
+          localCandles = data;
+          localVolumes = buildVolumeData(data);
           candleSeries.setData(data);
           if (indicatorState.volume && volumeHistogramSeries) volumeHistogramSeries.setData(localVolumes);
-          chart.timeScale().fitContent(); chart.priceScale('right').applyOptions({ autoScale: true });
+          chart.timeScale().fitContent();
+          chart.priceScale('right').applyOptions({ autoScale: true });
           if (data.length) {
-            const last = data[data.length - 1]; const now = Math.floor(Date.now() / 1000); const currentCandleTime = now - (now % currentTimeframe);
-            if (last.time >= currentCandleTime) { lastCandle = last; }
-            else { lastCandle = { time: currentCandleTime, open: last.close, high: last.close, low: last.close, close: last.close, volume: 0 }; candleSeries.update(lastCandle); localCandles.push(lastCandle); }
-            marketPrices[selPairNorm] = lastCandle.close; $('priceDisplay').textContent = formatPrice(lastCandle.close);
+            const last = data[data.length - 1];
+            const now = Math.floor(Date.now() / 1000);
+            const currentCandleTime = now - (now % currentTimeframe);
+            if (last.time >= currentCandleTime) {
+              lastCandle = last;
+            } else {
+              lastCandle = { time: currentCandleTime, open: last.close, high: last.close, low: last.close, close: last.close, volume: 0 };
+              candleSeries.update(lastCandle);
+              localCandles.push(lastCandle);
+            }
+            marketPrices[selPairNorm] = lastCandle.close;
+            $('priceDisplay').textContent = formatPrice(lastCandle.close);
           }
           updateIndicators();
-          if (historyResolve) { historyResolve(); historyResolve = null; }
-          isLoadingHistory = false; return;
+          if (historyResolve) {
+            historyResolve();
+            historyResolve = null;
+          }
+          isLoadingHistory = false;
+          return;
         }
+        
         if (msg.type === "trades") {
-          const newTrades = msg.trades || []; localTrades = [...newTrades, ...localTrades];
+          const newTrades = msg.trades || [];
+          localTrades = [...newTrades, ...localTrades];
           if (localTrades.length > 20) localTrades = localTrades.slice(0, 20);
-          renderTrades(localTrades); return;
+          renderTrades(localTrades);
+          return;
         }
       };
-      socket.onclose = () => setTimeout(connectWS, 2000);
+      
+      socket.onclose = () => {
+        console.log("❌ WebSocket disconnected, reconnecting...");
+        setTimeout(connectWS, 2000);
+      };
+      
+      socket.onerror = (err) => {
+        console.error("WebSocket error:", err);
+      };
     }
 
-    // ==================== POSITIONS ====================
     function renderPositions(forceRebuild = false) {
       const list = $('positionsList');
       if (!window._positions) window._positions = [];
       const positions = window._positions;
+      
       if (positions.length === 0) {
-        if (list.innerHTML.includes("pos-item") || forceRebuild) list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
+        list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
         return;
       }
-      if (positions.length > 0 && list.innerText.includes("No open positions")) list.innerHTML = "";
+
+      if (forceRebuild) {
+        list.innerHTML = '';
+      }
 
       const existingIds = Array.from(list.querySelectorAll('.pos-item')).map(el => el.dataset.id);
       const currentIds = positions.map(p => String(p.id || p._id));
-      existingIds.forEach(domId => { if (!currentIds.includes(domId)) { const el = document.getElementById('pos-item-' + domId); if(el) el.remove(); } });
-      if(list.children.length === 0 && positions.length === 0) { list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>'; return; }
+      
+      // Удаляем элементы позиций, которых больше нет
+      existingIds.forEach(domId => {
+        if (!currentIds.includes(domId)) {
+          const el = document.getElementById('pos-item-' + domId);
+          if (el) el.remove();
+        }
+      });
+
+      if (list.children.length === 0 && positions.length === 0) {
+        list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
+        return;
+      }
 
       [...positions].reverse().forEach(pos => {
         const id = String(pos.id || pos._id);
@@ -2542,12 +2648,16 @@
         const lev = Number(pos.leverage || 1);
 
         let div = document.getElementById('pos-item-' + id);
-        if (div && forceRebuild) { div.remove(); div = null; }
+        if (div && forceRebuild) {
+          div.remove();
+          div = null;
+        }
 
         if (!div) {
           div = document.createElement('div');
           div.className = `pos-item ${type === 'LONG' ? 'long' : 'short'}`;
-          div.id = 'pos-item-' + id; div.dataset.id = id;
+          div.id = 'pos-item-' + id;
+          div.dataset.id = id;
 
           const counts = getTpSlCounts(id);
           const orders = getTpSlOrdersForPosition(id);
@@ -2583,12 +2693,12 @@
           }
 
           div.innerHTML =
-            `<div class="pos-header"><div style="display:flex; align-items:center; gap:6px;"><span class="${type==='LONG'?'text-green':'text-red'}">${type}</span><span class="pos-pair">${pair}</span><span class="pos-type-badge ${type==='LONG'?'text-green':'text-red'}">x${lev}</span></div><div class="pos-pnl" id="pnl-${id}">0.00 VP</div></div>` +
+            `<div class="pos-header"><div style="display:flex; align-items:center; gap:6px;"><span class="${type === 'LONG' ? 'text-green' : 'text-red'}">${type}</span><span class="pos-pair">${pair}</span><span class="pos-type-badge ${type === 'LONG' ? 'text-green' : 'text-red'}">x${lev}</span></div><div class="pos-pnl" id="pnl-${id}">0.00 VP</div></div>` +
             `<div class="pos-stats-grid"><div class="stat-col"><span class="stat-label">ROE %</span><span class="stat-val" id="roe-${id}">0.00%</span></div><div class="stat-col" style="align-items: center;"><span class="stat-label">Margin Ratio</span><span class="stat-val" id="ratio-${id}">0.00%</span></div><div class="stat-col" style="align-items: flex-end;"><span class="stat-label">Risk</span><span class="stat-val" id="risk-val-${id}">0.0%</span><div class="risk-wrap" style="width: 100%;"><div class="risk-track"><div class="risk-fill" id="risk-bar-${id}"></div></div></div></div></div>` +
             `<div class="pos-details"><div class="pd-col"><span class="pd-label">Entry Price</span><span class="pd-val">${formatPrice(entry)}</span></div><div class="pd-col" style="align-items: center;"><span class="pd-label">Size / Mark</span><span class="pd-val">${size.toFixed(0)} / <span id="mark-${id}">--.--</span></span></div><div class="pd-col" style="align-items: flex-end;"><span class="pd-label">Liquidation Price</span><span class="pd-val text-red" id="liq-${id}">--.--</span></div></div>` +
             `<div class="pos-tpsl-actions">` +
-              `<button class="btn-tpsl tp" data-pos-id="${id}" data-type="TP"><span class="btn-tpsl-icon">🎯</span> Take Profit <span class="tpsl-count">${counts.tp}/${MAX_TP_PER_POSITION}</span></button>` +
-              `<button class="btn-tpsl sl" data-pos-id="${id}" data-type="SL"><span class="btn-tpsl-icon">🛡️</span> Stop Loss <span class="tpsl-count">${counts.sl}/${MAX_SL_PER_POSITION}</span></button>` +
+            `<button class="btn-tpsl tp" data-pos-id="${id}" data-type="TP"><span class="btn-tpsl-icon">🎯</span> Take Profit <span class="tpsl-count">${counts.tp}/${MAX_TP_PER_POSITION}</span></button>` +
+            `<button class="btn-tpsl sl" data-pos-id="${id}" data-type="SL"><span class="btn-tpsl-icon">🛡️</span> Stop Loss <span class="tpsl-count">${counts.sl}/${MAX_SL_PER_POSITION}</span></button>` +
             `</div>` +
             ordersHtml +
             `<button class="close-btn" data-id="${id}">Close Position</button>`;
@@ -2609,23 +2719,30 @@
           });
         }
       });
+      
       updatePositionsDynamic();
     }
 
     function updatePositionsDynamic() {
       if (!window._positions || window._positions.length === 0) return;
+      
       window._positions.forEach(pos => {
         const id = String(pos.id || pos._id);
         const pair = normalizePair(pos.pair || "BTC-USD");
         const currentPrice = marketPrices[pair];
         if (!currentPrice) return;
+        
         const entry = Number(pos.entry_price || pos.entryPrice);
-        const size = Number(pos.size), margin = Number(pos.margin);
+        const size = Number(pos.size);
+        const margin = Number(pos.margin);
         const type = (pos.type || "LONG").toUpperCase();
+        
         let diff = (currentPrice - entry) / entry;
         if (type === "SHORT") diff = -diff;
+        
         const pnl = diff * size;
         const roe = (pnl / margin) * 100;
+        
         let riskPercent = 1.0;
         if (pnl < 0) riskPercent = (Math.abs(pnl) / (margin * 0.9)) * 100;
         riskPercent = Math.max(1, Math.min(100, riskPercent));
@@ -2638,12 +2755,20 @@
         const markEl = document.getElementById(`mark-${id}`);
         const liqEl = document.getElementById(`liq-${id}`);
 
-        if (pnlEl) { pnlEl.textContent = `${pnl > 0 ? '+' : ''}${pnl.toFixed(2)} VP`; pnlEl.className = `pos-pnl ${pnl >= 0 ? 'text-green' : 'text-red'}`; }
-        if (roeEl) { roeEl.textContent = `${roe > 0 ? '+' : ''}${roe.toFixed(2)}%`; roeEl.className = `stat-val ${roe >= 0 ? 'text-green' : 'text-red'}`; }
+        if (pnlEl) {
+          pnlEl.textContent = `${pnl > 0 ? '+' : ''}${pnl.toFixed(2)} VP`;
+          pnlEl.className = `pos-pnl ${pnl >= 0 ? 'text-green' : 'text-red'}`;
+        }
+        if (roeEl) {
+          roeEl.textContent = `${roe > 0 ? '+' : ''}${roe.toFixed(2)}%`;
+          roeEl.className = `stat-val ${roe >= 0 ? 'text-green' : 'text-red'}`;
+        }
         if (riskValEl && riskBarEl) {
-          riskValEl.textContent = riskPercent.toFixed(1) + "%"; riskBarEl.style.width = riskPercent + "%";
+          riskValEl.textContent = riskPercent.toFixed(1) + "%";
+          riskBarEl.style.width = riskPercent + "%";
           const c = riskPercent < 50 ? "#0ECB81" : riskPercent < 80 ? "#F0B90B" : "#F6465D";
-          riskValEl.style.color = c; riskBarEl.style.background = c;
+          riskValEl.style.color = c;
+          riskBarEl.style.background = c;
         }
         if (ratioEl) ratioEl.textContent = (riskPercent / 2).toFixed(2) + "%";
         if (markEl) markEl.textContent = formatPrice(currentPrice);
@@ -2652,22 +2777,29 @@
           liqEl.textContent = formatPrice(type === "LONG" ? entry - liqDist : entry + liqDist);
         }
 
+        // Обновляем PnL для TP/SL ордеров
         const orders = getTpSlOrdersForPosition(id);
         orders.forEach(order => {
           const { pnl: oPnl, roe: oRoe } = calculateTpSlPnl(pos, order.trigger_price, order.size_percent);
           const oPnlEl = document.getElementById(`tpsl-pnl-${order.id}`);
           const oRoeEl = document.getElementById(`tpsl-roe-${order.id}`);
-          if (oPnlEl) { oPnlEl.textContent = `${oPnl >= 0 ? '+' : ''}${oPnl.toFixed(2)}`; oPnlEl.className = `tpsl-order-pnl ${oPnl >= 0 ? 'text-green' : 'text-red'}`; }
-          if (oRoeEl) { oRoeEl.textContent = `${oRoe >= 0 ? '+' : ''}${oRoe.toFixed(1)}%`; oRoeEl.className = `tpsl-order-roe ${oRoe >= 0 ? 'text-green' : 'text-red'}`; }
+          if (oPnlEl) {
+            oPnlEl.textContent = `${oPnl >= 0 ? '+' : ''}${oPnl.toFixed(2)}`;
+            oPnlEl.className = `tpsl-order-pnl ${oPnl >= 0 ? 'text-green' : 'text-red'}`;
+          }
+          if (oRoeEl) {
+            oRoeEl.textContent = `${oRoe >= 0 ? '+' : ''}${oRoe.toFixed(1)}%`;
+            oRoeEl.className = `tpsl-order-roe ${oRoe >= 0 ? 'text-green' : 'text-red'}`;
+          }
         });
       });
     }
 
-    // ==================== ORDER BOOK & TRADES ====================
     function renderOrderBook(buys, sells) {
       const b = Array.isArray(buys) ? buys : (buys?.bids || []);
       const s = Array.isArray(sells) ? sells : (sells?.asks || []);
-      const container = $('orderBook'); const maxLevels = 10;
+      const container = $('orderBook');
+      const maxLevels = 10;
       const bidMap = new Map(), askMap = new Map();
       b.forEach(l => { const sz = Number(l.size) || 0; if (sz > 0) bidMap.set(Number(l.price).toFixed(2), sz); });
       s.forEach(l => { const sz = Number(l.size) || 0; if (sz > 0) askMap.set(Number(l.price).toFixed(2), sz); });
@@ -2677,64 +2809,102 @@
       const maxVol = Math.max(...renderList.map(x => x.size), 0.0000001);
       container.innerHTML = "";
       renderList.forEach(level => {
-        const isAsk = level.type === 'ask'; const row = document.createElement('div'); row.className = 'ob-row';
+        const isAsk = level.type === 'ask';
+        const row = document.createElement('div');
+        row.className = 'ob-row';
         row.innerHTML = `<div class="ob-bg ${isAsk ? 'bg-red' : 'bg-green'}" style="width:${(level.size / maxVol) * 100}%"></div><span class="${isAsk ? 'text-red' : 'text-green'}">${formatPrice(level.price)}</span><span style="text-align:right;">${level.size.toFixed(5)}</span>`;
         container.appendChild(row);
       });
-      const updEl = $('bookUpdated'); if (updEl) updEl.textContent = new Date().toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+      const updEl = $('bookUpdated');
+      if (updEl) updEl.textContent = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
 
     function renderTrades(trades) {
-      const el = $('tradeHistory'); if(!Array.isArray(trades)) return; let html = "";
-      trades.forEach(t => { const color = t.side === 'buy' ? 'text-green' : 'text-red'; const timeStr = new Date(t.time).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'}); html += `<div class="ob-row"><span class="${color}">${formatPrice(t.price)}</span><span class="trade-time">${timeStr}</span></div>`; });
+      const el = $('tradeHistory');
+      if (!Array.isArray(trades)) return;
+      let html = "";
+      trades.forEach(t => {
+        const color = t.side === 'buy' ? 'text-green' : 'text-red';
+        const timeStr = new Date(t.time).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        html += `<div class="ob-row"><span class="${color}">${formatPrice(t.price)}</span><span class="trade-time">${timeStr}</span></div>`;
+      });
       el.innerHTML = html;
     }
 
-    // ==================== OPEN / CLOSE POSITION ====================
     async function openPosition(type) {
-      const margin = Number($('sizeInput').value); const currentPrice = marketPrices[selectedPair];
-      if(!margin || margin <= 0) return alert("Enter margin");
-      if(!currentPrice) return alert("Waiting for price...");
+      const margin = Number($('sizeInput').value);
+      const currentPrice = marketPrices[selectedPair];
+      if (!margin || margin <= 0) return showToast("Enter margin", "error");
+      if (!currentPrice) return showToast("Waiting for price...", "error");
       const size = margin * currentLeverage;
-      if(tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
       try {
-        const res = await fetch(API_BASE + "/api/order/open", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ userId: currentUserId, pair: selectedPair, type, size, leverage: currentLeverage, entryPrice: currentPrice }) });
+        const res = await fetch(API_BASE + "/api/order/open", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: currentUserId, pair: selectedPair, type, size, leverage: currentLeverage, entryPrice: currentPrice })
+        });
         const data = await res.json();
-        if(data.ok) {
+        if (data.ok) {
           window._positions.push(data.position);
-          if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
+          if (data.newBalance) {
+            profile.balance = data.newBalance;
+            updateBalanceUI();
+          }
           renderPositions(true);
-          if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        } else { alert(data.error || "Error"); }
-      } catch(e) { console.error(e); }
+          if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+          showToast(`${type} position opened`, 'success');
+        } else {
+          showToast(data.error || "Error", "error");
+        }
+      } catch (e) {
+        console.error(e);
+        showToast("Network error", "error");
+      }
     }
 
     async function closePosition(id, pair) {
       const pos = window._positions.find(p => (p.id == id || p._id == id));
-      if(!pos) return;
+      if (!pos) return;
       const closePrice = marketPrices[pair || pos.pair];
-      if(!closePrice) return alert("Price not available for " + pair);
-      if(!confirm("Close position?")) return;
+      if (!closePrice) return showToast("Price not available for " + pair, "error");
+      if (!confirm("Close position?")) return;
       try {
-        const res = await fetch(API_BASE + "/api/order/close", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ userId: currentUserId, positionId: id, closePrice: closePrice }) });
+        const res = await fetch(API_BASE + "/api/order/close", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: currentUserId, positionId: id, closePrice: closePrice })
+        });
         const data = await res.json();
-        if(data.ok) {
-          window._positions = window._positions.filter(p => (p.id!=id && p._id!=id));
+        if (data.ok) {
+          window._positions = window._positions.filter(p => (p.id != id && p._id != id));
           window._tpSlOrders = window._tpSlOrders.filter(o => String(o.position_id) !== String(id));
-          if(data.newBalance) { profile.balance = data.newBalance; updateBalanceUI(); }
-          const el = document.getElementById('pos-item-' + id); if(el) el.remove();
+          if (data.newBalance) {
+            profile.balance = data.newBalance;
+            updateBalanceUI();
+          }
+          const el = document.getElementById('pos-item-' + id);
+          if (el) el.remove();
           renderPositions(false);
-          if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+          if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+          showToast("Position closed", "success");
         }
-      } catch(e) { console.error(e); }
+      } catch (e) {
+        console.error(e);
+        showToast("Network error", "error");
+      }
     }
 
     $('openLong').onclick = () => openPosition("LONG");
     $('openShort').onclick = () => openPosition("SHORT");
 
-    // ==================== BOOT ====================
-    const loaderEl = $('app-loader'); const loaderBar = $('loaderBar');
-    function setProgress(pct, txt) { loaderBar.style.width = pct + '%'; $('loaderText').textContent = txt; }
+    const loaderEl = $('app-loader');
+    const loaderBar = $('loaderBar');
+    
+    function setProgress(pct, txt) {
+      loaderBar.style.width = pct + '%';
+      $('loaderText').textContent = txt;
+    }
 
     setProgress(20, "AUTH...");
     await initSession();
@@ -2757,7 +2927,10 @@
 
     setTimeout(() => { checkResponsiveOverflows(); }, 100);
 
-    setTimeout(() => { loaderEl.classList.add('hidden'); setTimeout(() => loaderEl.style.display = 'none', 400); }, 500);
+    setTimeout(() => {
+      loaderEl.classList.add('hidden');
+      setTimeout(() => loaderEl.style.display = 'none', 400);
+    }, 500);
 
   })();
 </script>
