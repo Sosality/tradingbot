@@ -1223,7 +1223,7 @@
     const WSS_PRICE_URL = "wss://tradingbot-backend-2yws.onrender.com";
     const API_BASE = "https://tradingbot-p9n8.onrender.com";
     const ALL_PAIRS = ["BTC-USD", "ETH-USD"];
-    
+
     const ADSGRAM_BLOCK_ID = "22326";
     const VP_TO_USD_RATE = 0.005;
     const DAILY_AD_LIMIT = 5;
@@ -1239,8 +1239,8 @@
     let isLoadingHistory = false;
     let allHistoryLoaded = false;
 
-    let profile = { 
-      balance: 0, name: "Trader", id: 0, photo: "", 
+    let profile = {
+      balance: 0, name: "Trader", id: 0, photo: "",
       adViewsCount: 0, dailyAdViews: 0, dailyAdLimit: DAILY_AD_LIMIT
     };
     let currentLeverage = 10;
@@ -1428,12 +1428,12 @@
     function showToast(message, type = 'info') {
       const existing = document.querySelector('.toast-notification');
       if (existing) existing.remove();
-      
+
       const toast = document.createElement('div');
       toast.className = `toast-notification ${type}`;
       toast.textContent = message;
       document.body.appendChild(toast);
-      
+
       setTimeout(() => {
         toast.style.animation = 'toastOut 0.3s forwards';
         setTimeout(() => toast.remove(), 300);
@@ -2392,13 +2392,13 @@
           profile.dailyAdViews = Number(data.user.daily_ad_views || 0);
           profile.dailyAdLimit = Number(data.user.daily_ad_limit || DAILY_AD_LIMIT);
           window._positions = data.positions || [];
-          
+
           if (data.tpSlOrders && Array.isArray(data.tpSlOrders)) {
             window._tpSlOrders = data.tpSlOrders;
           } else {
             await loadTpSlOrders();
           }
-          
+
           if(data.user.photo_url) {
             profile.photo = data.user.photo_url;
             $('avatarImg').src = data.user.photo_url;
@@ -2414,85 +2414,76 @@
 
     function connectWS() {
       socket = new WebSocket(WSS_PRICE_URL);
-      
+
       socket.onopen = () => {
         console.log("✅ WebSocket connected");
-        
-        // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Отправляем auth сообщение с userId
+
+        // Отправляем auth с userId
         if (currentUserId) {
           socket.send(JSON.stringify({ type: "auth", userId: currentUserId }));
-          console.log("📤 Sent auth message for user:", currentUserId);
+          console.log("📤 Sent auth for user:", currentUserId);
         }
-        
+
+        // Подписываемся на пары
         ALL_PAIRS.forEach(pair => {
           socket.send(JSON.stringify({ type: "subscribe", pair: pair, timeframe: currentTimeframe }));
         });
       };
-      
+
       socket.onmessage = (evt) => {
         let msg;
         try { msg = JSON.parse(evt.data); } catch(e) { return; }
         if (!msg || !msg.type) return;
-        
-        const msgPairNorm = normalizePair(msg.pair);
-        const selPairNorm = normalizePair(selectedPair);
 
-        // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Обработка positionUpdate от сервера
+        // ========== POSITION UPDATE - ОБРАБАТЫВАЕМ ПЕРВЫМ ==========
         if (msg.type === "positionUpdate") {
-          console.log("📥 Received positionUpdate:", msg.eventType);
-          
-          // Обновляем данные
+          console.log("🔔 positionUpdate received:", msg.eventType);
+
           window._positions = msg.positions || [];
           window._tpSlOrders = msg.tpSlOrders || [];
           profile.balance = Number(msg.balance || profile.balance);
-          
-          // Обновляем UI
+
           updateBalanceUI();
           renderPositions(true);
-          
-          // Показываем уведомление пользователю
-          if (msg.eventType) {
-            let toastMsg = '';
-            let toastType = 'success';
-            
-            switch(msg.eventType) {
-              case 'TP_SL_FULL_CLOSE':
-                toastMsg = `⚡ ${msg.details?.orderType || 'Order'} triggered - Position closed`;
-                toastType = msg.details?.pnl >= 0 ? 'success' : 'error';
-                break;
-              case 'TP_SL_PARTIAL_CLOSE':
-                toastMsg = `⚡ Partial ${msg.details?.orderType || 'order'} triggered (${msg.details?.sizePercent}%)`;
-                toastType = msg.details?.pnl >= 0 ? 'success' : 'error';
-                break;
-              case 'LIQUIDATION':
-                toastMsg = `💀 Position liquidated`;
-                toastType = 'error';
-                break;
-              default:
-                toastMsg = `⚡ ${msg.eventType.replace(/_/g, ' ')}`;
-            }
-            
-            showToast(toastMsg, toastType);
-            
-            if (tg?.HapticFeedback) {
-              tg.HapticFeedback.notificationOccurred(toastType === 'success' ? 'success' : 'error');
-            }
+
+          let toastMsg = '', toastType = 'success';
+          switch(msg.eventType) {
+            case 'TP_SL_FULL_CLOSE':
+              toastMsg = `⚡ ${msg.details?.orderType || 'Order'} triggered - Position closed`;
+              toastType = msg.details?.pnl >= 0 ? 'success' : 'error';
+              break;
+            case 'TP_SL_PARTIAL_CLOSE':
+              toastMsg = `⚡ Partial ${msg.details?.orderType || 'order'} (${msg.details?.sizePercent}%)`;
+              toastType = msg.details?.pnl >= 0 ? 'success' : 'error';
+              break;
+            case 'LIQUIDATION':
+              toastMsg = `💀 Position liquidated`;
+              toastType = 'error';
+              break;
+            default:
+              toastMsg = `⚡ Position updated`;
           }
+          showToast(toastMsg, toastType);
+          if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred(toastType === 'success' ? 'success' : 'error');
           return;
         }
 
-        // Обработка подтверждения auth
+        // ========== AUTH OK ==========
         if (msg.type === "authOk") {
-          console.log("✅ Auth confirmed for user:", msg.userId);
+          console.log("✅ Auth confirmed:", msg.userId);
           return;
         }
 
+        // ========== PRICE (для всех пар) ==========
         if (msg.type === "price" && msg.pair && msg.price) {
-          marketPrices[msgPairNorm] = Number(msg.price);
-          if (msgPairNorm === selPairNorm) {
+          const pairNorm = normalizePair(msg.pair);
+          marketPrices[pairNorm] = Number(msg.price);
+
+          if (pairNorm === normalizePair(selectedPair)) {
             const currentPrice = Number(msg.price);
             $('priceDisplay').textContent = formatPrice(currentPrice);
             updatePositionsDynamic();
+
             if (lastCandle) {
               const now = Math.floor(Date.now() / 1000);
               const candleTime = now - (now % currentTimeframe);
@@ -2522,13 +2513,16 @@
           return;
         }
 
+        // ========== ОСТАЛЬНЫЕ СООБЩЕНИЯ - ТОЛЬКО ДЛЯ ВЫБРАННОЙ ПАРЫ ==========
+        const msgPairNorm = normalizePair(msg.pair);
+        const selPairNorm = normalizePair(selectedPair);
         if (msgPairNorm !== selPairNorm) return;
-        
+
         if (msg.type === "orderBook") {
           renderOrderBook(msg.buy || msg.bids, msg.sell || msg.asks);
           return;
         }
-        
+
         if (msg.type === "moreHistory") {
           if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) {
             isLoadingMoreHistory = false;
@@ -2557,7 +2551,7 @@
           hideChartLoadingOverlay();
           return;
         }
-        
+
         if (msg.type === "history") {
           if (msg.timeframe && Number(msg.timeframe) !== Number(currentTimeframe)) return;
           const data = msg.data.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume || 0 }));
@@ -2582,14 +2576,11 @@
             $('priceDisplay').textContent = formatPrice(lastCandle.close);
           }
           updateIndicators();
-          if (historyResolve) {
-            historyResolve();
-            historyResolve = null;
-          }
+          if (historyResolve) { historyResolve(); historyResolve = null; }
           isLoadingHistory = false;
           return;
         }
-        
+
         if (msg.type === "trades") {
           const newTrades = msg.trades || [];
           localTrades = [...newTrades, ...localTrades];
@@ -2598,12 +2589,12 @@
           return;
         }
       };
-      
+
       socket.onclose = () => {
         console.log("❌ WebSocket disconnected, reconnecting...");
         setTimeout(connectWS, 2000);
       };
-      
+
       socket.onerror = (err) => {
         console.error("WebSocket error:", err);
       };
@@ -2613,7 +2604,7 @@
       const list = $('positionsList');
       if (!window._positions) window._positions = [];
       const positions = window._positions;
-      
+
       if (positions.length === 0) {
         list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--muted); font-size: 13px;">No open positions</div>';
         return;
@@ -2625,7 +2616,7 @@
 
       const existingIds = Array.from(list.querySelectorAll('.pos-item')).map(el => el.dataset.id);
       const currentIds = positions.map(p => String(p.id || p._id));
-      
+
       // Удаляем элементы позиций, которых больше нет
       existingIds.forEach(domId => {
         if (!currentIds.includes(domId)) {
@@ -2693,15 +2684,15 @@
           }
 
           div.innerHTML =
-            `<div class="pos-header"><div style="display:flex; align-items:center; gap:6px;"><span class="${type === 'LONG' ? 'text-green' : 'text-red'}">${type}</span><span class="pos-pair">${pair}</span><span class="pos-type-badge ${type === 'LONG' ? 'text-green' : 'text-red'}">x${lev}</span></div><div class="pos-pnl" id="pnl-${id}">0.00 VP</div></div>` +
-            `<div class="pos-stats-grid"><div class="stat-col"><span class="stat-label">ROE %</span><span class="stat-val" id="roe-${id}">0.00%</span></div><div class="stat-col" style="align-items: center;"><span class="stat-label">Margin Ratio</span><span class="stat-val" id="ratio-${id}">0.00%</span></div><div class="stat-col" style="align-items: flex-end;"><span class="stat-label">Risk</span><span class="stat-val" id="risk-val-${id}">0.0%</span><div class="risk-wrap" style="width: 100%;"><div class="risk-track"><div class="risk-fill" id="risk-bar-${id}"></div></div></div></div></div>` +
-            `<div class="pos-details"><div class="pd-col"><span class="pd-label">Entry Price</span><span class="pd-val">${formatPrice(entry)}</span></div><div class="pd-col" style="align-items: center;"><span class="pd-label">Size / Mark</span><span class="pd-val">${size.toFixed(0)} / <span id="mark-${id}">--.--</span></span></div><div class="pd-col" style="align-items: flex-end;"><span class="pd-label">Liquidation Price</span><span class="pd-val text-red" id="liq-${id}">--.--</span></div></div>` +
-            `<div class="pos-tpsl-actions">` +
-            `<button class="btn-tpsl tp" data-pos-id="${id}" data-type="TP"><span class="btn-tpsl-icon">🎯</span> Take Profit <span class="tpsl-count">${counts.tp}/${MAX_TP_PER_POSITION}</span></button>` +
-            `<button class="btn-tpsl sl" data-pos-id="${id}" data-type="SL"><span class="btn-tpsl-icon">🛡️</span> Stop Loss <span class="tpsl-count">${counts.sl}/${MAX_SL_PER_POSITION}</span></button>` +
-            `</div>` +
-            ordersHtml +
-            `<button class="close-btn" data-id="${id}">Close Position</button>`;
+                  `<div class="pos-header"><div style="display:flex; align-items:center; gap:6px;"><span class="${type === 'LONG' ? 'text-green' : 'text-red'}">${type}</span><span class="pos-pair">${pair}</span><span class="pos-type-badge ${type === 'LONG' ? 'text-green' : 'text-red'}">x${lev}</span></div><div class="pos-pnl" id="pnl-${id}">0.00 VP</div></div>` +
+                  `<div class="pos-stats-grid"><div class="stat-col"><span class="stat-label">ROE %</span><span class="stat-val" id="roe-${id}">0.00%</span></div><div class="stat-col" style="align-items: center;"><span class="stat-label">Margin Ratio</span><span class="stat-val" id="ratio-${id}">0.00%</span></div><div class="stat-col" style="align-items: flex-end;"><span class="stat-label">Risk</span><span class="stat-val" id="risk-val-${id}">0.0%</span><div class="risk-wrap" style="width: 100%;"><div class="risk-track"><div class="risk-fill" id="risk-bar-${id}"></div></div></div></div></div>` +
+                  `<div class="pos-details"><div class="pd-col"><span class="pd-label">Entry Price</span><span class="pd-val">${formatPrice(entry)}</span></div><div class="pd-col" style="align-items: center;"><span class="pd-label">Size / Mark</span><span class="pd-val">${size.toFixed(0)} / <span id="mark-${id}">--.--</span></span></div><div class="pd-col" style="align-items: flex-end;"><span class="pd-label">Liquidation Price</span><span class="pd-val text-red" id="liq-${id}">--.--</span></div></div>` +
+                  `<div class="pos-tpsl-actions">` +
+                  `<button class="btn-tpsl tp" data-pos-id="${id}" data-type="TP"><span class="btn-tpsl-icon">🎯</span> Take Profit <span class="tpsl-count">${counts.tp}/${MAX_TP_PER_POSITION}</span></button>` +
+                  `<button class="btn-tpsl sl" data-pos-id="${id}" data-type="SL"><span class="btn-tpsl-icon">🛡️</span> Stop Loss <span class="tpsl-count">${counts.sl}/${MAX_SL_PER_POSITION}</span></button>` +
+                  `</div>` +
+                  ordersHtml +
+                  `<button class="close-btn" data-id="${id}">Close Position</button>`;
 
           list.appendChild(div);
 
@@ -2719,30 +2710,30 @@
           });
         }
       });
-      
+
       updatePositionsDynamic();
     }
 
     function updatePositionsDynamic() {
       if (!window._positions || window._positions.length === 0) return;
-      
+
       window._positions.forEach(pos => {
         const id = String(pos.id || pos._id);
         const pair = normalizePair(pos.pair || "BTC-USD");
         const currentPrice = marketPrices[pair];
         if (!currentPrice) return;
-        
+
         const entry = Number(pos.entry_price || pos.entryPrice);
         const size = Number(pos.size);
         const margin = Number(pos.margin);
         const type = (pos.type || "LONG").toUpperCase();
-        
+
         let diff = (currentPrice - entry) / entry;
         if (type === "SHORT") diff = -diff;
-        
+
         const pnl = diff * size;
         const roe = (pnl / margin) * 100;
-        
+
         let riskPercent = 1.0;
         if (pnl < 0) riskPercent = (Math.abs(pnl) / (margin * 0.9)) * 100;
         riskPercent = Math.max(1, Math.min(100, riskPercent));
@@ -2900,7 +2891,7 @@
 
     const loaderEl = $('app-loader');
     const loaderBar = $('loaderBar');
-    
+
     function setProgress(pct, txt) {
       loaderBar.style.width = pct + '%';
       $('loaderText').textContent = txt;
